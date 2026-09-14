@@ -12,6 +12,7 @@
 [![Flutter](https://img.shields.io/badge/Flutter-3.47-02569B?logo=flutter)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.13-0175C2?logo=dart)](https://dart.dev)
 [![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?logo=android)](#安装)
+[![Release](https://img.shields.io/github/v/release/Aclguh/kanji-hiragana?label=Download)](https://github.com/Aclguh/kanji-hiragana/releases/latest)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 </div>
@@ -53,13 +54,13 @@
 
 ### 直接安装 APK
 
-从 [Releases](https://github.com/Aclguh/kanji-hiragana/releases) 下载对应架构的 APK：
+从 [Releases](https://github.com/Aclguh/kanji-hiragana/releases/latest) 下载对应架构的 APK：
 
-| 文件 | 适用设备 |
-| --- | --- |
-| `app-arm64-v8a-release.apk` | 绝大多数现代手机（**推荐**） |
-| `app-armeabi-v7a-release.apk` | 较老的 32 位设备 |
-| `app-x86_64-release.apk` | 模拟器 / x86 平板 |
+| 文件 | 适用设备 | 大小 |
+| --- | --- | --- |
+| `app-arm64-v8a-release.apk` | 绝大多数现代手机（**推荐**） | 39.0 MB |
+| `app-armeabi-v7a-release.apk` | 较老的 32 位设备 | 36.6 MB |
+| `app-x86_64-release.apk` | 模拟器 / x86 平板 | 40.4 MB |
 
 > 若不确定选哪个，装 `arm64-v8a`；装错了会提示「应用未安装」。
 
@@ -72,6 +73,11 @@ flutter pub get
 flutter build apk --release --split-per-abi
 # 产物: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
 ```
+
+> 仓库不含签名密钥。未配置 `android/key.properties` 时，release 构建会自动
+> 回落到 debug 签名（可正常安装使用，但不适合分发给他人）。
+> 发布正式包时按官方文档在 `android/key.properties` 填入自己的密钥即可，
+> 该文件与 `*.jks` 已被 `.gitignore` 排除。
 
 ## 使用
 
