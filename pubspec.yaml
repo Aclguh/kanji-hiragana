@@ -1,0 +1,26 @@
+name: kanji_hiragana
+description: "输入日语汉字, 即时显示对应平假名与罗马音。"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  # 纯 Dart 形态素分析 (Atilika IPADIC 词典内置)
+  kuromoji: ^1.0.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  test: ^1.31.1
+
+flutter:
+  uses-material-design: true

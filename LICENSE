@@ -1,0 +1,44 @@
+MIT License
+
+Copyright (c) 2026 kanji-hiragana contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+## 第三方数据与词典许可
+
+本项目的部分源代码以 MIT 许可发布，但**内嵌的词典数据**来自第三方，
+各有其独立许可，使用时请一并遵守：
+
+### KANJIDIC2
+
+- 来源：Electronic Dictionary Research and Development Group (EDRDG)
+- 网址：https://www.edrdg.org/wiki/index.php/KANJIDIC_Project
+- 许可：Creative Commons Attribution-ShareAlike 4.0 International
+  (CC BY-SA 4.0) — https://creativecommons.org/licenses/by-sa/4.0/
+- 用途：`lib/core/kanji_reading_dict.dart`（音读 / 训读 / 释义 / 笔画 / 学年）
+- 派生说明：本仓库中的 `lib/core/kanji_reading_dict.dart` 是 KANJIDIC2
+  的衍生作品，按 CC BY-SA 4.0 的要求同样以 CC BY-SA 4.0 提供。
+
+### kuromoji / IPADIC
+
+- `kuromoji`：https://pub.dev/packages/kuromoji （Apache License 2.0）
+- IPADIC 词典：https://www.atilika.com （Apache License 2.0）
+- 用途：分词与读音分析
