@@ -10,6 +10,7 @@ import 'package:kanji_hiragana/widgets/filter_result_page.dart';
 import 'package:kanji_hiragana/widgets/furigana_view.dart';
 import 'package:kanji_hiragana/widgets/settings_drawer.dart';
 import 'package:kanji_hiragana/widgets/single_kanji_view.dart';
+import 'package:kanji_hiragana/widgets/vector_icon.dart';
 
 /// 在设备 / 模拟器上驱动的界面测试。
 ///
@@ -18,6 +19,7 @@ import 'package:kanji_hiragana/widgets/single_kanji_view.dart';
 /// 2. 输入后: 工具栏与结果区出现。
 /// 3. 单个汉字: 展示音读 / 训读, 且**不显示**对照表与注音组件。
 /// 4. 右下角设置抽屉 / 左下角筛选抽屉, 以及关于页与全屏筛选页。
+/// 5. 两个悬浮按钮仅在主界面(空态)出现, 输入后消失。
 void main() {
   /// 悬停式搭建主界面 (等待词典就绪, 避免停在 loading)。
   Future<void> pumpHome(WidgetTester tester) async {
@@ -26,6 +28,17 @@ void main() {
       MaterialApp(theme: AppTheme.dark(), home: const HomePage()),
     );
     await tester.pumpAndSettle();
+  }
+
+  /// 悬浮按钮是否可见 (透明度为 1 视作可见)。
+  bool buttonsVisible(WidgetTester tester) {
+    final widgets = tester.widgetList<AnimatedOpacity>(
+      find.ancestor(
+        of: find.byType(VectorIcon),
+        matching: find.byType(AnimatedOpacity),
+      ),
+    );
+    return widgets.any((w) => w.opacity == 1);
   }
 
   testWidgets('空态只显示输入框, 不显示工具栏', (tester) async {
@@ -39,6 +52,33 @@ void main() {
     expect(find.text('对照表'), findsNothing);
     expect(find.text('注音'), findsNothing);
     expect(find.text('罗马音'), findsNothing);
+
+    // 空态下两个悬浮按钮可见。
+    expect(buttonsVisible(tester), isTrue);
+  });
+
+  testWidgets('输入后两个悬浮按钮消失, 清空后恢复', (tester) async {
+    await pumpHome(tester);
+
+    // 空态: 按钮可见。
+    expect(buttonsVisible(tester), isTrue);
+
+    // 输入多字后按钮消失。
+    await tester.enterText(find.byType(TextField), '日本の文化');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+    expect(buttonsVisible(tester), isFalse);
+
+    // 输入单个汉字同样不显示按钮。
+    await tester.enterText(find.byType(TextField), '日');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+    expect(buttonsVisible(tester), isFalse);
+
+    // 清空后回到空态, 按钮恢复。
+    await tester.enterText(find.byType(TextField), '');
+    await tester.pumpAndSettle();
+    expect(buttonsVisible(tester), isTrue);
   });
 
   testWidgets('输入多字后出现工具栏与结果', (tester) async {

@@ -203,13 +203,19 @@ class _HomePageState extends State<HomePage>
     );
   }
 
+  /// 悬浮按钮是否可见。
+  ///
+  /// 仅在空态(未输入任何内容)且没有抽屉展开时出现;
+  /// 一旦开始输入, 按钮即让位于内容区。
+  bool get _buttonsVisible => !_hasInput && !_drawerOpen;
+
   /// 右下角设置按钮 + 左下角筛选按钮。
   Widget _buildFloatingButtons() {
     return Positioned.fill(
       child: IgnorePointer(
-        ignoring: _drawerOpen,
+        ignoring: !_buttonsVisible,
         child: AnimatedOpacity(
-          opacity: _drawerOpen ? 0 : 1,
+          opacity: _buttonsVisible ? 1 : 0,
           duration: SlidingDrawer.duration,
           child: SafeArea(
             child: Stack(
@@ -313,7 +319,10 @@ class _HomePageState extends State<HomePage>
             return SingleChildScrollView(
               padding: EdgeInsets.only(
                 top: topSpace,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 88,
+                // 存在悬浮按钮时留出空间, 避免内容被遮挡;
+                // 输入后按钮隐藏, 底部留白随之收窄。
+                bottom: MediaQuery.of(context).viewInsets.bottom +
+                    (_buttonsVisible ? 88 : 24),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
