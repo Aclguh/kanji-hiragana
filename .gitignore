@@ -53,5 +53,9 @@ app.*.map.json
 # Python
 __pycache__/
 
+# 截图脚本: 纯开发辅助, 产物只是 README 配图; 且其中硬编码了
+# 本机 adb 路径与特定设备的系统栏高度, 他人无法直接复用。
+/tool/shots.py
+
 # AI工具
 .workbuddy

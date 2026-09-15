@@ -184,7 +184,6 @@ tool/
   verify.dart                独立验证脚本（54 项断言，dart run 即可跑）
   gen_kanji_dict.py          KANJIDIC2 → Dart 数据生成脚本
   gen_icon.py                应用图标生成脚本
-  shots.py                   真机截图脚本（抓屏 + 裁系统栏 + 压缩）
   data/                      KANJIDIC2 原始数据（仅 .gz，约 1.5MB）
 ```
 
@@ -231,24 +230,6 @@ python tool/gen_kanji_dict.py
 ```bash
 python tool/gen_icon.py   # 输出到 android/app/src/main/res/
 ```
-
-### 重新截取截图
-
-`docs/screenshots/` 下的图片是脚本从真机抓取并裁掉状态栏、导航栏后的结果。
-需要更新时（例如界面有改动），把设备切到目标界面再执行：
-
-```bash
-python tool/shots.py 05-settings-light     # 抓当前屏幕
-python tool/shots.py 01-empty 02-table     # 也可一次抓多张
-```
-
-脚本会依次抓屏、裁掉系统栏、等比缩放到 540px 宽（README 中按 260px 显示，
-相当于 2x 清晰度），并以 PNG 存入 `docs/screenshots/`。
-系统栏高度由 `dumpsys` 的 `mContentInsets` 读出，写在脚本顶部，
-换设备时需要相应调整。
-
-`06-light-main.png` 既是浅色主题截图，也直接复用为 `01-empty.png`
-（空态主界面本就是居中的空输入框）。
 
 ### 关于体积
 
