@@ -43,12 +43,12 @@
 
 | 空状态 | 对照表 |
 | :---: | :---: |
-| <img src="docs/screenshots/01-empty.jpg" width="260" alt="空状态：居中的输入框" /> | <img src="docs/screenshots/02-table.jpg" width="260" alt="对照表：汉字 / 平假名 / 罗马音三列" /> |
+| <img src="docs/screenshots/01-empty.png" width="260" alt="空状态：居中的输入框" /> | <img src="docs/screenshots/02-table.png" width="260" alt="对照表：汉字 / 平假名 / 罗马音三列" /> |
 | 打开时只有一个居中的输入框 | 逐词三列对照，朱红高亮当前词，附词性标签 |
 
 | 注音 | 单汉字详解 |
 | :---: | :---: |
-| <img src="docs/screenshots/03-furigana.jpg" width="260" alt="注音：振假名视图" /> | <img src="docs/screenshots/04-single-kanji.jpg" width="260" alt="单汉字：音读与训读" /> |
+| <img src="docs/screenshots/03-furigana.png" width="260" alt="注音：振假名视图" /> | <img src="docs/screenshots/04-single-kanji.png" width="260" alt="单汉字：音读与训读" /> |
 | 振假名排版，汉字上方标读音，下方标罗马音 | 输入单个汉字时给出音读、训读、释义、笔画与学年 |
 
 | 设置 | 筛选 |
@@ -184,6 +184,7 @@ tool/
   verify.dart                独立验证脚本（54 项断言，dart run 即可跑）
   gen_kanji_dict.py          KANJIDIC2 → Dart 数据生成脚本
   gen_icon.py                应用图标生成脚本
+  shots.py                   真机截图脚本（抓屏 + 裁系统栏 + 压缩）
   data/                      KANJIDIC2 原始数据（仅 .gz，约 1.5MB）
 ```
 
@@ -230,6 +231,24 @@ python tool/gen_kanji_dict.py
 ```bash
 python tool/gen_icon.py   # 输出到 android/app/src/main/res/
 ```
+
+### 重新截取截图
+
+`docs/screenshots/` 下的图片是脚本从真机抓取并裁掉状态栏、导航栏后的结果。
+需要更新时（例如界面有改动），把设备切到目标界面再执行：
+
+```bash
+python tool/shots.py 05-settings-light     # 抓当前屏幕
+python tool/shots.py 01-empty 02-table     # 也可一次抓多张
+```
+
+脚本会依次抓屏、裁掉系统栏、等比缩放到 540px 宽（README 中按 260px 显示，
+相当于 2x 清晰度），并以 PNG 存入 `docs/screenshots/`。
+系统栏高度由 `dumpsys` 的 `mContentInsets` 读出，写在脚本顶部，
+换设备时需要相应调整。
+
+`06-light-main.png` 既是浅色主题截图，也直接复用为 `01-empty.png`
+（空态主界面本就是居中的空输入框）。
 
 ### 关于体积
 
