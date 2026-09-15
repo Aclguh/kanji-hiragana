@@ -30,6 +30,9 @@
 - **双轨读音**：标注用规范拼写，同时标出实际发音差异
   - 「東京」标注 `とうきょう`，发音注明 `とーきょー`
   - 助词「は」标注 `は`，注明读作 `わ`（朱红色突出，这正是要掌握的语法点）
+- **汉字筛选**：按笔画数、使用频率、学年、读音构成筛选，可切换排序方式，
+  全屏网格浏览结果并点入查看详解
+- **设置**：主题切换（浅色 / 深色 / 跟随系统）、旋转屏幕开关、关于页
 - 点按任意词复制原文，一键复制全文假名；罗马音可开关
 - **聚焦式主界面**：打开时只有一个居中的输入框，输入后动画展开完整界面
 - **完全离线**：词典随应用打包，无任何网络请求、无权限、无广告
@@ -47,6 +50,21 @@
 | :---: | :---: |
 | <img src="docs/screenshots/03-furigana.jpg" width="260" alt="注音：振假名视图" /> | <img src="docs/screenshots/04-single-kanji.jpg" width="260" alt="单汉字：音读与训读" /> |
 | 振假名排版，汉字上方标读音，下方标罗马音 | 输入单个汉字时给出音读、训读、释义、笔画与学年 |
+
+| 设置 | 筛选 |
+| :---: | :---: |
+| <img src="docs/screenshots/05-settings-light.png" width="260" alt="设置抽屉：主题 / 旋转屏幕 / 关于" /> | <img src="docs/screenshots/07-filter.png" width="260" alt="筛选抽屉：按笔画、频率、学年筛选" /> |
+| 右下角齿轮展开，可切换主题、开关旋转、进入关于页 | 左下角放大镜展开，按笔画 / 频率 / 学年查找汉字 |
+
+| 筛选结果 | 关于 |
+| :---: | :---: |
+| <img src="docs/screenshots/08-filter-result.png" width="260" alt="全屏筛选结果网格" /> | <img src="docs/screenshots/09-about.png" width="260" alt="关于页：版本、仓库、许可与致谢" /> |
+| 全屏网格浏览结果，内容超出一屏时有侧边滚动条 | 版本号、GitHub 仓库、开源许可与致谢 |
+
+| 浅色主题 | 深色主题 |
+| :---: | :---: |
+| <img src="docs/screenshots/06-light-main.png" width="260" alt="浅色主题主界面" /> | <img src="docs/screenshots/10-dark-main.png" width="260" alt="深色主题主界面" /> |
+| 浅色主题：米白纸感底 + 墨色文字 | 深色主题：同一界面自动换色，设置持久保存 |
 
 </div>
 
@@ -87,6 +105,8 @@ flutter build apk --release --split-per-abi
    - 输入**单个汉字** → 额外显示该字的音读、训读、释义等信息
 3. 顶部可切换「对照表 / 注音」两种视图
 4. 点按词条复制，或点右上角复制全文假名
+5. 右下角齿轮按钮打开**设置**（主题 / 旋转屏幕 / 关于），
+   左下角放大镜按钮打开**筛选**（按笔画、频率等条件查找汉字）
 
 ## 技术方案
 
@@ -96,7 +116,9 @@ flutter build apk --release --split-per-abi
 | 音读 / 训读 | KANJIDIC2 离线提取的 2999 个常用汉字，见 `lib/core/kanji_reading_dict.dart` |
 | 片假名 → 平假名 | 码位偏移转换（`0x30A1 - 0x3041`） |
 | 平假名 → 罗马音 | 自实现改良式 Hepburn 拼写 |
-| 状态与 UI | Flutter Material 3，深色和风主题 |
+| 设置持久化 | [`shared_preferences`](https://pub.dev/packages/shared_preferences) |
+| 图标 | `CustomPainter` 手绘矢量路径（齿轮 / 放大镜），不依赖字体或 emoji |
+| 状态与 UI | Flutter Material 3，浅色 / 深色两套和风主题 |
 
 ### 读音与发音的双轨策略
 
@@ -134,18 +156,26 @@ IPADIC 只给单个汉字一个最常用读音，**不区分音读与训读**，
 
 ```
 lib/
-  main.dart                  应用入口，启动时后台预热词典
-  theme.dart                 深色和风配色与主题
-  home_page.dart             主页面：聚焦式输入框 + 视图切换 + 动画
+  main.dart                  应用入口，启动时读取设置并后台预热词典
+  theme.dart                 浅色 / 深色两套和风配色（AppColors ThemeExtension）
+  home_page.dart             主页面：聚焦式输入框 + 视图切换 + 悬浮按钮
   core/
     kana_romaji.dart         假名 ↔ 罗马音转换（核心算法）
     morpheme.dart            词模型与解析结果模型（双轨读音）
     japanese_analyzer.dart   形态素分析服务（单例，离线）
     kanji_reading_dict.dart  [自动生成] 2999 汉字的音读 / 训读
+    kanji_filter.dart        汉字筛选条件模型与匹配逻辑
+    settings.dart            主题模式 / 旋转开关的持久化控制
   widgets/
     alignment_table.dart     三列对照表视图
     furigana_view.dart       振假名注音视图
     single_kanji_view.dart   单汉字音读 / 训读详解视图
+    sliding_drawer.dart      侧边抽屉外壳（面板 + 压暗遮罩）
+    settings_drawer.dart     设置抽屉内容
+    filter_drawer.dart       筛选抽屉内容
+    filter_result_page.dart  全屏筛选结果网格
+    about_page.dart          关于页（版本 / 仓库 / 许可 / 致谢）
+    vector_icon.dart         手绘矢量图标（齿轮 / 放大镜）
 test/
   core_test.dart             单元测试
 integration_test/

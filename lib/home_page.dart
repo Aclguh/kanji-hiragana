@@ -3,12 +3,19 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../core/japanese_analyzer.dart';
-import '../core/morpheme.dart';
-import '../theme.dart';
-import '../widgets/alignment_table.dart';
-import '../widgets/furigana_view.dart';
-import '../widgets/single_kanji_view.dart';
+import 'core/japanese_analyzer.dart';
+import 'core/kanji_filter.dart';
+import 'core/morpheme.dart';
+import 'theme.dart';
+import 'widgets/about_page.dart';
+import 'widgets/alignment_table.dart';
+import 'widgets/filter_drawer.dart';
+import 'widgets/filter_result_page.dart';
+import 'widgets/furigana_view.dart';
+import 'widgets/settings_drawer.dart';
+import 'widgets/single_kanji_view.dart';
+import 'widgets/sliding_drawer.dart';
+import 'widgets/vector_icon.dart';
 
 /// 视图模式。
 enum ViewMode {
@@ -18,6 +25,7 @@ enum ViewMode {
   /// 振假名注音排版。
   furigana,
 }
+
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -41,9 +49,16 @@ class _HomePageState extends State<HomePage>
   bool _showRomaji = true;
   bool _loading = true;
   String? _error;
+  OpenDrawer _openDrawer = OpenDrawer.none;
+
+  /// 当前生效的筛选条件。
+  KanjiFilter _filter = KanjiFilter.initial;
 
   /// 是否有输入内容(决定处于展开态还是聚焦态)。
   bool get _hasInput => _controller.text.trim().isNotEmpty;
+
+  /// 抽屉是否处于展开状态。
+  bool get _drawerOpen => _openDrawer != OpenDrawer.none;
 
   @override
   void initState() {
@@ -110,6 +125,35 @@ class _HomePageState extends State<HomePage>
     _focusNode.requestFocus();
   }
 
+  void _toggleDrawer(OpenDrawer which) {
+    // 收起键盘, 避免抽屉展开时键盘遮挡。
+    _focusNode.unfocus();
+    setState(() {
+      _openDrawer = _openDrawer == which ? OpenDrawer.none : which;
+    });
+  }
+
+  void _closeDrawer() {
+    if (_drawerOpen) setState(() => _openDrawer = OpenDrawer.none);
+  }
+
+  void _openAbout() {
+    setState(() => _openDrawer = OpenDrawer.none);
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const AboutPage()),
+    );
+  }
+
+  Future<void> _openFilterResult(KanjiFilter filter) async {
+    setState(() {
+      _filter = filter;
+      _openDrawer = OpenDrawer.none;
+    });
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => FilterResultPage(filter: filter)),
+    );
+  }
+
   @override
   void dispose() {
     _debounce.dispose();
@@ -122,27 +166,97 @@ class _HomePageState extends State<HomePage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final mainBody = Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: _hasInput ? _buildAppBar() : null,
       body: SafeArea(
         child: _loading ? _buildLoading() : _buildAnimatedBody(),
       ),
     );
+
+    // 抽屉外壳: 面板自带压暗遮罩, 主界面内容保持不动。
+    return Scaffold(
+      body: DrawerCloseNotification(
+        onClose: _closeDrawer,
+        child: SlidingDrawer(
+          // 设置按钮在右下角, 抽屉自右侧滑出。
+          side: DrawerSide.right,
+          open: _openDrawer == OpenDrawer.settings,
+          panel: SettingsDrawerContent(onOpenAbout: _openAbout),
+          child: SlidingDrawer(
+            // 筛选按钮在左下角, 抽屉自左侧滑出。
+            side: DrawerSide.left,
+            open: _openDrawer == OpenDrawer.filter,
+            panel: FilterDrawerContent(
+              initial: _filter,
+              onSubmit: _openFilterResult,
+            ),
+            child: Stack(
+              children: [
+                mainBody,
+                _buildFloatingButtons(),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 右下角设置按钮 + 左下角筛选按钮。
+  Widget _buildFloatingButtons() {
+    return Positioned.fill(
+      child: IgnorePointer(
+        ignoring: _drawerOpen,
+        child: AnimatedOpacity(
+          opacity: _drawerOpen ? 0 : 1,
+          duration: SlidingDrawer.duration,
+          child: SafeArea(
+            child: Stack(
+              children: [
+                // 左下角: 放大镜, 展开筛选抽屉 (从左侧滑出)。
+                Positioned(
+                  left: 16,
+                  bottom: 16,
+                  child: _FloatingButton(
+                    type: DrawerIconType.search,
+                    tooltip: '筛选汉字',
+                    onTap: () => _toggleDrawer(OpenDrawer.filter),
+                  ),
+                ),
+                // 右下角: 齿轮, 展开设置抽屉 (从右侧滑出)。
+                Positioned(
+                  right: 16,
+                  bottom: 16,
+                  child: _FloatingButton(
+                    type: DrawerIconType.settings,
+                    tooltip: '设置',
+                    onTap: () => _toggleDrawer(OpenDrawer.settings),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   PreferredSizeWidget _buildAppBar() {
+    final colors = AppTheme.of(context);
     return AppBar(
-      title: const Row(
+      title: Row(
         children: [
-          Text('漢字'),
-          SizedBox(width: 6),
-          Icon(Icons.arrow_forward_rounded, size: 16, color: AppTheme.accent),
-          SizedBox(width: 6),
-          Text('かな'),
-          SizedBox(width: 10),
-          Text('·', style: TextStyle(color: AppTheme.textSecondary)),
-          SizedBox(width: 10),
-          Text('ローマ字',
+          const Text('漢字'),
+          const SizedBox(width: 6),
+          const Icon(Icons.arrow_forward_rounded,
+              size: 16, color: AppTheme.accent),
+          const SizedBox(width: 6),
+          const Text('かな'),
+          const SizedBox(width: 10),
+          Text('·', style: TextStyle(color: colors.textSecondary)),
+          const SizedBox(width: 10),
+          const Text('ローマ字',
               style: TextStyle(
                   color: AppTheme.indigo,
                   fontSize: 15,
@@ -160,14 +274,15 @@ class _HomePageState extends State<HomePage>
   }
 
   Widget _buildLoading() {
-    return const Center(
+    final colors = AppTheme.of(context);
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircularProgressIndicator(color: AppTheme.accent),
-          SizedBox(height: 16),
+          const CircularProgressIndicator(color: AppTheme.accent),
+          const SizedBox(height: 16),
           Text('正在加载日语词典…',
-              style: TextStyle(color: AppTheme.textSecondary)),
+              style: TextStyle(color: colors.textSecondary)),
         ],
       ),
     );
@@ -198,7 +313,7 @@ class _HomePageState extends State<HomePage>
             return SingleChildScrollView(
               padding: EdgeInsets.only(
                 top: topSpace,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 88,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -222,6 +337,7 @@ class _HomePageState extends State<HomePage>
 
   /// 聚焦态显示的品牌标题, 展开后淡出。
   Widget _buildHeroTitle(double t) {
+    final colors = AppTheme.of(context);
     final opacity = (1 - t).clamp(0.0, 1.0);
     if (opacity <= 0.001) return const SizedBox(height: 4);
 
@@ -231,10 +347,10 @@ class _HomePageState extends State<HomePage>
         padding: const EdgeInsets.only(bottom: 24),
         child: Column(
           children: [
-            const Text(
+            Text(
               '漢字仮名',
               style: TextStyle(
-                color: AppTheme.textPrimary,
+                color: colors.textPrimary,
                 fontSize: 30,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 4,
@@ -244,7 +360,7 @@ class _HomePageState extends State<HomePage>
             Text(
               '输入日语汉字，查看平假名与罗马音',
               style: TextStyle(
-                color: AppTheme.textSecondary.withValues(alpha: 0.9),
+                color: colors.textSecondary.withValues(alpha: 0.9),
                 fontSize: 13,
                 letterSpacing: 0.5,
               ),
@@ -256,6 +372,7 @@ class _HomePageState extends State<HomePage>
   }
 
   Widget _buildInput(double t) {
+    final colors = AppTheme.of(context);
     return TextField(
       controller: _controller,
       focusNode: _focusNode,
@@ -265,7 +382,7 @@ class _HomePageState extends State<HomePage>
       minLines: 1,
       textAlign: _hasInput ? TextAlign.start : TextAlign.center,
       style: TextStyle(
-        color: AppTheme.textPrimary,
+        color: colors.textPrimary,
         fontSize: _lerp(17.0, 20.0, 1 - t),
         height: 1.5,
       ),
@@ -273,8 +390,8 @@ class _HomePageState extends State<HomePage>
         hintText: '输入日语汉字',
         suffixIcon: _hasInput
             ? IconButton(
-                icon: const Icon(Icons.close_rounded,
-                    size: 18, color: AppTheme.textSecondary),
+                icon: Icon(Icons.close_rounded,
+                    size: 18, color: colors.textSecondary),
                 onPressed: _clear,
               )
             : null,
@@ -291,6 +408,9 @@ class _HomePageState extends State<HomePage>
     // 完全收起时不构建内容, 避免无谓计算。
     if (t <= 0.001) return const SizedBox.shrink();
 
+    // 单汉字只显示音读/训读详解, 视图切换与罗马音开关都不适用。
+    final isSingleKanji = _result?.isSingleKanji ?? false;
+
     return IgnorePointer(
       ignoring: t < 0.5,
       child: Opacity(
@@ -300,8 +420,8 @@ class _HomePageState extends State<HomePage>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 12),
-              _buildToolbar(),
+              SizedBox(height: isSingleKanji ? 4 : 12),
+              if (!isSingleKanji) _buildToolbar(),
               _buildContent(),
             ],
           ),
@@ -324,12 +444,13 @@ class _HomePageState extends State<HomePage>
   }
 
   Widget _buildModeSwitcher() {
+    final colors = AppTheme.of(context);
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: colors.border),
       ),
       child: Row(
         children: [
@@ -341,6 +462,7 @@ class _HomePageState extends State<HomePage>
   }
 
   Widget _segment(String label, ViewMode mode, IconData icon) {
+    final colors = AppTheme.of(context);
     final selected = _viewMode == mode;
     return GestureDetector(
       onTap: () => setState(() => _viewMode = mode),
@@ -355,12 +477,12 @@ class _HomePageState extends State<HomePage>
           children: [
             Icon(icon,
                 size: 14,
-                color: selected ? Colors.white : AppTheme.textSecondary),
+                color: selected ? Colors.white : colors.textSecondary),
             const SizedBox(width: 5),
             Text(
               label,
               style: TextStyle(
-                color: selected ? Colors.white : AppTheme.textSecondary,
+                color: selected ? Colors.white : colors.textSecondary,
                 fontSize: 13,
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
               ),
@@ -372,19 +494,17 @@ class _HomePageState extends State<HomePage>
   }
 
   Widget _buildRomajiToggle() {
+    final colors = AppTheme.of(context);
     return Row(
       children: [
         Text('罗马音',
             style: TextStyle(
-                color: _showRomaji
-                    ? AppTheme.textPrimary
-                    : AppTheme.textSecondary,
+                color: _showRomaji ? colors.textPrimary : colors.textSecondary,
                 fontSize: 13)),
         const SizedBox(width: 4),
         Switch(
           value: _showRomaji,
           onChanged: (v) => setState(() => _showRomaji = v),
-          activeThumbColor: AppTheme.accent,
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
       ],
@@ -414,55 +534,30 @@ class _HomePageState extends State<HomePage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 单汉字: 优先展示音读/训读详解。
-          if (result.isSingleKanji) ...[
-            SingleKanjiView(reading: result.singleKanji!),
-            const SizedBox(height: 18),
-            _sectionTitle('该字在词中的读音'),
-            const SizedBox(height: 10),
-            AlignmentTable(result: result, showRomaji: _showRomaji),
-          ] else ...[
-            if (_viewMode == ViewMode.alignment)
-              AlignmentTable(result: result, showRomaji: _showRomaji)
-            else ...[
-              FuriganaView(result: result, showRomaji: _showRomaji),
-              const SizedBox(height: 16),
-              _buildFuriganaFooter(result),
-            ],
+          // 单汉字: 只展示音读/训读详解, 不显示对照表与注音
+          // (单个汉字没有上下文, 逐词对照与振假名在这里没有意义)。
+          if (result.isSingleKanji)
+            SingleKanjiView(reading: result.singleKanji!)
+          else if (_viewMode == ViewMode.alignment)
+            AlignmentTable(result: result, showRomaji: _showRomaji)
+          else ...[
+            FuriganaView(result: result, showRomaji: _showRomaji),
+            const SizedBox(height: 16),
+            _buildFuriganaFooter(result),
           ],
         ],
       ),
     );
   }
 
-  Widget _sectionTitle(String text) {
-    return Row(
-      children: [
-        Container(
-          width: 3,
-          height: 14,
-          decoration: BoxDecoration(
-            color: AppTheme.textSecondary,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(text,
-            style: const TextStyle(
-                color: AppTheme.textSecondary,
-                fontSize: 12,
-                fontWeight: FontWeight.w500)),
-      ],
-    );
-  }
-
   Widget _buildFuriganaFooter(AnalysisResult result) {
+    final colors = AppTheme.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         children: [
@@ -480,7 +575,7 @@ class _HomePageState extends State<HomePage>
               icon: Icons.record_voice_over_rounded,
               label: '实际发音',
               value: result.fullPronunciation,
-              color: AppTheme.textSecondary,
+              color: colors.textSecondary,
               copyTip: '已复制发音',
             ),
           ],
@@ -496,6 +591,7 @@ class _HomePageState extends State<HomePage>
     required Color color,
     required String copyTip,
   }) {
+    final colors = AppTheme.of(context);
     return Row(
       children: [
         Icon(icon, size: 16, color: color),
@@ -504,15 +600,14 @@ class _HomePageState extends State<HomePage>
           width: 58,
           child: Text(
             label,
-            style: const TextStyle(
-                color: AppTheme.textSecondary, fontSize: 11),
+            style: TextStyle(color: colors.textSecondary, fontSize: 11),
           ),
         ),
         Expanded(
           child: SelectableText(
             value,
-            style: const TextStyle(
-                color: AppTheme.textPrimary, fontSize: 15, height: 1.5),
+            style: TextStyle(
+                color: colors.textPrimary, fontSize: 15, height: 1.5),
           ),
         ),
         IconButton(
@@ -527,27 +622,68 @@ class _HomePageState extends State<HomePage>
               ),
             );
           },
-          icon:
-              const Icon(Icons.copy_rounded, color: AppTheme.textSecondary),
+          icon: Icon(Icons.copy_rounded, color: colors.textSecondary),
         ),
       ],
     );
   }
 
   Widget _buildMessage(IconData icon, String msg, {Color? color}) {
+    final colors = AppTheme.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 36, color: color ?? AppTheme.textSecondary),
+            Icon(icon, size: 36, color: color ?? colors.textSecondary),
             const SizedBox(height: 12),
             Text(msg,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: AppTheme.textSecondary, fontSize: 13)),
+                style: TextStyle(color: colors.textSecondary, fontSize: 13)),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 圆形悬浮按钮, 内含矢量图标。
+class _FloatingButton extends StatelessWidget {
+  final DrawerIconType type;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  const _FloatingButton({
+    required this.type,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.of(context);
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: colors.surface,
+        shape: CircleBorder(side: BorderSide(color: colors.border)),
+        elevation: 3,
+        shadowColor: Colors.black.withValues(alpha: 0.25),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: SizedBox(
+            width: 48,
+            height: 48,
+            child: Center(
+              child: VectorIcon(
+                type: type,
+                size: 21,
+                color: colors.textPrimary,
+              ),
+            ),
+          ),
         ),
       ),
     );

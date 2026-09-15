@@ -17,13 +17,14 @@ class FuriganaView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: colors.border),
       ),
       child: Wrap(
         // 逐词换行, 保证「汉字-读音」始终成组不被拆散。
@@ -47,6 +48,7 @@ class _FuriganaToken extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final m = morpheme;
+    final colors = AppTheme.of(context);
     // 纯假名词无需在上方重复注音。
     final showRuby = m.needsAnnotation;
 
@@ -77,8 +79,8 @@ class _FuriganaToken extends StatelessWidget {
             m.surface,
             style: TextStyle(
               color: m.containsKanji
-                  ? AppTheme.textPrimary
-                  : AppTheme.textSecondary,
+                  ? colors.textPrimary
+                  : colors.textSecondary,
               fontSize: 24,
               height: 1.15,
               fontWeight:

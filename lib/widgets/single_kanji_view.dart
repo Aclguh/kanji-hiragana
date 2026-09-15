@@ -20,7 +20,7 @@ class SingleKanjiView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildHero(),
+        _buildHero(context),
         const SizedBox(height: 14),
         if (reading.hasOnyomi)
           _ReadingGroup(
@@ -48,13 +48,14 @@ class SingleKanjiView extends StatelessWidget {
     );
   }
 
-  Widget _buildHero() {
+  Widget _buildHero(BuildContext context) {
+    final colors = AppTheme.of(context);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: colors.border),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,16 +66,16 @@ class SingleKanjiView extends StatelessWidget {
             height: 84,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppTheme.kanjiHighlight.withValues(alpha: 0.1),
+              color: colors.kanjiHighlight.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: AppTheme.kanjiHighlight.withValues(alpha: 0.4),
+                color: colors.kanjiHighlight.withValues(alpha: 0.4),
               ),
             ),
             child: Text(
               reading.kanji,
-              style: const TextStyle(
-                color: AppTheme.kanjiHighlight,
+              style: TextStyle(
+                color: colors.kanjiHighlight,
                 fontSize: 46,
                 fontWeight: FontWeight.w600,
                 height: 1.1,
@@ -97,13 +98,13 @@ class SingleKanjiView extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: AppTheme.surfaceVariant,
+                              color: colors.surfaceVariant,
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               m,
-                              style: const TextStyle(
-                                color: AppTheme.textPrimary,
+                              style: TextStyle(
+                                color: colors.textPrimary,
                                 fontSize: 13,
                               ),
                             ),
@@ -117,9 +118,9 @@ class SingleKanjiView extends StatelessWidget {
                   spacing: 14,
                   runSpacing: 4,
                   children: [
-                    _metaItem('笔画', '${reading.strokes}'),
-                    _metaItem('学年', _gradeLabel(reading.grade)),
-                    _metaItem('频率', 'No.${reading.frequencyRank}'),
+                    _metaItem(context, '笔画', '${reading.strokes}'),
+                    _metaItem(context, '学年', _gradeLabel(reading.grade)),
+                    _metaItem(context, '频率', 'No.${reading.frequencyRank}'),
                   ],
                 ),
               ],
@@ -130,16 +131,16 @@ class SingleKanjiView extends StatelessWidget {
     );
   }
 
-  Widget _metaItem(String label, String value) {
+  Widget _metaItem(BuildContext context, String label, String value) {
+    final colors = AppTheme.of(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text('$label ',
-            style: const TextStyle(
-                color: AppTheme.textSecondary, fontSize: 11)),
+            style: TextStyle(color: colors.textSecondary, fontSize: 11)),
         Text(value,
-            style: const TextStyle(
-                color: AppTheme.textPrimary,
+            style: TextStyle(
+                color: colors.textPrimary,
                 fontSize: 12,
                 fontWeight: FontWeight.w500)),
       ],
@@ -181,6 +182,7 @@ class _ReadingGroupState extends State<_ReadingGroup> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.of(context);
     final overflows = widget.readings.length > widget.maxItems;
     final visible = (_expanded || !overflows)
         ? widget.readings
@@ -190,9 +192,9 @@ class _ReadingGroupState extends State<_ReadingGroup> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -219,8 +221,8 @@ class _ReadingGroupState extends State<_ReadingGroup> {
               const SizedBox(width: 8),
               Text(
                 widget.sublabel,
-                style: const TextStyle(
-                    color: AppTheme.textSecondary, fontSize: 11),
+                style:
+                    TextStyle(color: colors.textSecondary, fontSize: 11),
               ),
               const Spacer(),
               Container(
@@ -287,6 +289,7 @@ class _ReadingChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.of(context);
     // 训读可能带送假名标记, 如 まな(ぶ) / (び), 需清理后再转罗马音。
     final pure = reading.replaceAll(RegExp(r'[()]'), '');
     final romaji = hiraganaToRomaji(pure);
@@ -294,9 +297,9 @@ class _ReadingChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceVariant,
+        color: colors.surfaceVariant,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -313,8 +316,8 @@ class _ReadingChip extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             romaji,
-            style: const TextStyle(
-              color: AppTheme.textSecondary,
+            style: TextStyle(
+              color: colors.textSecondary,
               fontSize: 11,
               fontStyle: FontStyle.italic,
               height: 1.1,
@@ -331,22 +334,23 @@ class _NoReadingNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: colors.border),
       ),
-      child: const Row(
+      child: Row(
         children: [
           Icon(Icons.info_outline_rounded,
-              size: 16, color: AppTheme.textSecondary),
-          SizedBox(width: 8),
+              size: 16, color: colors.textSecondary),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               '字典中未收录该字的音读 / 训读',
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+              style: TextStyle(color: colors.textSecondary, fontSize: 13),
             ),
           ),
         ],

@@ -21,79 +21,64 @@ class AlignmentTable extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildHeader(),
+        _buildHeader(context),
         const SizedBox(height: 8),
         ...result.morphemes.map(
           (m) => _MorphemeRow(morpheme: m, showRomaji: showRomaji),
         ),
         const SizedBox(height: 16),
-        _buildSummary(),
+        _buildSummary(context),
       ],
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
+    final colors = AppTheme.of(context);
+    final style = TextStyle(
+      color: colors.textSecondary,
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.5,
+    );
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceVariant,
+        color: colors.surfaceVariant,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         children: [
-          Expanded(
-            flex: 3,
-            child: Text('汉字 / 原词',
-                style: TextStyle(
-                    color: AppTheme.textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.5)),
-          ),
-          Expanded(
-            flex: 3,
-            child: Text('平假名',
-                style: TextStyle(
-                    color: AppTheme.textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.5)),
-          ),
+          Expanded(flex: 3, child: Text('汉字 / 原词', style: style)),
+          Expanded(flex: 3, child: Text('平假名', style: style)),
           if (showRomaji)
-            Expanded(
-              flex: 3,
-              child: Text('罗马音',
-                  style: TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5)),
-            ),
+            Expanded(flex: 3, child: Text('罗马音', style: style)),
         ],
       ),
     );
   }
 
-  Widget _buildSummary() {
+  Widget _buildSummary(BuildContext context) {
+    final colors = AppTheme.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _summaryLine(Icons.translate_rounded, '全文平假名', result.fullHiragana),
+          _summaryLine(context, Icons.translate_rounded, '全文平假名', result.fullHiragana),
           const SizedBox(height: 10),
-          _summaryLine(Icons.abc_rounded, '全文罗马音', result.fullRomaji),
+          _summaryLine(context, Icons.abc_rounded, '全文罗马音', result.fullRomaji),
         ],
       ),
     );
   }
 
-  Widget _summaryLine(IconData icon, String label, String value) {
+  Widget _summaryLine(BuildContext context, IconData icon, String label, String value) {
+    final colors = AppTheme.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -102,14 +87,13 @@ class AlignmentTable extends StatelessWidget {
         SizedBox(
           width: 72,
           child: Text(label,
-              style: const TextStyle(
-                  color: AppTheme.textSecondary, fontSize: 12)),
+              style: TextStyle(color: colors.textSecondary, fontSize: 12)),
         ),
         Expanded(
           child: SelectableText(
             value,
-            style: const TextStyle(
-              color: AppTheme.textPrimary,
+            style: TextStyle(
+              color: colors.textPrimary,
               fontSize: 14,
               height: 1.5,
             ),
@@ -129,6 +113,7 @@ class _MorphemeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.of(context);
     final m = morpheme;
     final highlight = m.containsKanji;
 
@@ -148,13 +133,13 @@ class _MorphemeRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: highlight
-              ? AppTheme.kanjiHighlight.withValues(alpha: 0.08)
-              : AppTheme.surface,
+              ? colors.kanjiHighlight.withValues(alpha: 0.10)
+              : colors.surface,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: highlight
-                ? AppTheme.kanjiHighlight.withValues(alpha: 0.35)
-                : AppTheme.border,
+                ? colors.kanjiHighlight.withValues(alpha: 0.38)
+                : colors.border,
           ),
         ),
         child: Row(
@@ -170,8 +155,8 @@ class _MorphemeRow extends StatelessWidget {
                     m.surface,
                     style: TextStyle(
                       color: highlight
-                          ? AppTheme.kanjiHighlight
-                          : AppTheme.textPrimary,
+                          ? colors.kanjiHighlight
+                          : colors.textPrimary,
                       fontSize: 20,
                       fontWeight:
                           highlight ? FontWeight.w700 : FontWeight.w500,
@@ -179,7 +164,7 @@ class _MorphemeRow extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 3),
-                  _posChip(m.partOfSpeech),
+                  _posChip(context, m.partOfSpeech),
                 ],
               ),
             ),
@@ -191,8 +176,8 @@ class _MorphemeRow extends StatelessWidget {
                 children: [
                   Text(
                     m.hiragana,
-                    style: const TextStyle(
-                      color: AppTheme.textPrimary,
+                    style: TextStyle(
+                      color: colors.textPrimary,
                       fontSize: 19,
                       height: 1.2,
                     ),
@@ -200,7 +185,7 @@ class _MorphemeRow extends StatelessWidget {
                   // 发音与规范读音不同时, 补充一行实际发音。
                   if (m.hasPronunciationShift) ...[
                     const SizedBox(height: 3),
-                    _pronChip(m.pronunciationHiragana, m.isParticleShift),
+                    _pronChip(context, m.pronunciationHiragana, m.isParticleShift),
                   ],
                 ],
               ),
@@ -225,17 +210,18 @@ class _MorphemeRow extends StatelessWidget {
     );
   }
 
-  Widget _posChip(String pos) {
+  Widget _posChip(BuildContext context, String pos) {
     if (pos.isEmpty) return const SizedBox.shrink();
+    final colors = AppTheme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceVariant,
+        color: colors.surfaceVariant,
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         pos,
-        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 10),
+        style: TextStyle(color: colors.textSecondary, fontSize: 10),
       ),
     );
   }
@@ -243,8 +229,9 @@ class _MorphemeRow extends StatelessWidget {
   /// 实际发音提示: 与规范读音不同时显示。
   ///
   /// 助词音变(は→わ)用朱红强调, 长音速记(とう→とー)用灰色弱化。
-  Widget _pronChip(String pronunciation, bool isParticleShift) {
-    final color = isParticleShift ? AppTheme.accent : AppTheme.textSecondary;
+  Widget _pronChip(BuildContext context, String pronunciation, bool isParticleShift) {
+    final colors = AppTheme.of(context);
+    final color = isParticleShift ? AppTheme.accent : colors.textSecondary;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
