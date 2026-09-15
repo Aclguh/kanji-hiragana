@@ -143,7 +143,9 @@ class DrawerCloseNotification extends InheritedWidget {
   bool updateShouldNotify(DrawerCloseNotification oldWidget) => false;
 }
 
-/// 抽屉面板外框 (圆角 + 底色 + 描边), 供设置/筛选共用。
+/// 抽屉面板外框 (底色 + 描边), 供设置/筛选共用。
+///
+/// 四角均为直角, 使面板与屏幕边缘贴合。
 class DrawerPanel extends StatefulWidget {
   final DrawerSide side;
   final String title;
@@ -180,20 +182,8 @@ class _DrawerPanelState extends State<DrawerPanel> {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
-    // 顶部两角保持直角, 让面板与屏幕顶边齐平;
-    // 仅靠屏幕内侧的上下两角做圆角过渡。
-    const radius = Radius.circular(18);
-    final innerLeft = widget.side == DrawerSide.right;
-    final borderRadius = BorderRadius.only(
-      topLeft: innerLeft ? radius : Radius.zero,
-      bottomLeft: innerLeft ? radius : Radius.zero,
-      topRight: innerLeft ? Radius.zero : radius,
-      bottomRight: innerLeft ? Radius.zero : radius,
-    );
-
     return Material(
       color: colors.surface,
-      borderRadius: borderRadius,
       child: Container(
         decoration: BoxDecoration(
           border: Border(
