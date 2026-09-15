@@ -120,9 +120,18 @@ class _HomePageState extends State<HomePage>
     }
   }
 
+  /// 清空输入并保持焦点 (供界面上的 ✕ / 垃圾桶按钮使用)。
   void _clear() {
     _controller.clear();
     _focusNode.requestFocus();
+  }
+
+  /// 清空输入并收起键盘 (供系统返回键使用)。
+  ///
+  /// 返回键的语义是「退出当前状态」, 因此这里不再主动唤起键盘。
+  void _clearAndDismissKeyboard() {
+    _controller.clear();
+    _focusNode.unfocus();
   }
 
   void _toggleDrawer(OpenDrawer which) {
@@ -164,6 +173,22 @@ class _HomePageState extends State<HomePage>
     super.dispose();
   }
 
+  /// 处理系统返回键。
+  ///
+  /// 优先级: 收起已展开的抽屉 > 清空输入内容 > 交给系统退出应用。
+  /// 返回 true 表示本次返回已被消费, 不应退出应用。
+  bool _onBackPressed() {
+    if (_drawerOpen) {
+      _closeDrawer();
+      return true;
+    }
+    if (_hasInput) {
+      _clearAndDismissKeyboard();
+      return true;
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final mainBody = Scaffold(
@@ -175,27 +200,35 @@ class _HomePageState extends State<HomePage>
     );
 
     // 抽屉外壳: 面板自带压暗遮罩, 主界面内容保持不动。
-    return Scaffold(
-      body: DrawerCloseNotification(
-        onClose: _closeDrawer,
-        child: SlidingDrawer(
-          // 设置按钮在右下角, 抽屉自右侧滑出。
-          side: DrawerSide.right,
-          open: _openDrawer == OpenDrawer.settings,
-          panel: SettingsDrawerContent(onOpenAbout: _openAbout),
+    return PopScope(
+      // 仍有抽屉展开或尚有输入时拦截返回键, 避免误退出应用。
+      canPop: !_drawerOpen && !_hasInput,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _onBackPressed();
+      },
+      child: Scaffold(
+        body: DrawerCloseNotification(
+          onClose: _closeDrawer,
           child: SlidingDrawer(
-            // 筛选按钮在左下角, 抽屉自左侧滑出。
-            side: DrawerSide.left,
-            open: _openDrawer == OpenDrawer.filter,
-            panel: FilterDrawerContent(
-              initial: _filter,
-              onSubmit: _openFilterResult,
-            ),
-            child: Stack(
-              children: [
-                mainBody,
-                _buildFloatingButtons(),
-              ],
+            // 设置按钮在右下角, 抽屉自右侧滑出。
+            side: DrawerSide.right,
+            open: _openDrawer == OpenDrawer.settings,
+            panel: SettingsDrawerContent(onOpenAbout: _openAbout),
+            child: SlidingDrawer(
+              // 筛选按钮在左下角, 抽屉自左侧滑出。
+              side: DrawerSide.left,
+              open: _openDrawer == OpenDrawer.filter,
+              panel: FilterDrawerContent(
+                initial: _filter,
+                onSubmit: _openFilterResult,
+              ),
+              child: Stack(
+                children: [
+                  mainBody,
+                  _buildFloatingButtons(),
+                ],
+              ),
             ),
           ),
         ),

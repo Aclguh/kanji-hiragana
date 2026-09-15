@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kanji_hiragana/home_page.dart';
 import 'package:kanji_hiragana/core/japanese_analyzer.dart';
@@ -41,6 +42,20 @@ void main() {
     return widgets.any((w) => w.opacity == 1);
   }
 
+  /// 模拟一次系统返回键。
+  ///
+  /// 通过平台通道派发 `popRoute`, 与真机返回键走同一条 PopScope 逻辑。
+  Future<void> simulateBack(WidgetTester tester) async {
+    await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+      'flutter/navigation',
+      const JSONMethodCodec().encodeMethodCall(
+        const MethodCall('popRoute'),
+      ),
+      (_) {},
+    );
+    await tester.pumpAndSettle();
+  }
+
   testWidgets('空态只显示输入框, 不显示工具栏', (tester) async {
     await pumpHome(tester);
 
@@ -79,6 +94,41 @@ void main() {
     await tester.enterText(find.byType(TextField), '');
     await tester.pumpAndSettle();
     expect(buttonsVisible(tester), isTrue);
+  });
+
+  testWidgets('系统返回键先清空输入, 再返回时才退出', (tester) async {
+    await pumpHome(tester);
+
+    // 输入内容后按下返回键: 应清空文本而非退出。
+    await tester.enterText(find.byType(TextField), '日本の文化');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+    expect(find.text('对照表'), findsOneWidget);
+
+    await simulateBack(tester);
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller?.text,
+      isEmpty,
+    );
+    // 回到空态。
+    expect(find.text('对照表'), findsNothing);
+
+    // 已无输入时再按返回: 交由系统处理 (此处 PopScope 应允许 pop)。
+    final scope = tester.widget<PopScope<Object?>>(
+      find.byType(PopScope<Object?>),
+    );
+    expect(scope.canPop, isTrue);
+  });
+
+  testWidgets('抽屉展开时返回键先收起抽屉', (tester) async {
+    await pumpHome(tester);
+
+    await tester.tap(find.byTooltip('设置'));
+    await tester.pumpAndSettle();
+    expect(find.byType(SettingsDrawerContent), findsOneWidget);
+
+    await simulateBack(tester);
+    expect(find.byType(SettingsDrawerContent), findsNothing);
   });
 
   testWidgets('输入多字后出现工具栏与结果', (tester) async {

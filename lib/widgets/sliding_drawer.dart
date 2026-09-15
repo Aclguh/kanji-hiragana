@@ -4,10 +4,10 @@ import '../theme.dart';
 
 /// 抽屉停靠方向。
 enum DrawerSide {
-  /// 从左侧滑出 (设置)。
+  /// 从屏幕左侧滑出。
   left,
 
-  /// 从右侧滑出 (筛选)。
+  /// 从屏幕右侧滑出。
   right,
 }
 
@@ -15,11 +15,11 @@ enum DrawerSide {
 enum OpenDrawer {
   none,
 
-  /// 设置 (左下角按钮, 从左滑出)。
-  settings,
-
-  /// 筛选 (右下角按钮, 从右滑出)。
+  /// 筛选 (左下角按钮, 从左滑出)。
   filter,
+
+  /// 设置 (右下角按钮, 从右滑出)。
+  settings,
 }
 
 /// 侧边抽屉: 面板本身带压暗遮罩, 主界面内容保持不动。
@@ -180,16 +180,20 @@ class _DrawerPanelState extends State<DrawerPanel> {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
+    // 顶部两角保持直角, 让面板与屏幕顶边齐平;
+    // 仅靠屏幕内侧的上下两角做圆角过渡。
     const radius = Radius.circular(18);
+    final innerLeft = widget.side == DrawerSide.right;
+    final borderRadius = BorderRadius.only(
+      topLeft: innerLeft ? radius : Radius.zero,
+      bottomLeft: innerLeft ? radius : Radius.zero,
+      topRight: innerLeft ? Radius.zero : radius,
+      bottomRight: innerLeft ? Radius.zero : radius,
+    );
 
     return Material(
       color: colors.surface,
-      borderRadius: BorderRadius.only(
-        topLeft: widget.side == DrawerSide.left ? Radius.zero : radius,
-        bottomLeft: widget.side == DrawerSide.left ? Radius.zero : radius,
-        topRight: widget.side == DrawerSide.left ? radius : Radius.zero,
-        bottomRight: widget.side == DrawerSide.left ? radius : Radius.zero,
-      ),
+      borderRadius: borderRadius,
       child: Container(
         decoration: BoxDecoration(
           border: Border(
