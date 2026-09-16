@@ -235,27 +235,115 @@ void main() {
     expect(find.byType(SettingsDrawerContent), findsNothing);
   });
 
-  testWidgets('左下角按钮展开筛选抽屉并进入全屏筛选页', (tester) async {
+  /// 抽屉内「下限 / 上限」四个输入框 (笔画 min/max, 频率 min/max)。
+  Finder rangeFields() => find.descendant(
+        of: find.byType(FilterDrawerContent),
+        matching: find.byType(TextField),
+      );
+
+  testWidgets('筛选抽屉: 分组顺序与范围输入框', (tester) async {
     await pumpHome(tester);
 
-    // 展开筛选抽屉。
     await tester.tap(find.byTooltip('筛选汉字'));
     await tester.pumpAndSettle();
     expect(find.byType(FilterDrawerContent), findsOneWidget);
-    expect(find.text('排序'), findsOneWidget);
-    // 「笔画数」「使用频率」既是分组标题也是不限选项, 因此会有多处。
-    expect(find.text('笔画数'), findsWidgets);
-    expect(find.text('使用频率'), findsWidgets);
-    expect(find.text('查看结果'), findsOneWidget);
 
-    // 选一个笔画数, 再进入全屏筛选结果页。
-    await tester.tap(find.text('3').first);
+    // 五个分组标题各出现一次(不再是「标题 + 不限胶囊」两处)。
+    for (final label in ['排序', '笔画数', '使用频率', '读音构成', '其他']) {
+      expect(find.text(label), findsOneWidget, reason: '缺少分组: $label');
+    }
+
+    // 「其他」应排在「读音构成」之后。
+    final readingDy = tester.getTopLeft(find.text('读音构成')).dy;
+    final otherDy = tester.getTopLeft(find.text('其他')).dy;
+    expect(otherDy > readingDy, isTrue,
+        reason: '「其他」应排在「读音构成」之后');
+
+    // 笔画与频率各是「下限 ~ 上限」两个输入框, 共 4 个。
+    expect(rangeFields(), findsNWidgets(4));
+
+    // 「人名」对应 grade 9 与 10 两档, 应合并为一个选项而非重复出现。
+    expect(find.text('人名'), findsOneWidget);
+
+    // 留空即不限, 不应出现倒置提示。
+    expect(find.text('下限大于上限, 将没有结果'), findsNothing);
+  });
+
+  testWidgets('筛选抽屉: 输入笔画与频率范围后进入结果页', (tester) async {
+    await pumpHome(tester);
+
+    await tester.tap(find.byTooltip('筛选汉字'));
     await tester.pumpAndSettle();
+
+    // 笔画 3 ~ 5
+    await tester.enterText(rangeFields().at(0), '3');
+    await tester.enterText(rangeFields().at(1), '5');
+    await tester.pumpAndSettle();
+
+    // 频率 1 ~ 100 (第二个范围, 可能在折叠线以下, 先滚动到可见)
+    await tester.ensureVisible(rangeFields().at(2));
+    await tester.pumpAndSettle();
+    await tester.enterText(rangeFields().at(2), '1');
+    await tester.enterText(rangeFields().at(3), '100');
+    await tester.pumpAndSettle();
+
     await tester.tap(find.text('查看结果'));
     await tester.pumpAndSettle();
 
     expect(find.byType(FilterResultPage), findsOneWidget);
     expect(find.text('筛选结果'), findsOneWidget);
+    // 笔画 3~5 且频率 1~100 共 30 字, 结果非空。
+    expect(find.text('30 字'), findsOneWidget);
+    expect(find.byType(GridView), findsOneWidget);
+  });
+
+  testWidgets('筛选抽屉: 下限大于上限给出提示', (tester) async {
+    await pumpHome(tester);
+
+    await tester.tap(find.byTooltip('筛选汉字'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(rangeFields().at(0), '9');
+    await tester.enterText(rangeFields().at(1), '3');
+    await tester.pumpAndSettle();
+
+    expect(find.text('下限大于上限, 将没有结果'), findsOneWidget);
+
+    // 删掉下限即恢复, 验证「清空输入框能解除限制」。
+    await tester.enterText(rangeFields().at(0), '');
+    await tester.pumpAndSettle();
+    expect(find.text('下限大于上限, 将没有结果'), findsNothing);
+  });
+
+  testWidgets('筛选抽屉: 重置清空范围输入', (tester) async {
+    await pumpHome(tester);
+
+    await tester.tap(find.byTooltip('筛选汉字'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(rangeFields().at(0), '3');
+    await tester.enterText(rangeFields().at(1), '5');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('重置'));
+    await tester.pumpAndSettle();
+
+    for (var i = 0; i < 4; i++) {
+      final field = tester.widget<TextField>(rangeFields().at(i));
+      expect(field.controller?.text, isEmpty, reason: '第 $i 个输入框未清空');
+    }
+  });
+
+  testWidgets('设置抽屉: 旋转屏幕默认关闭', (tester) async {
+    await pumpHome(tester);
+
+    await tester.tap(find.byTooltip('设置'));
+    await tester.pumpAndSettle();
+
+    final sw = tester.widget<Switch>(
+      find.descendant(of: find.byType(SettingsDrawerContent), matching: find.byType(Switch)),
+    );
+    expect(sw.value, isFalse, reason: '旋转屏幕应默认关闭');
   });
 
   testWidgets('关于页展示版本与仓库', (tester) async {

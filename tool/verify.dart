@@ -2,6 +2,7 @@
 // 用法: dart run tool/verify.dart
 import 'package:kanji_hiragana/core/japanese_analyzer.dart';
 import 'package:kanji_hiragana/core/kana_romaji.dart';
+import 'package:kanji_hiragana/core/kanji_filter.dart';
 import 'package:kanji_hiragana/core/kanji_reading_dict.dart';
 
 int _pass = 0;
@@ -101,6 +102,93 @@ Future<void> main() async {
   expectEq((await a.analyze('日本')).isSingleKanji, false, '日本 不触发');
   expectEq((await a.analyze('あ')).isSingleKanji, false, '假名 不触发');
   expectEq((await a.analyze('日a')).isSingleKanji, false, '汉字+字母 不触发');
+
+  print('--- 筛选: 笔画范围 ---');
+  final all = kanjiReadingDict.values;
+  // 1. 双端闭合区间
+  final s35 = const KanjiFilter(strokesMin: 3, strokesMax: 5).apply(all);
+  expectEq(s35.isNotEmpty, true, '笔画 3~5 有结果 (${s35.length} 字)');
+  expectEq(s35.every((r) => r.strokes >= 3 && r.strokes <= 5), true,
+      '笔画 3~5 全部落在区间内');
+  final inRange = all.where((r) => r.strokes >= 3 && r.strokes <= 5).length;
+  expectEq(s35.length, inRange, '笔画 3~5 恰等于 3/4/5 画之和 ($inRange 字)');
+
+  // 2. 只填下限 / 只填上限
+  final sMin = const KanjiFilter(strokesMin: 25).apply(all);
+  expectEq(sMin.every((r) => r.strokes >= 25), true, '只填下限: 全部 >= 25');
+  final sMax = const KanjiFilter(strokesMax: 2).apply(all);
+  expectEq(sMax.every((r) => r.strokes <= 2), true, '只填上限: 全部 <= 2');
+  expectEq(sMin.length + sMax.length > 0, true, '单端限制能取到结果');
+
+  // 3. 下限大于上限 -> 空
+  expectEq(const KanjiFilter(strokesMin: 9, strokesMax: 3).apply(all).isEmpty,
+      true, '下限>上限: 无结果');
+
+  // 4. 清除后不再生效 (对应界面上删掉输入框里的数字)
+  const dirty = KanjiFilter(strokesMin: 3, strokesMax: 5);
+  final cleared = dirty.copyWith(clearStrokes: true);
+  expectEq(cleared.strokesMin, null, 'clearStrokes 清掉下限');
+  expectEq(cleared.strokesMax, null, 'clearStrokes 清掉上限');
+  expectEq(cleared.isUnfiltered, true, '清掉后回到「不限」');
+
+  print('--- 筛选: 使用频率范围 ---');
+  // 5. 区间闭合
+  final f100 = const KanjiFilter(frequencyMin: 1, frequencyMax: 100).apply(all);
+  expectEq(f100.isNotEmpty, true, '频率 1~100 有结果 (${f100.length} 字)');
+  expectEq(
+      f100.every((r) => r.frequencyRank >= 1 && r.frequencyRank <= 100), true,
+      '频率 1~100 全部落在区间内');
+
+  // 6. 设了任一端就排除「无排名」的哨兵值
+  final unranked = all.where((r) => r.frequencyRank >= kNoFrequencyRank);
+  expectEq(unranked.isNotEmpty, true,
+      '字典中存在无排名的字 (${unranked.length} 个, 哨兵 $kNoFrequencyRank)');
+  final fMinOnly = const KanjiFilter(frequencyMin: 1).apply(all);
+  expectEq(fMinOnly.every((r) => r.frequencyRank < kNoFrequencyRank), true,
+      '只填下限也会排除无排名的字');
+  final fMaxOnly = const KanjiFilter(frequencyMax: 10000).apply(all);
+  expectEq(fMaxOnly.every((r) => r.frequencyRank < kNoFrequencyRank), true,
+      '只填上限也会排除无排名的字');
+  expectEq(fMaxOnly.length, all.length - unranked.length,
+      '频率上限 10000 收全所有有排名的字');
+
+  // 7. 未设频率条件时, 无排名的字仍照常出现
+  expectEq(const KanjiFilter().apply(all).length, all.length,
+      '不加条件时结果数 == 字典总数');
+
+  print('--- 筛选: 其他维度与计数 ---');
+  final g1 = const KanjiFilter(gradeMin: 1, gradeMax: 1).apply(all);
+  expectEq(g1.every((r) => r.grade == 1), true, '学年 1 年: 全部 grade==1');
+  expectEq(g1.isNotEmpty, true, '学年 1 年有结果');
+
+  final on = const KanjiFilter(reading: ReadingRequirement.onyomiOnly).apply(all);
+  expectEq(on.every((r) => r.hasOnyomi && !r.hasKunyomi), true, '仅音读');
+  final kun =
+      const KanjiFilter(reading: ReadingRequirement.kunyomiOnly).apply(all);
+  expectEq(kun.every((r) => r.hasKunyomi && !r.hasOnyomi), true, '仅训读');
+  final both = const KanjiFilter(reading: ReadingRequirement.both).apply(all);
+  expectEq(both.every((r) => r.hasOnyomi && r.hasKunyomi), true, '音训兼备');
+
+  expectEq(KanjiFilter.initial.isUnfiltered, true, '默认条件为「不限」');
+  expectEq(KanjiFilter.initial.activeCount, 0, '默认条件生效数 == 0');
+  expectEq(
+      const KanjiFilter(
+        strokesMin: 1,
+        frequencyMax: 100,
+        gradeMin: 1,
+        gradeMax: 1,
+        reading: ReadingRequirement.both,
+      ).activeCount,
+      4,
+      '四类条件各计一次');
+
+  // 排序: 笔画升序
+  final sorted = const KanjiFilter(sort: KanjiSort.strokes).apply(all);
+  var asc = true;
+  for (var i = 1; i < sorted.length; i++) {
+    if (sorted[i - 1].strokes > sorted[i].strokes) asc = false;
+  }
+  expectEq(asc, true, '按笔画排序为升序');
 
   print('--- 字典覆盖率 ---');
   expectEq(kanjiReadingDict.length > 2500, true,

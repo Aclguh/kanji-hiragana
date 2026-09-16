@@ -1,5 +1,13 @@
 import 'kanji_reading_dict.dart';
 
+/// 字典中表示「无使用频率排名」的哨兵值。
+///
+/// KANJIDIC2 未收录报纸频率的汉字在生成时统一写成该值
+/// (见 `tool/gen_kanji_dict.py`)。一旦设置了频率范围的任一端,
+/// 这类汉字即视为不满足条件 —— 否则它们会以「排名 99999」的身份
+/// 混进 `1~1000` 之类的结果里。
+const int kNoFrequencyRank = 99999;
+
 /// 排序方式。
 enum KanjiSort {
   /// 使用频率 (报纸频率排名, 越常用越靠前)。
@@ -30,11 +38,12 @@ class KanjiFilter {
   final int? gradeMin;
   final int? gradeMax;
 
-  /// 笔画范围 (含端点)。null 表示不限。
+  /// 笔画范围 (含端点)。null 表示该端不限。
   final int? strokesMin;
   final int? strokesMax;
 
-  /// 使用频率排名上限 (越小越常用)。null 表示不限。
+  /// 使用频率排名范围 (含端点, 越小越常用)。null 表示该端不限。
+  final int? frequencyMin;
   final int? frequencyMax;
 
   /// 读音要求。
@@ -48,6 +57,7 @@ class KanjiFilter {
     this.gradeMax,
     this.strokesMin,
     this.strokesMax,
+    this.frequencyMin,
     this.frequencyMax,
     this.reading = ReadingRequirement.any,
     this.sort = KanjiSort.frequency,
@@ -62,6 +72,7 @@ class KanjiFilter {
       gradeMax == null &&
       strokesMin == null &&
       strokesMax == null &&
+      frequencyMin == null &&
       frequencyMax == null &&
       reading == ReadingRequirement.any;
 
@@ -70,7 +81,7 @@ class KanjiFilter {
     var n = 0;
     if (gradeMin != null || gradeMax != null) n++;
     if (strokesMin != null || strokesMax != null) n++;
-    if (frequencyMax != null) n++;
+    if (frequencyMin != null || frequencyMax != null) n++;
     if (reading != ReadingRequirement.any) n++;
     return n;
   }
@@ -80,6 +91,7 @@ class KanjiFilter {
     int? gradeMax,
     int? strokesMin,
     int? strokesMax,
+    int? frequencyMin,
     int? frequencyMax,
     ReadingRequirement? reading,
     KanjiSort? sort,
@@ -92,6 +104,8 @@ class KanjiFilter {
       gradeMax: clearGrade ? null : (gradeMax ?? this.gradeMax),
       strokesMin: clearStrokes ? null : (strokesMin ?? this.strokesMin),
       strokesMax: clearStrokes ? null : (strokesMax ?? this.strokesMax),
+      frequencyMin:
+          clearFrequency ? null : (frequencyMin ?? this.frequencyMin),
       frequencyMax:
           clearFrequency ? null : (frequencyMax ?? this.frequencyMax),
       reading: reading ?? this.reading,
@@ -108,7 +122,13 @@ class KanjiFilter {
     if (strokesMin != null && r.strokes < strokesMin!) return false;
     if (strokesMax != null && r.strokes > strokesMax!) return false;
 
-    if (frequencyMax != null && r.frequencyRank > frequencyMax!) return false;
+    // 频率只要设了任一端, 就要求该字确有排名。
+    if (frequencyMin != null || frequencyMax != null) {
+      final rank = r.frequencyRank;
+      if (rank >= kNoFrequencyRank) return false;
+      if (frequencyMin != null && rank < frequencyMin!) return false;
+      if (frequencyMax != null && rank > frequencyMax!) return false;
+    }
 
     switch (reading) {
       case ReadingRequirement.any:

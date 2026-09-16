@@ -47,7 +47,9 @@ class SettingsController extends ChangeNotifier {
   SharedPreferences? _prefs;
 
   AppThemeMode _themeMode = AppThemeMode.system;
-  bool _autoRotate = true;
+
+  /// 自动旋转默认关闭: 阅读竖排的汉字 / 假名时, 误触旋转会打断阅读。
+  bool _autoRotate = false;
 
   AppThemeMode get themeMode => _themeMode;
 
@@ -61,7 +63,7 @@ class SettingsController extends ChangeNotifier {
   Future<void> load() async {
     _prefs = await SharedPreferences.getInstance();
     _themeMode = AppThemeMode.fromName(_prefs!.getString(_kThemeMode));
-    _autoRotate = _prefs!.getBool(_kAutoRotate) ?? true;
+    _autoRotate = _prefs!.getBool(_kAutoRotate) ?? false;
     notifyListeners();
   }
 
