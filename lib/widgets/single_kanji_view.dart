@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/kana_romaji.dart';
 import '../core/kanji_reading_dict.dart';
+import '../core/strings.dart';
 import '../theme.dart';
 
 /// 单汉字详解视图: 展示该字的音读与训读。
@@ -17,6 +18,7 @@ class SingleKanjiView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -24,9 +26,9 @@ class SingleKanjiView extends StatelessWidget {
         const SizedBox(height: 14),
         if (reading.hasOnyomi)
           _ReadingGroup(
-            label: '音読',
-            sublabel: '音读 · 音読み',
-            badge: '汉音系',
+            label: s.onyomiHeading,
+            sublabel: s.onyomiHint,
+            badge: s.onyomiBadge,
             color: AppTheme.accent,
             readings: reading.onyomi,
             maxItems: maxPerGroup,
@@ -35,9 +37,9 @@ class SingleKanjiView extends StatelessWidget {
           const SizedBox(height: 12),
         if (reading.hasKunyomi)
           _ReadingGroup(
-            label: '訓読',
-            sublabel: '训读 · 訓読み',
-            badge: '和语系',
+            label: s.kunyomiHeading,
+            sublabel: s.kunyomiHint,
+            badge: s.kunyomiBadge,
             color: AppTheme.indigo,
             readings: reading.kunyomi,
             maxItems: maxPerGroup,
@@ -50,6 +52,12 @@ class SingleKanjiView extends StatelessWidget {
 
   Widget _buildHero(BuildContext context) {
     final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
+    // 释义按当前语言取用: KANJIDIC2 的英文原文比中文回译更准确。
+    // 个别字没有英文条目时回落到中文, 避免出现空白。
+    final meanings = s.language == AppLanguage.en && reading.meaningsEn.isNotEmpty
+        ? reading.meaningsEn
+        : reading.meanings;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -87,12 +95,12 @@ class SingleKanjiView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 中文释义
-                if (reading.meanings.isNotEmpty)
+                // 释义
+                if (meanings.isNotEmpty)
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
-                    children: reading.meanings
+                    children: meanings
                         .map(
                           (m) => Container(
                             padding: const EdgeInsets.symmetric(
@@ -118,9 +126,11 @@ class SingleKanjiView extends StatelessWidget {
                   spacing: 14,
                   runSpacing: 4,
                   children: [
-                    _metaItem(context, '笔画', '${reading.strokes}'),
-                    _metaItem(context, '学年', _gradeLabel(reading.grade)),
-                    _metaItem(context, '频率', 'No.${reading.frequencyRank}'),
+                    _metaItem(context, s.labelStrokes, '${reading.strokes}'),
+                    _metaItem(
+                        context, s.labelGrade, _gradeLabel(s, reading.grade)),
+                    _metaItem(
+                        context, s.labelFrequency, 'No.${reading.frequencyRank}'),
                   ],
                 ),
               ],
@@ -147,11 +157,11 @@ class SingleKanjiView extends StatelessWidget {
     );
   }
 
-  static String _gradeLabel(int grade) {
-    if (grade >= 1 && grade <= 6) return '$grade 年级';
-    if (grade == 8) return '常用';
-    if (grade == 9 || grade == 10) return '人名用';
-    return '其它';
+  static String _gradeLabel(AppStrings s, int grade) {
+    if (grade >= 1 && grade <= 6) return s.gradeNumbered(grade);
+    if (grade == 8) return s.gradeCommon;
+    if (grade == 9 || grade == 10) return s.gradeNameUse;
+    return s.gradeOther;
   }
 }
 
@@ -256,7 +266,9 @@ class _ReadingGroupState extends State<_ReadingGroup> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    _expanded ? '收起' : '等 $hidden 项',
+                    _expanded
+                        ? AppStrings.of(context).collapse
+                        : AppStrings.of(context).collapseHidden(hidden),
                     style: TextStyle(
                         color: widget.color,
                         fontSize: 12,
@@ -349,7 +361,7 @@ class _NoReadingNotice extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              '字典中未收录该字的音读 / 训读',
+              AppStrings.of(context).readingsNotFound,
               style: TextStyle(color: colors.textSecondary, fontSize: 13),
             ),
           ),

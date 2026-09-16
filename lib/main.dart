@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import 'core/japanese_analyzer.dart';
 import 'core/settings.dart';
+import 'core/strings.dart';
 import 'home_page.dart';
 import 'theme.dart';
 
@@ -62,15 +63,19 @@ class KanjiApp extends StatelessWidget {
     return AnimatedBuilder(
       animation: settings,
       builder: (context, _) {
-        return MaterialApp(
-          title: '汉字假名对照',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.light(),
-          darkTheme: AppTheme.dark(),
-          themeMode: settings.themeMode.material,
-          home: RotationGuard(
-            enabled: settings.autoRotate,
-            child: const HomePage(),
+        final strings = settings.strings;
+        return AppStringsScope(
+          strings: strings,
+          child: MaterialApp(
+            title: strings.appTitle,
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.light(),
+            darkTheme: AppTheme.dark(),
+            themeMode: settings.themeMode.material,
+            home: RotationGuard(
+              enabled: settings.autoRotate,
+              child: const HomePage(),
+            ),
           ),
         );
       },

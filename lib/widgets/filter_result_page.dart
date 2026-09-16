@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/kanji_filter.dart';
 import '../core/kanji_reading_dict.dart';
+import '../core/strings.dart';
 import '../theme.dart';
 import 'single_kanji_view.dart';
 
@@ -41,15 +42,16 @@ class _FilterResultPageState extends State<FilterResultPage> {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('筛选结果'),
+        title: Text(s.resultsTitle),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Center(
               child: Text(
-                '${_results.length} 字',
+                s.resultCount(_results.length),
                 style: TextStyle(
                   color: colors.textSecondary,
                   fontSize: 13,
@@ -88,6 +90,7 @@ class _FilterResultPageState extends State<FilterResultPage> {
 
   Widget _buildEmpty() {
     final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -98,7 +101,7 @@ class _FilterResultPageState extends State<FilterResultPage> {
                 size: 40, color: colors.textSecondary),
             const SizedBox(height: 14),
             Text(
-              '没有符合条件的汉字',
+              s.noResultsTitle,
               style: TextStyle(
                 color: colors.textPrimary,
                 fontSize: 15,
@@ -107,7 +110,7 @@ class _FilterResultPageState extends State<FilterResultPage> {
             ),
             const SizedBox(height: 6),
             Text(
-              '试试放宽笔画或频率范围',
+              s.noResultsHint,
               textAlign: TextAlign.center,
               style: TextStyle(color: colors.textSecondary, fontSize: 12),
             ),
@@ -150,7 +153,7 @@ class _KanjiCell extends StatelessWidget {
             ),
             const SizedBox(height: 3),
             Text(
-              '${reading.strokes}画',
+              AppStrings.of(context).strokesShort(reading.strokes),
               style: TextStyle(
                 color: colors.textSecondary,
                 fontSize: 9,

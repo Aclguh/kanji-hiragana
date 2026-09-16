@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'core/japanese_analyzer.dart';
 import 'core/kanji_filter.dart';
 import 'core/morpheme.dart';
+import 'core/strings.dart';
 import 'theme.dart';
 import 'widgets/about_page.dart';
 import 'widgets/alignment_table.dart';
@@ -25,6 +26,9 @@ enum ViewMode {
   /// 振假名注音排版。
   furigana,
 }
+
+/// 出错环节, 决定界面上显示哪一条提示。
+enum _ErrorKind { dictionary, analysis }
 
 
 class HomePage extends StatefulWidget {
@@ -48,7 +52,12 @@ class _HomePageState extends State<HomePage>
   ViewMode _viewMode = ViewMode.alignment;
   bool _showRomaji = true;
   bool _loading = true;
-  String? _error;
+
+  /// 只记录出错环节与原始异常, 文案在 build 时按当前语言生成 ——
+  /// 否则切换语言后这条提示会停留在旧语言。
+  _ErrorKind? _errorKind;
+  Object? _errorDetail;
+
   OpenDrawer _openDrawer = OpenDrawer.none;
 
   /// 当前生效的筛选条件。
@@ -81,7 +90,8 @@ class _HomePageState extends State<HomePage>
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = '词典初始化失败: $e';
+        _errorKind = _ErrorKind.dictionary;
+        _errorDetail = e;
       });
     }
   }
@@ -112,11 +122,15 @@ class _HomePageState extends State<HomePage>
       if (!mounted) return;
       setState(() {
         _result = r;
-        _error = null;
+        _errorKind = null;
+        _errorDetail = null;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = '解析失败: $e');
+      setState(() {
+        _errorKind = _ErrorKind.analysis;
+        _errorDetail = e;
+      });
     }
   }
 
@@ -244,6 +258,7 @@ class _HomePageState extends State<HomePage>
 
   /// 右下角设置按钮 + 左下角筛选按钮。
   Widget _buildFloatingButtons() {
+    final s = AppStrings.of(context);
     return Positioned.fill(
       child: IgnorePointer(
         ignoring: !_buttonsVisible,
@@ -259,7 +274,7 @@ class _HomePageState extends State<HomePage>
                   bottom: 16,
                   child: _FloatingButton(
                     type: DrawerIconType.search,
-                    tooltip: '筛选汉字',
+                    tooltip: s.filterKanji,
                     onTap: () => _toggleDrawer(OpenDrawer.filter),
                   ),
                 ),
@@ -269,7 +284,7 @@ class _HomePageState extends State<HomePage>
                   bottom: 16,
                   child: _FloatingButton(
                     type: DrawerIconType.settings,
-                    tooltip: '设置',
+                    tooltip: s.settings,
                     onTap: () => _toggleDrawer(OpenDrawer.settings),
                   ),
                 ),
@@ -283,7 +298,9 @@ class _HomePageState extends State<HomePage>
 
   PreferredSizeWidget _buildAppBar() {
     final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
     return AppBar(
+      // 漢字 → かな · ローマ字 是日文书写体系本身的标识, 两种语言下都保留。
       title: Row(
         children: [
           const Text('漢字'),
@@ -304,7 +321,7 @@ class _HomePageState extends State<HomePage>
       ),
       actions: [
         IconButton(
-          tooltip: '清空',
+          tooltip: s.clear,
           onPressed: _clear,
           icon: const Icon(Icons.delete_outline_rounded),
         ),
@@ -314,13 +331,14 @@ class _HomePageState extends State<HomePage>
 
   Widget _buildLoading() {
     final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const CircularProgressIndicator(color: AppTheme.accent),
           const SizedBox(height: 16),
-          Text('正在加载日语词典…',
+          Text(s.loadingDictionary,
               style: TextStyle(color: colors.textSecondary)),
         ],
       ),
@@ -378,8 +396,11 @@ class _HomePageState extends State<HomePage>
   }
 
   /// 聚焦态显示的品牌标题, 展开后淡出。
+  ///
+  /// 「漢字仮名」四字任何语言下都保持繁体原样, 作为应用标识。
   Widget _buildHeroTitle(double t) {
     final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
     final opacity = (1 - t).clamp(0.0, 1.0);
     if (opacity <= 0.001) return const SizedBox(height: 4);
 
@@ -400,7 +421,7 @@ class _HomePageState extends State<HomePage>
             ),
             const SizedBox(height: 10),
             Text(
-              '输入日语汉字，查看平假名与罗马音',
+              s.tagline,
               style: TextStyle(
                 color: colors.textSecondary.withValues(alpha: 0.9),
                 fontSize: 13,
@@ -415,6 +436,7 @@ class _HomePageState extends State<HomePage>
 
   Widget _buildInput(double t) {
     final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
     return TextField(
       controller: _controller,
       focusNode: _focusNode,
@@ -429,7 +451,7 @@ class _HomePageState extends State<HomePage>
         height: 1.5,
       ),
       decoration: InputDecoration(
-        hintText: '输入日语汉字',
+        hintText: s.inputHint,
         suffixIcon: _hasInput
             ? IconButton(
                 icon: Icon(Icons.close_rounded,
@@ -487,6 +509,7 @@ class _HomePageState extends State<HomePage>
 
   Widget _buildModeSwitcher() {
     final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
@@ -496,8 +519,10 @@ class _HomePageState extends State<HomePage>
       ),
       child: Row(
         children: [
-          _segment('对照表', ViewMode.alignment, Icons.table_rows_rounded),
-          _segment('注音', ViewMode.furigana, Icons.text_fields_rounded),
+          _segment(s.viewAlignment, ViewMode.alignment,
+              Icons.table_rows_rounded),
+          _segment(s.viewFurigana, ViewMode.furigana,
+              Icons.text_fields_rounded),
         ],
       ),
     );
@@ -537,9 +562,10 @@ class _HomePageState extends State<HomePage>
 
   Widget _buildRomajiToggle() {
     final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
     return Row(
       children: [
-        Text('罗马音',
+        Text(s.romajiToggle,
             style: TextStyle(
                 color: _showRomaji ? colors.textPrimary : colors.textSecondary,
                 fontSize: 13)),
@@ -554,12 +580,17 @@ class _HomePageState extends State<HomePage>
   }
 
   Widget _buildContent() {
-    if (_error != null) {
+    final s = AppStrings.of(context);
+    if (_errorKind != null) {
+      final msg = switch (_errorKind!) {
+        _ErrorKind.dictionary => s.dictionaryInitFailed(_errorDetail!),
+        _ErrorKind.analysis => s.analysisFailed(_errorDetail!),
+      };
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: _buildMessage(
           Icons.error_outline_rounded,
-          _error!,
+          msg,
           color: AppTheme.accent,
         ),
       );
@@ -594,6 +625,7 @@ class _HomePageState extends State<HomePage>
 
   Widget _buildFuriganaFooter(AnalysisResult result) {
     final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -605,20 +637,20 @@ class _HomePageState extends State<HomePage>
         children: [
           _footerLine(
             icon: Icons.volume_up_rounded,
-            label: '平假名',
+            label: s.labelHiragana,
             value: result.fullHiragana,
             color: AppTheme.accent,
-            copyTip: '已复制全文平假名',
+            copyTip: s.copiedFullHiragana,
           ),
           // 存在发音差异时补充一行实际发音。
           if (result.hasAnyPronunciationShift) ...[
             const SizedBox(height: 10),
             _footerLine(
               icon: Icons.record_voice_over_rounded,
-              label: '实际发音',
+              label: s.labelPronunciation,
               value: result.fullPronunciation,
               color: colors.textSecondary,
-              copyTip: '已复制发音',
+              copyTip: s.copiedPronunciation,
             ),
           ],
         ],
@@ -634,6 +666,7 @@ class _HomePageState extends State<HomePage>
     required String copyTip,
   }) {
     final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
     return Row(
       children: [
         Icon(icon, size: 16, color: color),
@@ -653,7 +686,7 @@ class _HomePageState extends State<HomePage>
           ),
         ),
         IconButton(
-          tooltip: '复制',
+          tooltip: s.copy,
           iconSize: 18,
           onPressed: () {
             Clipboard.setData(ClipboardData(text: value));

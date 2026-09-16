@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../core/morpheme.dart';
+import '../core/strings.dart';
 import '../theme.dart';
 
 /// 对照表视图: 逐词以「汉字 / 平假名 / 罗马音」三列并排呈现对应关系,
@@ -34,6 +35,7 @@ class AlignmentTable extends StatelessWidget {
 
   Widget _buildHeader(BuildContext context) {
     final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
     final style = TextStyle(
       color: colors.textSecondary,
       fontSize: 12,
@@ -48,10 +50,10 @@ class AlignmentTable extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(flex: 3, child: Text('汉字 / 原词', style: style)),
-          Expanded(flex: 3, child: Text('平假名', style: style)),
+          Expanded(flex: 3, child: Text(s.columnKanji, style: style)),
+          Expanded(flex: 3, child: Text(s.columnHiragana, style: style)),
           if (showRomaji)
-            Expanded(flex: 3, child: Text('罗马音', style: style)),
+            Expanded(flex: 3, child: Text(s.columnRomaji, style: style)),
         ],
       ),
     );
@@ -59,6 +61,7 @@ class AlignmentTable extends StatelessWidget {
 
   Widget _buildSummary(BuildContext context) {
     final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -69,9 +72,11 @@ class AlignmentTable extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _summaryLine(context, Icons.translate_rounded, '全文平假名', result.fullHiragana),
+          _summaryLine(
+              context, Icons.translate_rounded, s.fullHiragana, result.fullHiragana),
           const SizedBox(height: 10),
-          _summaryLine(context, Icons.abc_rounded, '全文罗马音', result.fullRomaji),
+          _summaryLine(
+              context, Icons.abc_rounded, s.fullRomaji, result.fullRomaji),
         ],
       ),
     );
@@ -122,7 +127,7 @@ class _MorphemeRow extends StatelessWidget {
         Clipboard.setData(ClipboardData(text: m.surface));
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('已复制「${m.surface}」'),
+            content: Text(AppStrings.of(context).copiedSurface(m.surface)),
             duration: const Duration(milliseconds: 900),
           ),
         );
@@ -220,7 +225,7 @@ class _MorphemeRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
-        pos,
+        AppStrings.of(context).posLabel(pos),
         style: TextStyle(color: colors.textSecondary, fontSize: 10),
       ),
     );
@@ -231,12 +236,15 @@ class _MorphemeRow extends StatelessWidget {
   /// 助词音变(は→わ)用朱红强调, 长音速记(とう→とー)用灰色弱化。
   Widget _pronChip(BuildContext context, String pronunciation, bool isParticleShift) {
     final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
     final color = isParticleShift ? AppTheme.accent : colors.textSecondary;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          isParticleShift ? '读作 ' : '发音 ',
+          isParticleShift
+              ? '${s.pronunciationShiftLabel} '
+              : '${s.labelPronunciation} ',
           style: TextStyle(color: color.withValues(alpha: 0.8), fontSize: 10),
         ),
         Text(

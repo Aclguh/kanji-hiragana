@@ -15,6 +15,8 @@
 [![Release](https://img.shields.io/github/v/release/Aclguh/kanji-hiragana?label=Download)](https://github.com/Aclguh/kanji-hiragana/releases/latest)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+**简体中文** · [English](README.en.md)
+
 </div>
 
 ---
@@ -32,6 +34,8 @@
   - 助词「は」标注 `は`，注明读作 `わ`（朱红色突出，这正是要掌握的语法点）
 - **汉字筛选**：笔画数与使用频率都支持输入任意区间（下限 ~ 上限，留空即不限），
   另有读音构成与学年条件，可切换排序方式，全屏网格浏览结果并点入查看详解
+- **界面语言**：简体中文 / English 一键切换（设置 → 语言），全部界面文案与汉字释义
+  都会随之切换；「漢字仮名」四字作为应用标识保持繁体原样
 - **设置**：主题切换（浅色 / 深色 / 跟随系统）、旋转屏幕开关（默认关闭）、关于页
 - 点按任意词复制原文，一键复制全文假名；罗马音可开关
 - **聚焦式主界面**：打开时只有一个居中的输入框，输入后动画展开完整界面
@@ -53,8 +57,8 @@
 
 | 设置 | 筛选 |
 | :---: | :---: |
-| <img src="docs/screenshots/05-settings-light.png" width="260" alt="设置抽屉：主题 / 旋转屏幕 / 关于" /> | <img src="docs/screenshots/07-filter.png" width="260" alt="筛选抽屉：按笔画区间、频率区间筛选" /> |
-| 右下角齿轮展开，可切换主题、开关旋转、进入关于页 | 左下角放大镜展开，笔画与频率可输入任意区间 |
+| <img src="docs/screenshots/05-settings-light.png" width="260" alt="设置抽屉：主题 / 旋转屏幕 / 语言 / 关于" /> | <img src="docs/screenshots/07-filter.png" width="260" alt="筛选抽屉：按笔画区间、频率区间筛选" /> |
+| 右下角齿轮展开，可切换主题与界面语言、开关旋转、进入关于页 | 左下角放大镜展开，笔画与频率可输入任意区间 |
 
 | 筛选结果 | 关于 |
 | :---: | :---: |
@@ -65,6 +69,11 @@
 | :---: | :---: |
 | <img src="docs/screenshots/06-light-main.png" width="260" alt="浅色主题主界面" /> | <img src="docs/screenshots/10-dark-main.png" width="260" alt="深色主题主界面" /> |
 | 浅色主题：米白纸感底 + 墨色文字 | 深色主题：同一界面自动换色，设置持久保存 |
+
+| 界面语言 | 英文界面 |
+| :---: | :---: |
+| <img src="docs/screenshots/11-language-en.png" width="260" alt="设置 → 语言：中文 / English" /> | <img src="docs/screenshots/12-main-en.png" width="260" alt="英文主界面" /> |
+| 展开语言选择框，点选即切换 | 全部文案随语言切换，「漢字仮名」保持繁体原样 |
 
 </div>
 
@@ -165,7 +174,8 @@ lib/
     japanese_analyzer.dart   形态素分析服务（单例，离线）
     kanji_reading_dict.dart  [自动生成] 2999 汉字的音读 / 训读
     kanji_filter.dart        汉字筛选条件模型与匹配逻辑
-    settings.dart            主题模式 / 旋转开关的持久化控制
+    settings.dart            主题模式 / 旋转开关 / 界面语言的持久化控制
+    strings.dart             中英双语界面文案（AppStrings 密封类 + InheritedWidget）
   widgets/
     alignment_table.dart     三列对照表视图
     furigana_view.dart       振假名注音视图
@@ -181,7 +191,7 @@ test/
 integration_test/
   ui_test.dart               真机 UI 测试
 tool/
-  verify.dart                独立验证脚本（54 项断言，dart run 即可跑）
+  verify.dart                独立验证脚本（86 项断言，dart run 即可跑）
   gen_kanji_dict.py          KANJIDIC2 → Dart 数据生成脚本
   gen_icon.py                应用图标生成脚本
   data/                      KANJIDIC2 原始数据（仅 .gz，约 1.5MB）
@@ -195,7 +205,7 @@ flutter pub get
 # 静态检查
 flutter analyze
 
-# 逻辑验证（不依赖 flutter_test，任何环境都能跑，54 项断言）
+# 逻辑验证（不依赖 flutter_test，任何环境都能跑，86 项断言）
 dart run tool/verify.dart
 
 # 单元测试

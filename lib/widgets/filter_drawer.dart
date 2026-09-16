@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../core/kanji_filter.dart';
 import '../core/kanji_reading_dict.dart';
+import '../core/strings.dart';
 import '../theme.dart';
 import 'sliding_drawer.dart';
 
@@ -50,19 +51,19 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
   /// 使用频率的实际取值范围 (无排名的汉字靠 99999 标记, 已单独排除)。
   static const _freqDomain = '1 ~ 10000';
 
-  /// 学年选项: 标签 + 对应的 grade 区间。
+  /// 学年选项: 对应的 grade 区间, 标签由当前语言决定。
   ///
   /// 人名用汉字在字典里分 grade 9 与 10 两档, 合并成一个「人名」选项,
   /// 否则会出现两个同名胶囊。
-  static const _gradeOptions = <(String, int, int)>[
-    ('1年', 1, 1),
-    ('2年', 2, 2),
-    ('3年', 3, 3),
-    ('4年', 4, 4),
-    ('5年', 5, 5),
-    ('6年', 6, 6),
-    ('常用', 8, 8),
-    ('人名', 9, 10),
+  static const _gradeRanges = <(int, int)>[
+    (1, 1),
+    (2, 2),
+    (3, 3),
+    (4, 4),
+    (5, 5),
+    (6, 6),
+    (8, 8),
+    (9, 10),
   ];
 
   @override
@@ -77,10 +78,11 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
     return DrawerPanel(
       side: DrawerSide.left,
-      title: '筛选',
-      subtitle: '从 ${_total()} 个汉字中查找',
+      title: s.filterTitle,
+      subtitle: s.filterCount(_total()),
       // 操作区固定在底部, 不随筛选条件滚动。
       footer: Row(
         children: [
@@ -95,7 +97,7 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              child: const Text('重置'),
+              child: Text(s.reset),
             ),
           ),
           const SizedBox(width: 10),
@@ -111,35 +113,35 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              child: const Text('查看结果'),
+              child: Text(s.viewResults),
             ),
           ),
         ],
       ),
       children: [
         // 排序
-        const DrawerSectionLabel('排序'),
-        _buildSortChips(),
+        DrawerSectionLabel(s.sectionSort),
+        _buildSortChips(s),
         const SizedBox(height: 22),
 
         // 笔画范围
-        _sectionHeader('笔画数', _strokeDomain),
+        _sectionHeader(s.sectionStrokes, _strokeDomain),
         _buildStrokeRange(),
         const SizedBox(height: 22),
 
         // 使用频率范围
-        _sectionHeader('使用频率', _freqDomain),
+        _sectionHeader(s.sectionFrequency, _freqDomain),
         _buildFrequencyRange(),
         const SizedBox(height: 22),
 
         // 读音构成
-        const DrawerSectionLabel('读音构成'),
-        _buildReadingChips(),
+        DrawerSectionLabel(s.sectionReadings),
+        _buildReadingChips(s),
         const SizedBox(height: 22),
 
         // 其他 (学年等次要维度)
-        const DrawerSectionLabel('其他'),
-        _buildGradeChips(),
+        DrawerSectionLabel(s.sectionOther),
+        _buildGradeChips(s),
       ],
     );
   }
@@ -178,13 +180,13 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
     });
   }
 
-  Widget _buildSortChips() {
+  Widget _buildSortChips(AppStrings s) {
     return _chipWrap(
-      KanjiSort.values.map((s) {
+      KanjiSort.values.map((sort) {
         return _Chip(
-          label: s.label,
-          selected: _filter.sort == s,
-          onTap: () => setState(() => _filter = _filter.copyWith(sort: s)),
+          label: s.sortLabel(sort.name),
+          selected: _filter.sort == sort,
+          onTap: () => setState(() => _filter = _filter.copyWith(sort: sort)),
         );
       }).toList(),
     );
@@ -259,13 +261,13 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
 
   // ------------------------------------------------------------------ 胶囊
 
-  Widget _buildGradeChips() {
+  Widget _buildGradeChips(AppStrings s) {
     return _chipWrap([
-      ..._gradeOptions.map((option) {
-        final (label, min, max) = option;
+      ..._gradeRanges.map((range) {
+        final (min, max) = range;
         final selected = _filter.gradeMin == min && _filter.gradeMax == max;
         return _Chip(
-          label: label,
+          label: _gradeChipLabel(s, min, max),
           selected: selected,
           onTap: () => setState(() {
             _filter = selected
@@ -275,7 +277,7 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
         );
       }),
       _Chip(
-        label: '不限',
+        label: s.any,
         selected: _filter.gradeMin == null && _filter.gradeMax == null,
         onTap: () =>
             setState(() => _filter = _filter.copyWith(clearGrade: true)),
@@ -283,11 +285,25 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
     ]);
   }
 
-  Widget _buildReadingChips() {
+  /// 学年胶囊的文字: 1-6 年、常用、人名 (覆盖 grade 9~10)。
+  static String _gradeChipLabel(AppStrings s, int min, int max) {
+    if (min == 9) return s.gradeNameChip;
+    return switch (min) {
+      1 => s.grade1,
+      2 => s.grade2,
+      3 => s.grade3,
+      4 => s.grade4,
+      5 => s.grade5,
+      6 => s.grade6,
+      _ => s.gradeCommonChip,
+    };
+  }
+
+  Widget _buildReadingChips(AppStrings s) {
     return _chipWrap(
       ReadingRequirement.values.map((r) {
         return _Chip(
-          label: r.label,
+          label: s.readingLabel(r.name),
           selected: _filter.reading == r,
           onTap: () =>
               setState(() => _filter = _filter.copyWith(reading: r)),
@@ -323,21 +339,22 @@ class _RangeFields extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            _field(context, minController, '最小'),
+            _field(context, minController, s.min),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
               child: Text('~',
                   style: TextStyle(color: colors.textSecondary, fontSize: 14)),
             ),
-            _field(context, maxController, '最大'),
+            _field(context, maxController, s.max),
             const SizedBox(width: 10),
             Text(
-              '留空不限',
+              s.blankMeansAny,
               style: TextStyle(
                 color: colors.textSecondary.withValues(alpha: 0.7),
                 fontSize: 10,
@@ -348,7 +365,7 @@ class _RangeFields extends StatelessWidget {
         if (invalid) ...[
           const SizedBox(height: 6),
           Text(
-            '下限大于上限, 将没有结果',
+            s.rangeInverted,
             style: TextStyle(color: AppTheme.accent, fontSize: 11),
           ),
         ],

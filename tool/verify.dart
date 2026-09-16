@@ -197,6 +197,35 @@ Future<void> main() async {
   expectEq(kanjiReadingDict['日']!.hasOnyomi, true, '日 有音读');
   expectEq(kanjiReadingDict['日']!.hasKunyomi, true, '日 有训读');
 
+  print('--- 释义 (中/英双份) ---');
+  expectEq(kanjiReadingDict['日']!.meaningsEn.join('/'), 'day/sun/Japan',
+      '日 英文释义');
+  expectEq(kanjiReadingDict['日']!.meanings.contains('太阳'), true,
+      '日 中文释义含 太阳');
+  // 少数汉字在 KANJIDIC2 里本就没有 <meaning> (多为纯日本人名用字),
+  // 因此断言「覆盖率足够高」且「中英两份缺失的是同一批字」——
+  // 后者能保证不是生成时漏了英文那一列。
+  final total = kanjiReadingDict.length;
+  final missingEn =
+      kanjiReadingDict.values.where((r) => r.meaningsEn.isEmpty).length;
+  final missingZh =
+      kanjiReadingDict.values.where((r) => r.meanings.isEmpty).length;
+  expectEq(missingEn == missingZh, true,
+      '中英释义缺失集合一致 (各缺 $missingEn 个)');
+  expectEq(missingEn < total * 0.02, true,
+      '释义覆盖率 >98% (缺失 $missingEn / $total)');
+  expectEq(
+      kanjiReadingDict.values
+          .where((r) => r.meaningsEn.isEmpty && r.meanings.isNotEmpty)
+          .isEmpty,
+      true,
+      '不存在「只有中文没有英文」的字');
+  // 每条最多 3 个释义。
+  final tooMany = kanjiReadingDict.values
+      .where((r) => r.meaningsEn.length > 3 || r.meanings.length > 3)
+      .length;
+  expectEq(tooMany, 0, '释义条目均不超过 3 条');
+
   print('\n结果: $_pass 通过, $_fail 失败');
   if (_fail > 0) throw StateError('有 $_fail 项未通过');
 }

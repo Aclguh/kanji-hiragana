@@ -9,6 +9,9 @@ import 'kanji_reading_dict.dart';
 const int kNoFrequencyRank = 99999;
 
 /// 排序方式。
+///
+/// 显示名称由 `AppStrings.sortLabel(name)` 按当前语言给出,
+/// 模型层不持有任何界面文案。
 enum KanjiSort {
   /// 使用频率 (报纸频率排名, 越常用越靠前)。
   frequency,
@@ -20,14 +23,7 @@ enum KanjiSort {
   grade,
 
   /// 读音数量 (音读 + 训读, 由多到少)。
-  readingCount;
-
-  String get label => switch (this) {
-        KanjiSort.frequency => '使用频率',
-        KanjiSort.strokes => '笔画数',
-        KanjiSort.grade => '学年',
-        KanjiSort.readingCount => '读音数量',
-      };
+  readingCount,
 }
 
 /// 筛选条件。
@@ -169,6 +165,8 @@ class KanjiFilter {
 }
 
 /// 对读音构成的要求。
+///
+/// 显示名称由 `AppStrings.readingLabel(name)` 按当前语言给出。
 enum ReadingRequirement {
   /// 不限。
   any,
@@ -180,12 +178,5 @@ enum ReadingRequirement {
   kunyomiOnly,
 
   /// 音读与训读都有。
-  both;
-
-  String get label => switch (this) {
-        ReadingRequirement.any => '不限',
-        ReadingRequirement.onyomiOnly => '仅音读',
-        ReadingRequirement.kunyomiOnly => '仅训读',
-        ReadingRequirement.both => '音训兼备',
-      };
+  both,
 }

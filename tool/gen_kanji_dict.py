@@ -225,6 +225,20 @@ def zh_meanings(meanings):
     return out[:3]
 
 
+def en_meanings(meanings):
+    """KANJIDIC2 原生的英文释义, 去重后最多 3 条。
+
+    界面切到英文时显示这一份 —— KANJIDIC2 的释义本就是英文,
+    比从中文回译更准确。
+    """
+    out = []
+    for m in meanings:
+        m = m.strip()
+        if m and m not in out:
+            out.append(m)
+    return out[:3]
+
+
 def dart_str_list(items):
     return ', '.join("'" + s.replace("'", r"\'") + "'" for s in items)
 
@@ -260,6 +274,9 @@ def main():
     lines.append('  /// 中文释义(最多 3 条)。')
     lines.append('  final List<String> meanings;')
     lines.append('')
+    lines.append('  /// 英文释义(最多 3 条), 取自 KANJIDIC2 原文。')
+    lines.append('  final List<String> meaningsEn;')
+    lines.append('')
     lines.append('  /// 学年: 1-6 为教育汉字, 8 为常用汉字, 9/10 为人名用汉字。')
     lines.append('  final int grade;')
     lines.append('')
@@ -274,6 +291,7 @@ def main():
     lines.append('    required this.onyomi,')
     lines.append('    required this.kunyomi,')
     lines.append('    required this.meanings,')
+    lines.append('    required this.meaningsEn,')
     lines.append('    required this.grade,')
     lines.append('    required this.strokes,')
     lines.append('    required this.frequencyRank,')
@@ -291,6 +309,7 @@ def main():
 
     for kanji, info in entries:
         zh = zh_meanings(info['meanings'])
+        en = en_meanings(info['meanings'])
         lines.append('  // %s' % ' / '.join(zh))
         lines.append(
             "  '%s': KanjiReading(" % kanji
@@ -299,6 +318,7 @@ def main():
         lines.append('    onyomi: [%s],' % dart_str_list(info['on']))
         lines.append('    kunyomi: [%s],' % dart_str_list(info['kun']))
         lines.append('    meanings: [%s],' % dart_str_list(zh))
+        lines.append('    meaningsEn: [%s],' % dart_str_list(en))
         lines.append('    grade: %d,' % info['grade'])
         lines.append('    strokes: %d,' % info['strokes'])
         lines.append('    frequencyRank: %d,' % info['freq'])

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/strings.dart';
 import '../theme.dart';
 
 /// 抽屉停靠方向。
@@ -263,7 +264,7 @@ class _DrawerPanelState extends State<DrawerPanel> {
             ),
           ),
           IconButton(
-            tooltip: '关闭',
+            tooltip: AppStrings.of(context).close,
             onPressed: () => SlidingDrawer.close(context),
             icon: Icon(Icons.close_rounded,
                 size: 20, color: colors.textSecondary),

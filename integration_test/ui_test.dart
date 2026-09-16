@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kanji_hiragana/home_page.dart';
 import 'package:kanji_hiragana/core/japanese_analyzer.dart';
+import 'package:kanji_hiragana/core/strings.dart';
 import 'package:kanji_hiragana/theme.dart';
 import 'package:kanji_hiragana/widgets/about_page.dart';
 import 'package:kanji_hiragana/widgets/alignment_table.dart';
@@ -344,6 +345,146 @@ void main() {
       find.descendant(of: find.byType(SettingsDrawerContent), matching: find.byType(Switch)),
     );
     expect(sw.value, isFalse, reason: '旋转屏幕应默认关闭');
+  });
+
+  testWidgets('设置抽屉: 语言分组位于「其他」上方, 点击后展开选项', (tester) async {
+    await pumpHome(tester);
+
+    await tester.tap(find.byTooltip('设置'));
+    await tester.pumpAndSettle();
+
+    // 语言分组排在「其他」之前。
+    final langDy = tester.getTopLeft(find.text('语言')).dy;
+    final otherDy = tester.getTopLeft(find.text('其他')).dy;
+    expect(langDy < otherDy, isTrue, reason: '语言应在其他之上');
+
+    // 收起态只显示当前语言, 不显示另一个选项。
+    expect(find.text('中文'), findsOneWidget);
+    expect(find.text('English'), findsNothing);
+
+    // 点击后展开两个选项。
+    await tester.tap(find.text('语言'));
+    await tester.pumpAndSettle();
+    expect(find.text('中文'), findsOneWidget);
+    expect(find.text('English'), findsOneWidget);
+  });
+
+  testWidgets('英文界面: 文案切换为英文, 漢字仮名 四字保持不变', (tester) async {
+    await JapaneseAnalyzer.instance.warmUp();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark(),
+        home: const AppStringsScope(
+          strings: EnStrings(),
+          child: HomePage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 品牌标识在任何语言下都保持繁体原样。
+    expect(find.text('漢字仮名'), findsOneWidget);
+
+    // 其余文案均为英文。
+    expect(find.text('Type Japanese kanji to see hiragana and romaji'),
+        findsOneWidget);
+    expect(find.text('Enter Japanese kanji'), findsOneWidget);
+    expect(find.byTooltip('Filter kanji'), findsOneWidget);
+    expect(find.byTooltip('Settings'), findsOneWidget);
+
+    // 输入后工具栏与结果也是英文。
+    await tester.enterText(find.byType(TextField), '日本の文化');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+    expect(find.text('Table'), findsOneWidget);
+    expect(find.text('Furigana'), findsOneWidget);
+    // 「Romaji」既是开关标签, 也是对照表列头, 故会有多处。
+    expect(find.text('Romaji'), findsWidgets);
+    expect(find.text('对照表'), findsNothing);
+    expect(find.text('罗马音'), findsNothing);
+
+    // 词性标签来自 IPADIC 的日文分类, 英文界面下也要翻译。
+    expect(find.text('noun'), findsOneWidget);
+    expect(find.text('verb'), findsOneWidget);
+    expect(find.text('aux.'), findsOneWidget);
+    expect(find.text('名詞'), findsNothing);
+    expect(find.text('動詞'), findsNothing);
+  });
+
+  testWidgets('英文界面: 单汉字释义取用英文原文', (tester) async {
+    await JapaneseAnalyzer.instance.warmUp();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark(),
+        home: const AppStringsScope(
+          strings: EnStrings(),
+          child: HomePage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), '生');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+
+    // 「生」的英文释义取自 KANJIDIC2 原文。
+    expect(find.text('life'), findsOneWidget);
+    // 学年只显示数字, 不能渲染成 "Grade Grade 1"。
+    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Grade Grade 1'), findsNothing);
+    // 音训读分组标题保留日文原字。
+    expect(find.text('音読'), findsOneWidget);
+    expect(find.text('訓読'), findsOneWidget);
+    expect(find.text("On'yomi · 音読み"), findsOneWidget);
+    expect(find.text('Sino-Japanese'), findsOneWidget);
+    expect(find.text('Native Japanese'), findsOneWidget);
+  });
+
+  testWidgets('英文界面: 设置与筛选抽屉全部为英文', (tester) async {
+    await JapaneseAnalyzer.instance.warmUp();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark(),
+        home: const AppStringsScope(
+          strings: EnStrings(),
+          child: HomePage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 设置抽屉
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+    expect(find.text('Appearance & behavior'), findsOneWidget);
+    expect(find.text('Light'), findsOneWidget);
+    expect(find.text('Dark'), findsOneWidget);
+    expect(find.text('System'), findsOneWidget);
+    expect(find.text('Screen'), findsOneWidget);
+    expect(find.text('Auto-rotate'), findsOneWidget);
+    expect(find.text('Language'), findsOneWidget);
+    expect(find.text('About'), findsOneWidget);
+    // 中文残留
+    expect(find.text('主题'), findsNothing);
+    expect(find.text('语言'), findsNothing);
+
+    await tester.tap(find.byTooltip('Close'));
+    await tester.pumpAndSettle();
+
+    // 筛选抽屉
+    await tester.tap(find.byTooltip('Filter kanji'));
+    await tester.pumpAndSettle();
+    expect(find.text('Sort'), findsOneWidget);
+    expect(find.text('Stroke count'), findsOneWidget);
+    expect(find.text('Frequency'), findsWidgets);
+    expect(find.text('Readings'), findsOneWidget);
+    expect(find.text('Other'), findsOneWidget);
+    expect(find.text('Reset'), findsOneWidget);
+    expect(find.text('View results'), findsOneWidget);
+    expect(find.text('Any'), findsWidgets);
+    expect(find.text('排序'), findsNothing);
+    expect(find.text('查看结果'), findsNothing);
   });
 
   testWidgets('关于页展示版本与仓库', (tester) async {

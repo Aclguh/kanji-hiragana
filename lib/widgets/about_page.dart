@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../core/strings.dart';
 import '../theme.dart';
 
 /// 关于页面: 版本号、仓库、许可与致谢。
@@ -28,8 +29,9 @@ class _AboutPageState extends State<AboutPage> {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('关于')),
+      appBar: AppBar(title: Text(s.about)),
       body: Scrollbar(
         controller: _scrollController,
         thumbVisibility: true,
@@ -43,17 +45,17 @@ class _AboutPageState extends State<AboutPage> {
             _buildHeader(context),
             const SizedBox(height: 26),
 
-            const _SectionLabel('版本'),
-            const _InfoCard(
+            _SectionLabel(s.versionLabel),
+            _InfoCard(
               rows: [
-                _InfoRow('版本号', AboutPage.version),
-                _InfoRow('构建号', AboutPage.buildNumber),
-                _InfoRow('包名', 'com.kanjihiragana.kanji_hiragana'),
+                _InfoRow(s.versionLabel, AboutPage.version),
+                _InfoRow(s.buildLabel, AboutPage.buildNumber),
+                _InfoRow(s.packageLabel, 'com.kanjihiragana.kanji_hiragana'),
               ],
             ),
             const SizedBox(height: 22),
 
-            const _SectionLabel('仓库'),
+            _SectionLabel(s.repositoryLabel),
             _LinkTile(
               icon: Icons.code_rounded,
               title: 'GitHub',
@@ -61,36 +63,36 @@ class _AboutPageState extends State<AboutPage> {
               onTap: () => _copy(
                 context,
                 AboutPage.repoUrl,
-                '已复制仓库地址',
+                s.repositoryCopied,
               ),
             ),
             const SizedBox(height: 22),
 
-            const _SectionLabel('许可'),
-            const _InfoCard(
+            _SectionLabel(s.licensesSection),
+            _InfoCard(
               rows: [
-                _InfoRow('应用代码', 'MIT License'),
+                _InfoRow(s.licenseAppCode, 'MIT License'),
                 _InfoRow(
                   'KANJIDIC2',
                   'CC BY-SA 4.0',
-                  note: '音读 / 训读 / 释义 / 笔画 / 学年数据',
+                  note: s.licenseKanjiData,
                 ),
                 _InfoRow(
                   'kuromoji · IPADIC',
                   'Apache License 2.0',
-                  note: '分词与读音分析',
+                  note: s.licenseAnalyzer,
                 ),
               ],
             ),
             const SizedBox(height: 22),
 
-            const _SectionLabel('致谢'),
+            _SectionLabel(s.creditsSection),
             const _ThanksCard(),
             const SizedBox(height: 26),
 
             Center(
               child: Text(
-                '漢字仮名 ${AboutPage.version}',
+                s.aboutTitle(AboutPage.version),
                 style: TextStyle(
                   color: colors.textSecondary,
                   fontSize: 11,
@@ -149,7 +151,7 @@ class _AboutPageState extends State<AboutPage> {
         ),
         const SizedBox(height: 6),
         Text(
-          '输入日语汉字，查看平假名与罗马音',
+          AppStrings.of(context).tagline,
           style: TextStyle(color: colors.textSecondary, fontSize: 12),
         ),
       ],
@@ -327,16 +329,16 @@ class _LinkTile extends StatelessWidget {
 class _ThanksCard extends StatelessWidget {
   const _ThanksCard();
 
-  static const _items = <(String, String)>[
-    ('kuromoji', '形态素分析引擎 (纯 Dart 实现)'),
-    ('KANJIDIC2', '汉字音读、训读与释义数据'),
-    ('Atilika IPADIC', '日语分词词典'),
-    ('Flutter', '跨平台应用框架'),
-  ];
-
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
+    final items = <(String, String)>[
+      ('kuromoji', s.creditAnalyzer),
+      ('KANJIDIC2', s.creditKanjiData),
+      ('Atilika IPADIC', s.creditTokenizerDict),
+      ('Flutter', s.creditFramework),
+    ];
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
@@ -347,7 +349,7 @@ class _ThanksCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (var i = 0; i < _items.length; i++) ...[
+          for (var i = 0; i < items.length; i++) ...[
             if (i > 0) const SizedBox(height: 12),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -372,13 +374,13 @@ class _ThanksCard extends StatelessWidget {
                       ),
                       children: [
                         TextSpan(
-                          text: _items[i].$1,
+                          text: items[i].$1,
                           style: const TextStyle(
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         TextSpan(
-                          text: '  ${_items[i].$2}',
+                          text: '  ${items[i].$2}',
                           style: TextStyle(color: colors.textSecondary),
                         ),
                       ],
@@ -392,7 +394,7 @@ class _ThanksCard extends StatelessWidget {
           Divider(height: 1, color: colors.border),
           const SizedBox(height: 12),
           Text(
-            '本应用完全离线运行，不收集任何数据，不请求任何权限。',
+            s.offlineNotice,
             style: TextStyle(
               color: colors.textSecondary,
               fontSize: 11.5,
