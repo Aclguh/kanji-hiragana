@@ -62,34 +62,12 @@ on'yomi and kun'yomi.
 | <img src="docs/screenshots/01-empty.png" width="260" alt="Empty state: a centred input box" /> | <img src="docs/screenshots/02-table.png" width="260" alt="Table: kanji / hiragana / romaji columns" /> |
 | Opens with just a centred input box | Word-by-word columns, the current word highlighted in vermilion |
 
-| Furigana | Single kanji |
-| :---: | :---: |
-| <img src="docs/screenshots/03-furigana.png" width="260" alt="Furigana view" /> | <img src="docs/screenshots/04-single-kanji.png" width="260" alt="Single kanji: on'yomi and kun'yomi" /> |
-| Reading above the kanji, romaji below | On'yomi, kun'yomi, meanings, strokes and grade |
-
-| Settings | Filter |
-| :---: | :---: |
-| <img src="docs/screenshots/05-settings-light.png" width="260" alt="Settings drawer: theme / auto-rotate / language / about" /> | <img src="docs/screenshots/07-filter.png" width="260" alt="Filter drawer: stroke and frequency ranges" /> |
-| The gear at the bottom right opens theme, interface language, rotation and about | The magnifier at the bottom left opens stroke and frequency ranges |
-
-| Filter results | About |
-| :---: | :---: |
-| <img src="docs/screenshots/08-filter-result.png" width="260" alt="Full-screen filter result grid" /> | <img src="docs/screenshots/09-about.png" width="260" alt="About page: version, repository, licenses and credits" /> |
-| A full-screen grid, with a side scrollbar when it overflows | Version, GitHub repository, open-source licenses and credits |
-
 | Light theme | Dark theme |
 | :---: | :---: |
 | <img src="docs/screenshots/06-light-main.png" width="260" alt="Light theme main screen" /> | <img src="docs/screenshots/10-dark-main.png" width="260" alt="Dark theme main screen" /> |
 | Light: paper-white background with ink-dark text | Dark: the same screen recoloured, preferences persisted |
 
-| Interface language | English interface |
-| :---: | :---: |
-| <img src="docs/screenshots/11-language-en.png" width="260" alt="Settings → Language: 中文 / English" /> | <img src="docs/screenshots/12-main-en.png" width="260" alt="English main screen" /> |
-| Expand the language selector and pick one | Every string follows the language; 漢字仮名 stays in traditional form |
-
 </div>
-
-> The remaining screenshots above are taken with the Chinese interface, which is the default.
 
 ## Installation
 
@@ -100,9 +78,9 @@ Download the APK for your architecture from
 
 | File | Devices | Size |
 | --- | --- | --- |
-| `app-arm64-v8a-release.apk` | Almost all modern phones (**recommended**) | 39.7 MB |
-| `app-armeabi-v7a-release.apk` | Older 32-bit devices | 37.3 MB |
-| `app-x86_64-release.apk` | Emulators / x86 tablets | 41.1 MB |
+| `app-arm64-v8a-release.apk` | Almost all modern phones (**recommended**) | 40.3 MB |
+| `app-armeabi-v7a-release.apk` | Older 32-bit devices | 38.4 MB |
+| `app-x86_64-release.apk` | Emulators / x86 tablets | 41.7 MB |
 
 > If you are unsure, install `arm64-v8a`. The wrong architecture reports
 > "App not installed".

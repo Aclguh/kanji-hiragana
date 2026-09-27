@@ -52,30 +52,10 @@
 | <img src="docs/screenshots/01-empty.png" width="260" alt="空状态：居中的输入框" /> | <img src="docs/screenshots/02-table.png" width="260" alt="对照表：汉字 / 平假名 / 罗马音三列" /> |
 | 打开时只有一个居中的输入框 | 逐词三列对照，朱红高亮当前词，附词性标签 |
 
-| 注音 | 单汉字详解 |
-| :---: | :---: |
-| <img src="docs/screenshots/03-furigana.png" width="260" alt="注音：振假名视图" /> | <img src="docs/screenshots/04-single-kanji.png" width="260" alt="单汉字：音读与训读" /> |
-| 振假名排版，汉字上方标读音，下方标罗马音 | 输入单个汉字时给出音读、训读、释义、笔画与学年 |
-
-| 设置 | 筛选 |
-| :---: | :---: |
-| <img src="docs/screenshots/05-settings-light.png" width="260" alt="设置抽屉：主题 / 旋转屏幕 / 语言 / 关于" /> | <img src="docs/screenshots/07-filter.png" width="260" alt="筛选抽屉：按笔画区间、频率区间筛选" /> |
-| 右下角齿轮展开，可切换主题与界面语言、开关旋转、进入关于页 | 左下角放大镜展开，笔画与频率可输入任意区间 |
-
-| 筛选结果 | 关于 |
-| :---: | :---: |
-| <img src="docs/screenshots/08-filter-result.png" width="260" alt="全屏筛选结果网格" /> | <img src="docs/screenshots/09-about.png" width="260" alt="关于页：版本、仓库、许可与致谢" /> |
-| 全屏网格浏览结果，内容超出一屏时有侧边滚动条 | 版本号、GitHub 仓库、开源许可与致谢 |
-
 | 浅色主题 | 深色主题 |
 | :---: | :---: |
 | <img src="docs/screenshots/06-light-main.png" width="260" alt="浅色主题主界面" /> | <img src="docs/screenshots/10-dark-main.png" width="260" alt="深色主题主界面" /> |
 | 浅色主题：米白纸感底 + 墨色文字 | 深色主题：同一界面自动换色，设置持久保存 |
-
-| 界面语言 | 英文界面 |
-| :---: | :---: |
-| <img src="docs/screenshots/11-language-en.png" width="260" alt="设置 → 语言：中文 / English" /> | <img src="docs/screenshots/12-main-en.png" width="260" alt="英文主界面" /> |
-| 展开语言选择框，点选即切换 | 全部文案随语言切换，「漢字仮名」保持繁体原样 |
 
 </div>
 
@@ -87,9 +67,9 @@
 
 | 文件 | 适用设备 | 大小 |
 | --- | --- | --- |
-| `app-arm64-v8a-release.apk` | 绝大多数现代手机（**推荐**） | 39.7 MB |
-| `app-armeabi-v7a-release.apk` | 较老的 32 位设备 | 37.3 MB |
-| `app-x86_64-release.apk` | 模拟器 / x86 平板 | 41.1 MB |
+| `app-arm64-v8a-release.apk` | 绝大多数现代手机（**推荐**） | 40.3 MB |
+| `app-armeabi-v7a-release.apk` | 较老的 32 位设备 | 38.4 MB |
+| `app-x86_64-release.apk` | 模拟器 / x86 平板 | 41.7 MB |
 
 > 若不确定选哪个，装 `arm64-v8a`；装错了会提示「应用未安装」。
 
