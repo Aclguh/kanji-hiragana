@@ -234,12 +234,15 @@ class _MorphemeRow extends StatelessWidget {
   /// 实际发音提示: 与规范读音不同时显示。
   ///
   /// 助词音变(は→わ)用朱红强调, 长音速记(とう→とー)用灰色弱化。
+  /// 用 Wrap 而非 Row: 英文标签较长, 窄屏下放不下时发音换行而非溢出。
   Widget _pronChip(BuildContext context, String pronunciation, bool isParticleShift) {
     final colors = AppTheme.of(context);
     final s = AppStrings.of(context);
     final color = isParticleShift ? AppTheme.accent : colors.textSecondary;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    return Wrap(
+      spacing: 4,
+      runSpacing: 2,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         Text(
           isParticleShift

@@ -27,7 +27,11 @@ on'yomi and kun'yomi.
 - **Kanji → hiragana → romaji** in a three-column, word-by-word table, powered by
   morphological analysis (kuromoji + IPADIC)
 - **Single-kanji detail**: type one kanji and get its **on'yomi** and **kun'yomi**
-  together with romaji, stroke count, school grade and meanings
+  together with romaji, stroke count, school grade, meanings and **common words**
+  containing the kanji
+- **History & favorites**: queries are remembered automatically and can be starred;
+  the empty state lists them as tappable chips (long-press to remove, history can be
+  cleared at once). The star works in the app bar and in the filter detail page
 - **Two switchable views**
   - **Table**: three columns side by side (kanji / hiragana / romaji) with part-of-speech tags
   - **Furigana**: textbook-style ruby, reading above the kanji and romaji below
@@ -125,10 +129,13 @@ flutter build apk --release --split-per-abi
    sentence all work)
 2. The interface expands as you type:
    - **Several characters** → the word-by-word table or furigana view
-   - **A single kanji** → additionally its on'yomi, kun'yomi and meanings
+   - **A single kanji** → additionally its on'yomi, kun'yomi, meanings and common words
 3. Switch between **Table** and **Furigana** at the top
 4. Tap a word to copy it, or use the top-right action to copy the full kana
-5. The gear at the bottom right opens **Settings** (theme / auto-rotate / language /
+5. Tap the **star** in the app bar to favorite the current query; when the keyboard is
+   dismissed, the empty state shows **Recent / Favorites** chips — tap one to look it
+   up again (long-press removes a chip; history can be cleared at once)
+6. The gear at the bottom right opens **Settings** (theme / auto-rotate / language /
    about); the magnifier at the bottom left opens **Filter** (find kanji by strokes,
    frequency and more)
 
@@ -138,9 +145,10 @@ flutter build apk --release --split-per-abi
 | --- | --- |
 | Tokenization and readings | [`kuromoji`](https://pub.dev/packages/kuromoji) (Atilika IPADIC, pure Dart) |
 | On'yomi / kun'yomi | 2999 common kanji extracted from KANJIDIC2, see `lib/core/kanji_reading_dict.dart` |
+| Common words | ~20k collocations extracted at build time from the IPADIC embedded in kuromoji, see `lib/core/kanji_words_dict.dart` |
 | Katakana → hiragana | Code-point offset (`0x30A1 - 0x3041`) |
 | Hiragana → romaji | Hand-written modified Hepburn romanisation |
-| Settings persistence | [`shared_preferences`](https://pub.dev/packages/shared_preferences) |
+| Settings & history | [`shared_preferences`](https://pub.dev/packages/shared_preferences) persistence (theme / language / view state / query history & favorites) |
 | Icons | Hand-drawn vector paths via `CustomPainter` (gear / magnifier) — no icon font, no emoji |
 | State and UI | Flutter Material 3, with light and dark Japanese-style themes |
 | Localization | `AppStrings` sealed class with `ZhStrings` / `EnStrings`, injected through an `InheritedWidget` |
@@ -188,21 +196,23 @@ English UI therefore shows KANJIDIC2's own wording rather than a back-translatio
 
 ```
 lib/
-  main.dart                  Entry point: loads settings, warms up the dictionary
+  main.dart                  Entry point: loads settings & query history, warms up the dictionary
   theme.dart                 Light / dark Japanese-style palettes (AppColors ThemeExtension)
-  home_page.dart             Main page: focus-style input, view switch, floating buttons
+  home_page.dart             Main page: focus-style input, view switch, history/favorite chips, floating buttons
   core/
     kana_romaji.dart         Kana ↔ romaji conversion (the core algorithm)
     morpheme.dart            Word and analysis-result models (two-track readings)
     japanese_analyzer.dart   Morphological analysis service (singleton, offline)
     kanji_reading_dict.dart  [GENERATED] on'yomi / kun'yomi for 2999 kanji
+    kanji_words_dict.dart    [GENERATED] common words per kanji (extracted from IPADIC)
     kanji_filter.dart        Filter model and matching logic
-    settings.dart            Persisted theme / auto-rotate / language
+    query_store.dart         Persisted query history & favorites
+    settings.dart            Persisted theme / auto-rotate / language / view state
     strings.dart             zh + en UI strings (AppStrings sealed class + InheritedWidget)
   widgets/
     alignment_table.dart     Three-column table view
     furigana_view.dart       Furigana (ruby) view
-    single_kanji_view.dart   Single-kanji on'yomi / kun'yomi detail
+    single_kanji_view.dart   Single-kanji on'yomi / kun'yomi + common words detail
     sliding_drawer.dart      Side drawer shell (panel + scrim)
     settings_drawer.dart     Settings drawer content
     filter_drawer.dart       Filter drawer content
@@ -210,12 +220,13 @@ lib/
     about_page.dart          About page (version / repository / licenses / credits)
     vector_icon.dart         Hand-drawn vector icons (gear / magnifier)
 test/
-  core_test.dart             Unit tests
+  core_test.dart             Unit tests (incl. QueryStore)
 integration_test/
   ui_test.dart               On-device UI tests
 tool/
   verify.dart                Standalone verification (86 assertions, runs with dart run)
   gen_kanji_dict.py          KANJIDIC2 → Dart data generator
+  gen_kanji_words.py         kuromoji-embedded IPADIC → common-word data generator
   gen_icon.py                App icon generator
   data/                      KANJIDIC2 source data (.gz only, ~1.5 MB)
 ```
@@ -253,9 +264,15 @@ curl -L -o tool/data/kanjidic2.xml.gz \
 
 # 2. Generate lib/core/kanji_reading_dict.dart
 python tool/gen_kanji_dict.py
+
+# 3. Generate lib/core/kanji_words_dict.dart (common words per kanji)
+#    Decodes the IPADIC embedded in the local kuromoji package — no download
+#    needed, but flutter pub get must have run at least once.
+python tool/gen_kanji_words.py
 ```
 
-The script reads the `.gz` directly and picks out the kyōiku / jōyō / jinmeiyō kanji.
+The first script reads the `.gz` directly; the second decodes the package's embedded
+binary dictionary. Both pick out the kyōiku / jōyō / jinmeiyō kanji.
 (The 16 MB decompressed XML is not kept in the repository; it is excluded by
 `.gitignore`.)
 
@@ -268,7 +285,8 @@ python tool/gen_icon.py   # writes to android/app/src/main/res/
 ### About the size
 
 kuromoji embeds the IPADIC dictionary as gzip-compressed Dart source (~23 MB of source),
-which dominates the APK size. To slim it down, **always split by ABI**:
+plus ~0.7 MB of common-word data, which dominates the APK size. To slim it down,
+**always split by ABI**:
 
 ```bash
 flutter build apk --release --split-per-abi
@@ -285,8 +303,10 @@ Each APK then contains a single architecture and is considerably smaller.
   [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
   `lib/core/kanji_reading_dict.dart` is a derivative work and is likewise provided under
   CC BY-SA 4.0.
-- **Tokenization and readings**: [kuromoji](https://pub.dev/packages/kuromoji) and
-  [IPADIC](https://www.atilika.com), Apache License 2.0.
+- **Tokenization, readings and common words**: [kuromoji](https://pub.dev/packages/kuromoji)
+  and [IPADIC](https://www.atilika.com), Apache License 2.0.
+  `lib/core/kanji_words_dict.dart` is derivative data extracted from IPADIC
+  (ordering references KANJIDIC2's frequency field), likewise under Apache License 2.0.
 
 ## Credits
 

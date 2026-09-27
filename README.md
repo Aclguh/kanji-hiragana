@@ -25,7 +25,9 @@
 
 - **汉字 → 平假名 → 罗马音** 逐词三列对照，基于形态素分析（kuromoji + IPADIC）
 - **单汉字详解**：输入单个汉字时，列出该字的**音读**与**训读**，
-  附罗马音、笔画数、学年、中文释义
+  附罗马音、笔画数、学年、中文释义与**常见搭配词**
+- **历史与收藏**：查过的内容自动留痕、一键收藏，空态首页点按即可回查，
+  长按词条删除；星标在标题栏与筛选详情页都可用
 - **两种视图可切换**
   - **对照表**：逐词并排三列（汉字 / 平假名 / 罗马音），带词性标签
   - **注音**：类似日语教材的振假名（Furigana），读音标在汉字上方
@@ -111,10 +113,12 @@ flutter build apk --release --split-per-abi
 1. 打开应用，在居中的输入框里输入日语（汉字、假名、混合句子都行）
 2. 输入内容后界面自动展开：
    - 输入**多个字** → 显示逐词对照表 / 注音视图
-   - 输入**单个汉字** → 额外显示该字的音读、训读、释义等信息
+   - 输入**单个汉字** → 额外显示该字的音读、训读、释义与常见词汇等信息
 3. 顶部可切换「对照表 / 注音」两种视图
 4. 点按词条复制，或点右上角复制全文假名
-5. 右下角齿轮按钮打开**设置**（主题 / 旋转屏幕 / 关于），
+5. 点标题栏星标**收藏**当前查询，收起键盘后空态首页出现「最近查询 / 收藏」
+   词条，点按即可回查（长按删除单条，历史可一键清空）
+6. 右下角齿轮按钮打开**设置**（主题 / 旋转屏幕 / 关于），
    左下角放大镜按钮打开**筛选**（按笔画、频率等条件查找汉字）
 
 ## 技术方案
@@ -123,9 +127,10 @@ flutter build apk --release --split-per-abi
 | --- | --- |
 | 分词与读音 | [`kuromoji`](https://pub.dev/packages/kuromoji)（Atilika IPADIC，纯 Dart 实现） |
 | 音读 / 训读 | KANJIDIC2 离线提取的 2999 个常用汉字，见 `lib/core/kanji_reading_dict.dart` |
+| 常见词汇 | 构建期从 kuromoji 内嵌 IPADIC 提取的搭配词（约 2 万条），见 `lib/core/kanji_words_dict.dart` |
 | 片假名 → 平假名 | 码位偏移转换（`0x30A1 - 0x3041`） |
 | 平假名 → 罗马音 | 自实现改良式 Hepburn 拼写 |
-| 设置持久化 | [`shared_preferences`](https://pub.dev/packages/shared_preferences) |
+| 设置与历史 | [`shared_preferences`](https://pub.dev/packages/shared_preferences) 本地持久化（主题 / 语言 / 视图状态 / 查询历史与收藏） |
 | 图标 | `CustomPainter` 手绘矢量路径（齿轮 / 放大镜），不依赖字体或 emoji |
 | 状态与 UI | Flutter Material 3，浅色 / 深色两套和风主题 |
 
@@ -165,21 +170,23 @@ IPADIC 只给单个汉字一个最常用读音，**不区分音读与训读**，
 
 ```
 lib/
-  main.dart                  应用入口，启动时读取设置并后台预热词典
+  main.dart                  应用入口，启动时读取设置与查询记录并后台预热词典
   theme.dart                 浅色 / 深色两套和风配色（AppColors ThemeExtension）
-  home_page.dart             主页面：聚焦式输入框 + 视图切换 + 悬浮按钮
+  home_page.dart             主页面：聚焦式输入框 + 视图切换 + 历史收藏词条 + 悬浮按钮
   core/
     kana_romaji.dart         假名 ↔ 罗马音转换（核心算法）
     morpheme.dart            词模型与解析结果模型（双轨读音）
     japanese_analyzer.dart   形态素分析服务（单例，离线）
     kanji_reading_dict.dart  [自动生成] 2999 汉字的音读 / 训读
+    kanji_words_dict.dart    [自动生成] 汉字的常见搭配词（IPADIC 提取）
     kanji_filter.dart        汉字筛选条件模型与匹配逻辑
-    settings.dart            主题模式 / 旋转开关 / 界面语言的持久化控制
+    query_store.dart         查询历史与收藏的持久化控制
+    settings.dart            主题模式 / 旋转开关 / 语言 / 视图状态的持久化控制
     strings.dart             中英双语界面文案（AppStrings 密封类 + InheritedWidget）
   widgets/
     alignment_table.dart     三列对照表视图
     furigana_view.dart       振假名注音视图
-    single_kanji_view.dart   单汉字音读 / 训读详解视图
+    single_kanji_view.dart   单汉字音读 / 训读 + 常见词汇详解视图
     sliding_drawer.dart      侧边抽屉外壳（面板 + 压暗遮罩）
     settings_drawer.dart     设置抽屉内容
     filter_drawer.dart       筛选抽屉内容
@@ -187,12 +194,13 @@ lib/
     about_page.dart          关于页（版本 / 仓库 / 许可 / 致谢）
     vector_icon.dart         手绘矢量图标（齿轮 / 放大镜）
 test/
-  core_test.dart             单元测试
+  core_test.dart             单元测试（含 QueryStore）
 integration_test/
   ui_test.dart               真机 UI 测试
 tool/
   verify.dart                独立验证脚本（86 项断言，dart run 即可跑）
   gen_kanji_dict.py          KANJIDIC2 → Dart 数据生成脚本
+  gen_kanji_words.py         kuromoji 内嵌 IPADIC → 常见词数据生成脚本
   gen_icon.py                应用图标生成脚本
   data/                      KANJIDIC2 原始数据（仅 .gz，约 1.5MB）
 ```
@@ -230,9 +238,14 @@ curl -L -o tool/data/kanjidic2.xml.gz \
 
 # 2. 生成 lib/core/kanji_reading_dict.dart
 python tool/gen_kanji_dict.py
+
+# 3. 生成 lib/core/kanji_words_dict.dart（常见搭配词）
+#    直接解码本地 pub cache 中 kuromoji 包内嵌的 IPADIC，
+#    无需下载词典，但需先执行过 flutter pub get。
+python tool/gen_kanji_words.py
 ```
 
-脚本直接读 `.gz`，会自动挑选其中的教育 / 常用 / 人名用汉字。
+两个脚本分别读 `.gz` 与包内嵌二进制，自动挑选教育 / 常用 / 人名用汉字。
 （解压后的 16MB XML 不必入库，已在 `.gitignore` 中排除。）
 
 应用图标同样是生成出来的，改了设计后重跑：
@@ -244,7 +257,7 @@ python tool/gen_icon.py   # 输出到 android/app/src/main/res/
 ### 关于体积
 
 `kuromoji` 的 IPADIC 词典以 gzip 压缩后内嵌为 Dart 源码（约 23MB 源文件），
-是 APK 体积的主要来源。若需瘦身，**务必按 ABI 拆分**：
+加上约 0.7MB 的常见词数据，是 APK 体积的主要来源。若需瘦身，**务必按 ABI 拆分**：
 
 ```bash
 flutter build apk --release --split-per-abi
@@ -259,8 +272,10 @@ flutter build apk --release --split-per-abi
   版权归 Electronic Dictionary Research and Development Group，
   以 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 发布。
   `lib/core/kanji_reading_dict.dart` 是其衍生作品，同样以 CC BY-SA 4.0 提供。
-- **分词与读音**：[kuromoji](https://pub.dev/packages/kuromoji) 与
+- **分词、读音与常见词表**：[kuromoji](https://pub.dev/packages/kuromoji) 与
   [IPADIC](https://www.atilika.com)，Apache License 2.0。
+  `lib/core/kanji_words_dict.dart` 是从 IPADIC 提取的衍生数据（词序参考
+  KANJIDIC2 的频率字段），同为 Apache License 2.0。
 
 ## 致谢
 

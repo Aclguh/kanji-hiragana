@@ -207,12 +207,15 @@ class _DrawerPanelState extends State<DrawerPanel> {
                   controller: _scrollController,
                   thumbVisibility: true,
                   thickness: 5,
-                  child: ListView(
+                  // SingleChildScrollView 全量构建: 抽屉是短表单,
+                  // 懒加载会让折叠线以下的输入框时有时无 (随屏幕高度变化)。
+                  child: SingleChildScrollView(
                     controller: _scrollController,
-                    primary: false,
-                    // 底部留白, 避免内容贴住操作区。
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                    children: widget.children,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: widget.children,
+                    ),
                   ),
                 ),
               ),

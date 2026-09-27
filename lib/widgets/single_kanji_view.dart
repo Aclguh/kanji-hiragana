@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../core/kana_romaji.dart';
 import '../core/kanji_reading_dict.dart';
+import '../core/kanji_words_dict.dart';
 import '../core/strings.dart';
 import '../theme.dart';
 
 /// 单汉字详解视图: 展示该字的音读与训读。
 ///
-/// 音读(音読み)与训读(訓読み)分行列出, 每行标注对应的罗马音。
+/// 音读(音読み)与训读(訓読み)分行列出, 每行标注对应的罗马音;
+/// 另附该字的常见搭配词, 帮助学习者直接看到「这个字在哪些词里」。
 class SingleKanjiView extends StatelessWidget {
   final KanjiReading reading;
 
@@ -19,6 +22,8 @@ class SingleKanjiView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
+    // 常见搭配词来自构建期生成的 IPADIC 数据; 查不到的字整段省略。
+    final words = kanjiWordsDict[reading.kanji] ?? const <KanjiWord>[];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -44,6 +49,10 @@ class SingleKanjiView extends StatelessWidget {
             readings: reading.kunyomi,
             maxItems: maxPerGroup,
           ),
+        if (words.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _CommonWordsGroup(words: words),
+        ],
         if (!reading.hasOnyomi && !reading.hasKunyomi)
           const _NoReadingNotice(),
       ],
@@ -336,6 +345,177 @@ class _ReadingChip extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 常见搭配词组: 每词一行「词 | 平假名 | 罗马音」, 点按复制词面。
+class _CommonWordsGroup extends StatefulWidget {
+  final List<KanjiWord> words;
+
+  /// 默认展示的词数, 超出折叠。
+  static const int maxItems = 6;
+
+  const _CommonWordsGroup({required this.words});
+
+  @override
+  State<_CommonWordsGroup> createState() => _CommonWordsGroupState();
+}
+
+class _CommonWordsGroupState extends State<_CommonWordsGroup> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
+    final color = colors.kanjiHighlight;
+    final overflows = widget.words.length > _CommonWordsGroup.maxItems;
+    final visible = (_expanded || !overflows)
+        ? widget.words
+        : widget.words.take(_CommonWordsGroup.maxItems).toList();
+    final hidden = widget.words.length - visible.length;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: colors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 3,
+                height: 16,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                s.commonWordsHeading,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: Text(
+                  s.commonWordsBadge(widget.words.length),
+                  style: TextStyle(color: color, fontSize: 10),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          for (var i = 0; i < visible.length; i++) ...[
+            if (i > 0) const SizedBox(height: 2),
+            _WordRow(word: visible[i]),
+          ],
+          if (overflows) ...[
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () => setState(() => _expanded = !_expanded),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _expanded
+                        ? s.collapse
+                        : s.collapseHidden(hidden),
+                    style: TextStyle(
+                        color: color,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(width: 3),
+                  Icon(
+                    _expanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    size: 16,
+                    color: color,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// 单个常见词: 词面 + 平假名 + 罗马音, 点按复制词面。
+class _WordRow extends StatelessWidget {
+  final KanjiWord word;
+
+  const _WordRow({required this.word});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.of(context);
+    final romaji = hiraganaToRomaji(word.hiragana);
+    return InkWell(
+      onTap: () {
+        Clipboard.setData(ClipboardData(text: word.word));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text(AppStrings.of(context).copiedSurface(word.word)),
+            duration: const Duration(milliseconds: 900),
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Row(
+          children: [
+            Text(
+              word.word,
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                word.hiragana,
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 13,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              romaji,
+              style: const TextStyle(
+                color: AppTheme.indigo,
+                fontSize: 11,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

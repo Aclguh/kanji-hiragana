@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import 'core/japanese_analyzer.dart';
 import 'core/kanji_filter.dart';
 import 'core/morpheme.dart';
+import 'core/query_store.dart';
+import 'core/settings.dart';
 import 'core/strings.dart';
 import 'theme.dart';
 import 'widgets/about_page.dart';
@@ -40,17 +42,26 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage>
     with SingleTickerProviderStateMixin {
+  static final _settings = SettingsController.instance;
+
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
   final _analyzer = JapaneseAnalyzer.instance;
+  final _queryStore = QueryStore.instance;
   final _debounce = _Debouncer(const Duration(milliseconds: 220));
 
   /// 驱动「聚焦态 ↔ 展开态」过渡的动画。
   late final AnimationController _anim;
 
   AnalysisResult? _result;
-  ViewMode _viewMode = ViewMode.alignment;
-  bool _showRomaji = true;
+
+  /// 上一次成功分析的文本, 供历史记录判断「本次是否为上次输入的延续」。
+  String _lastAnalyzedText = '';
+
+  /// 分析请求序号: await 期间输入又变化时, 过期的结果直接丢弃,
+  /// 避免旧结果覆盖新结果。
+  int _requestSeq = 0;
+
   bool _loading = true;
 
   /// 只记录出错环节与原始异常, 文案在 build 时按当前语言生成 ——
@@ -68,6 +79,18 @@ class _HomePageState extends State<HomePage>
 
   /// 抽屉是否处于展开状态。
   bool get _drawerOpen => _openDrawer != OpenDrawer.none;
+
+  /// 当前视图, 持久化在设置里, 重启后保持。
+  ViewMode get _viewMode => _settings.viewModeName == ViewMode.furigana.name
+      ? ViewMode.furigana
+      : ViewMode.alignment;
+
+  set _viewMode(ViewMode mode) => _settings.setViewModeName(mode.name);
+
+  /// 罗马音开关, 同样持久化。
+  bool get _showRomaji => _settings.showRomaji;
+
+  set _showRomaji(bool value) => _settings.setShowRomaji(value);
 
   @override
   void initState() {
@@ -113,18 +136,24 @@ class _HomePageState extends State<HomePage>
   }
 
   Future<void> _run(String text) async {
-    if (text.trim().isEmpty) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) {
       setState(() => _result = null);
       return;
     }
+    final seq = ++_requestSeq;
     try {
       final r = await _analyzer.analyze(text);
-      if (!mounted) return;
+      // await 期间输入又变了: 本次结果已过期, 丢弃。
+      if (!mounted || seq != _requestSeq) return;
       setState(() {
         _result = r;
         _errorKind = null;
         _errorDetail = null;
       });
+      final previous = _lastAnalyzedText;
+      _lastAnalyzedText = trimmed;
+      _queryStore.recordQuery(trimmed, previous: previous);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -137,6 +166,8 @@ class _HomePageState extends State<HomePage>
   /// 清空输入并保持焦点 (供界面上的 ✕ / 垃圾桶按钮使用)。
   void _clear() {
     _controller.clear();
+    // 置空延续标记: 清空后的下一次输入是新查询, 不并入上一条历史。
+    _lastAnalyzedText = '';
     _focusNode.requestFocus();
   }
 
@@ -145,7 +176,34 @@ class _HomePageState extends State<HomePage>
   /// 返回键的语义是「退出当前状态」, 因此这里不再主动唤起键盘。
   void _clearAndDismissKeyboard() {
     _controller.clear();
+    _lastAnalyzedText = '';
     _focusNode.unfocus();
+  }
+
+  /// 点按历史 / 收藏词条: 回填并重新查询。
+  ///
+  /// 不主动聚焦, 让用户直接看到结果; 键盘若开着则收起。
+  void _useQuery(String text) {
+    _focusNode.unfocus();
+    _controller.text = text;
+    // controller 监听器会推进展开动画; 这里直接分析, 不再走防抖。
+    _run(text);
+  }
+
+  /// 切换当前查询的收藏状态。
+  void _toggleFavorite() {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+    final added = _queryStore.toggleFavorite(text);
+    final s = AppStrings.of(context);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(added ? s.favoriteAdded(text) : s.favoriteRemoved(text)),
+          duration: const Duration(milliseconds: 900),
+        ),
+      );
   }
 
   void _toggleDrawer(OpenDrawer which) {
@@ -320,6 +378,22 @@ class _HomePageState extends State<HomePage>
         ],
       ),
       actions: [
+        AnimatedBuilder(
+          animation: _queryStore,
+          builder: (context, _) {
+            final favorite = _queryStore.isFavorite(_controller.text);
+            return IconButton(
+              tooltip: s.favoritesLabel,
+              onPressed: _toggleFavorite,
+              icon: Icon(
+                favorite
+                    ? Icons.star_rounded
+                    : Icons.star_border_rounded,
+                color: favorite ? AppTheme.kanjiHighlight : null,
+              ),
+            );
+          },
+        ),
         IconButton(
           tooltip: s.clear,
           onPressed: _clear,
@@ -384,6 +458,8 @@ class _HomePageState extends State<HomePage>
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: _buildInput(t),
                   ),
+                  // 聚焦态展示收藏与最近查询, 展开后淡出。
+                  _buildQueryChips(t),
                   // 其余控件随动画淡入。
                   _buildReveal(t),
                 ],
@@ -463,6 +539,120 @@ class _HomePageState extends State<HomePage>
           horizontal: 16,
           vertical: _lerp(14.0, 18.0, 1 - t),
         ),
+      ),
+    );
+  }
+
+  /// 聚焦态显示的收藏与最近查询词条, 展开后随动画淡出。
+  Widget _buildQueryChips(double t) {
+    final opacity = (1 - t).clamp(0.0, 1.0);
+    if (opacity <= 0.001) return const SizedBox.shrink();
+
+    return AnimatedBuilder(
+      animation: _queryStore,
+      builder: (context, _) {
+        final favorites = _queryStore.favorites;
+        final history = _queryStore.history;
+        if (favorites.isEmpty && history.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return Opacity(
+          opacity: opacity,
+          child: IgnorePointer(
+            ignoring: opacity < 0.5,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 14),
+                if (favorites.isNotEmpty)
+                  _buildChipSection(
+                    icon: Icons.star_rounded,
+                    label: AppStrings.of(context).favoritesLabel,
+                    items: favorites,
+                    favorite: true,
+                  ),
+                if (favorites.isNotEmpty && history.isNotEmpty)
+                  const SizedBox(height: 12),
+                if (history.isNotEmpty)
+                  _buildChipSection(
+                    icon: Icons.history_rounded,
+                    label: AppStrings.of(context).historyLabel,
+                    items: history,
+                    favorite: false,
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// 一组查询词条: 小标签行 + 横向滑动的 chip。
+  Widget _buildChipSection({
+    required IconData icon,
+    required String label,
+    required List<String> items,
+    required bool favorite,
+  }) {
+    final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 13, color: colors.textSecondary),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 11,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const Spacer(),
+              // 只有历史提供清空; 收藏需逐条长按移除, 避免误操作。
+              if (!favorite)
+                GestureDetector(
+                  onTap: _queryStore.clearHistory,
+                  child: Text(
+                    s.clearHistory,
+                    style: TextStyle(
+                        color: colors.textSecondary, fontSize: 11),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            clipBehavior: Clip.none,
+            child: Row(
+              children: [
+                for (var i = 0; i < items.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 8),
+                  _QueryChip(
+                    text: items[i],
+                    favorite: favorite,
+                    onTap: () => _useQuery(items[i]),
+                    onLongPress: () {
+                      if (favorite) {
+                        _queryStore.toggleFavorite(items[i]);
+                      } else {
+                        _queryStore.removeHistory(items[i]);
+                      }
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -759,6 +949,65 @@ class _FloatingButton extends StatelessWidget {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 空态下的一条查询记录 / 收藏词条。
+class _QueryChip extends StatelessWidget {
+  final String text;
+  final bool favorite;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+
+  const _QueryChip({
+    required this.text,
+    required this.favorite,
+    required this.onTap,
+    required this.onLongPress,
+  });
+
+  /// chip 上最多显示的字符数 (按 rune 计), 超出省略。
+  static const _maxDisplay = 12;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.of(context);
+    final runes = text.runes.toList();
+    final display = runes.length > _maxDisplay
+        ? '${String.fromCharCodes(runes.take(_maxDisplay))}…'
+        : text;
+
+    return InkWell(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: favorite
+                ? AppTheme.kanjiHighlight.withValues(alpha: 0.4)
+                : colors.border,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (favorite) ...[
+              Icon(Icons.star_rounded,
+                  size: 13, color: AppTheme.kanjiHighlight),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              display,
+              style: TextStyle(color: colors.textPrimary, fontSize: 13),
+            ),
+          ],
         ),
       ),
     );

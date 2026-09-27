@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/kanji_filter.dart';
 import '../core/kanji_reading_dict.dart';
+import '../core/query_store.dart';
 import '../core/strings.dart';
 import '../theme.dart';
 import 'single_kanji_view.dart';
@@ -24,6 +25,25 @@ class _FilterResultPageState extends State<FilterResultPage> {
   late final List<KanjiReading> _results = widget.filter.apply(
     kanjiReadingDict.values,
   );
+
+  /// 设置了频率区间时, 「满足其他条件但没有频率排名」而被排除的字数。
+  ///
+  /// 频率筛选会把这类字一刀切掉 (见 [kNoFrequencyRank]); 界面上提示一句,
+  /// 避免用户误以为「频率 1~2000」的结果就是全集。
+  late final int _excludedNoRank = _countExcludedNoRank();
+
+  int _countExcludedNoRank() {
+    if (widget.filter.frequencyMin == null &&
+        widget.filter.frequencyMax == null) {
+      return 0;
+    }
+    final withoutFrequency = widget.filter.copyWith(clearFrequency: true);
+    return kanjiReadingDict.values
+        .where((r) =>
+            r.frequencyRank >= kNoFrequencyRank &&
+            withoutFrequency.matches(r))
+        .length;
+  }
 
   @override
   void dispose() {
@@ -63,27 +83,47 @@ class _FilterResultPageState extends State<FilterResultPage> {
       ),
       body: _results.isEmpty
           ? _buildEmpty()
-          : Scrollbar(
-              controller: _scrollController,
-              thumbVisibility: true,
-              thickness: 6,
-              radius: const Radius.circular(3),
-              child: GridView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.fromLTRB(16, 8, 24, 32),
-                gridDelegate:
-                    const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 96,
-                  mainAxisSpacing: 8,
-                  crossAxisSpacing: 8,
-                  childAspectRatio: 1,
+          : Column(
+              children: [
+                if (_excludedNoRank > 0)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        s.noRankExcluded(_excludedNoRank),
+                        style: TextStyle(
+                          color: colors.textSecondary,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ),
+                Expanded(
+                  child: Scrollbar(
+                    controller: _scrollController,
+                    thumbVisibility: true,
+                    thickness: 6,
+                    radius: const Radius.circular(3),
+                    child: GridView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.fromLTRB(16, 8, 24, 32),
+                      gridDelegate:
+                          const SliverGridDelegateWithMaxCrossAxisExtent(
+                        maxCrossAxisExtent: 96,
+                        mainAxisSpacing: 8,
+                        crossAxisSpacing: 8,
+                        childAspectRatio: 1,
+                      ),
+                      itemCount: _results.length,
+                      itemBuilder: (context, i) => _KanjiCell(
+                        reading: _results[i],
+                        onTap: () => _openDetail(_results[i]),
+                      ),
+                    ),
+                  ),
                 ),
-                itemCount: _results.length,
-                itemBuilder: (context, i) => _KanjiCell(
-                  reading: _results[i],
-                  onTap: () => _openDetail(_results[i]),
-                ),
-              ),
+              ],
             ),
     );
   }
@@ -178,6 +218,7 @@ class _KanjiDetailPage extends StatefulWidget {
 
 class _KanjiDetailPageState extends State<_KanjiDetailPage> {
   final _scrollController = ScrollController();
+  final _queryStore = QueryStore.instance;
 
   @override
   void dispose() {
@@ -185,10 +226,45 @@ class _KanjiDetailPageState extends State<_KanjiDetailPage> {
     super.dispose();
   }
 
+  /// 收藏 / 取消收藏该汉字 (以单字查询的形式存入收藏)。
+  void _toggleFavorite() {
+    final kanji = widget.reading.kanji;
+    final added = _queryStore.toggleFavorite(kanji);
+    final s = AppStrings.of(context);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(added ? s.favoriteAdded(kanji) : s.favoriteRemoved(kanji)),
+          duration: const Duration(milliseconds: 900),
+        ),
+      );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.reading.kanji)),
+      appBar: AppBar(
+        title: Text(widget.reading.kanji),
+        actions: [
+          AnimatedBuilder(
+            animation: _queryStore,
+            builder: (context, _) {
+              final favorite = _queryStore.isFavorite(widget.reading.kanji);
+              return IconButton(
+                tooltip: AppStrings.of(context).favoritesLabel,
+                onPressed: _toggleFavorite,
+                icon: Icon(
+                  favorite
+                      ? Icons.star_rounded
+                      : Icons.star_border_rounded,
+                  color: favorite ? AppTheme.kanjiHighlight : null,
+                ),
+              );
+            },
+          ),
+        ],
+      ),
       body: Scrollbar(
         controller: _scrollController,
         thumbVisibility: true,

@@ -353,11 +353,17 @@ class _RangeFields extends StatelessWidget {
             ),
             _field(context, maxController, s.max),
             const SizedBox(width: 10),
-            Text(
-              s.blankMeansAny,
-              style: TextStyle(
-                color: colors.textSecondary.withValues(alpha: 0.7),
-                fontSize: 10,
+            // 提示文字不参与定宽: 面板较窄的设备上会挤出 2px 溢出,
+            // 因此让它弹性收缩, 放不下时省略。
+            Flexible(
+              child: Text(
+                s.blankMeansAny,
+                style: TextStyle(
+                  color: colors.textSecondary.withValues(alpha: 0.7),
+                  fontSize: 10,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],

@@ -39,6 +39,8 @@ class SettingsController extends ChangeNotifier {
   static const _kThemeMode = 'settings.theme_mode';
   static const _kAutoRotate = 'settings.auto_rotate';
   static const _kLanguage = 'settings.language';
+  static const _kShowRomaji = 'settings.show_romaji';
+  static const _kViewMode = 'settings.view_mode';
 
   SettingsController._();
 
@@ -54,6 +56,13 @@ class SettingsController extends ChangeNotifier {
   /// 界面语言。默认中文, 用户可在设置中切换。
   AppLanguage _language = AppLanguage.zh;
 
+  /// 结果区是否显示罗马音。
+  bool _showRomaji = true;
+
+  /// 结果视图, 取值为主界面 ViewMode 枚举的 name ('alignment' / 'furigana')。
+  /// 用字符串而非直接依赖 UI 枚举, 保持 core 层不引用界面代码。
+  String _viewModeName = 'alignment';
+
   AppThemeMode get themeMode => _themeMode;
 
   /// 是否跟随设备重力方向自动旋转。
@@ -61,6 +70,12 @@ class SettingsController extends ChangeNotifier {
 
   /// 当前界面语言。
   AppLanguage get language => _language;
+
+  /// 结果区是否显示罗马音。
+  bool get showRomaji => _showRomaji;
+
+  /// 结果视图的持久化名称 ('alignment' / 'furigana')。
+  String get viewModeName => _viewModeName;
 
   /// 当前语言对应的全部文案。
   AppStrings get strings => AppStrings.forLanguage(_language);
@@ -74,6 +89,8 @@ class SettingsController extends ChangeNotifier {
     _themeMode = AppThemeMode.fromName(_prefs!.getString(_kThemeMode));
     _autoRotate = _prefs!.getBool(_kAutoRotate) ?? false;
     _language = AppLanguage.fromName(_prefs!.getString(_kLanguage));
+    _showRomaji = _prefs!.getBool(_kShowRomaji) ?? true;
+    _viewModeName = _prefs!.getString(_kViewMode) ?? 'alignment';
     notifyListeners();
   }
 
@@ -96,5 +113,19 @@ class SettingsController extends ChangeNotifier {
     _language = language;
     notifyListeners();
     await _prefs?.setString(_kLanguage, language.name);
+  }
+
+  Future<void> setShowRomaji(bool value) async {
+    if (_showRomaji == value) return;
+    _showRomaji = value;
+    notifyListeners();
+    await _prefs?.setBool(_kShowRomaji, value);
+  }
+
+  Future<void> setViewModeName(String name) async {
+    if (_viewModeName == name) return;
+    _viewModeName = name;
+    notifyListeners();
+    await _prefs?.setString(_kViewMode, name);
   }
 }

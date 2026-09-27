@@ -79,6 +79,21 @@ sealed class AppStrings {
   String dictionaryInitFailed(Object error);
   String analysisFailed(Object error);
 
+  /// 空态下方的「收藏」词条区标题。
+  String get favoritesLabel;
+
+  /// 空态下方的「最近查询」词条区标题。
+  String get historyLabel;
+
+  /// 清空历史按钮。
+  String get clearHistory;
+
+  /// 收藏成功提示。
+  String favoriteAdded(String query);
+
+  /// 取消收藏提示。
+  String favoriteRemoved(String query);
+
   // ----------------------------------------------------------- 对照表 / 注音
 
   String get columnKanji;
@@ -116,6 +131,12 @@ sealed class AppStrings {
   String collapseHidden(int hidden);
   String get readingsNotFound;
 
+  /// 常见词汇区标题。
+  String get commonWordsHeading;
+
+  /// 常见词汇区徽标 (词数)。
+  String commonWordsBadge(int count);
+
   // --------------------------------------------------------------- 筛选
 
   String get filterTitle;
@@ -152,6 +173,9 @@ sealed class AppStrings {
   String get noResultsTitle;
   String get noResultsHint;
   String strokesShort(int strokes);
+
+  /// 设置了频率区间时, 提示还有多少无频率排名的汉字被排除在外。
+  String noRankExcluded(int count);
 
   // --------------------------------------------------------------- 设置
 
@@ -251,6 +275,21 @@ class ZhStrings extends AppStrings {
   @override
   String analysisFailed(Object error) => '解析失败: $error';
 
+  @override
+  String get favoritesLabel => '收藏';
+
+  @override
+  String get historyLabel => '最近查询';
+
+  @override
+  String get clearHistory => '清空';
+
+  @override
+  String favoriteAdded(String query) => '已收藏「$query」';
+
+  @override
+  String favoriteRemoved(String query) => '已取消收藏「$query」';
+
   // ----------------------------------------------------------- 对照表 / 注音
 
   @override
@@ -326,6 +365,12 @@ class ZhStrings extends AppStrings {
 
   @override
   String get readingsNotFound => '字典中未收录该字的音读 / 训读';
+
+  @override
+  String get commonWordsHeading => '常见词汇';
+
+  @override
+  String commonWordsBadge(int count) => '$count 词';
 
   // --------------------------------------------------------------- 筛选
 
@@ -428,6 +473,9 @@ class ZhStrings extends AppStrings {
   @override
   String strokesShort(int strokes) => '$strokes画';
 
+  @override
+  String noRankExcluded(int count) => '另有 $count 个无频率排名的汉字未计入';
+
   // --------------------------------------------------------------- 设置
 
   @override
@@ -500,7 +548,7 @@ class ZhStrings extends AppStrings {
   String get licenseKanjiData => '音读 / 训读 / 释义 / 笔画 / 学年数据';
 
   @override
-  String get licenseAnalyzer => '分词与读音分析';
+  String get licenseAnalyzer => '分词、读音分析与常见词表';
 
   @override
   String get creditsSection => '致谢';
@@ -512,7 +560,7 @@ class ZhStrings extends AppStrings {
   String get creditKanjiData => '汉字音读、训读与释义数据';
 
   @override
-  String get creditTokenizerDict => '日语分词词典';
+  String get creditTokenizerDict => '日语分词词典与常见词数据';
 
   @override
   String get creditFramework => '跨平台应用框架';
@@ -584,6 +632,21 @@ class EnStrings extends AppStrings {
 
   @override
   String analysisFailed(Object error) => 'Analysis failed: $error';
+
+  @override
+  String get favoritesLabel => 'Favorites';
+
+  @override
+  String get historyLabel => 'Recent';
+
+  @override
+  String get clearHistory => 'Clear';
+
+  @override
+  String favoriteAdded(String query) => 'Added "$query" to favorites';
+
+  @override
+  String favoriteRemoved(String query) => 'Removed "$query" from favorites';
 
   // ----------------------------------------------------------- 对照表 / 注音
 
@@ -683,6 +746,12 @@ class EnStrings extends AppStrings {
   @override
   String get readingsNotFound =>
       'This character has no on\'yomi or kun\'yomi in the dictionary';
+
+  @override
+  String get commonWordsHeading => 'Common words';
+
+  @override
+  String commonWordsBadge(int count) => '$count words';
 
   // --------------------------------------------------------------- 筛选
 
@@ -786,6 +855,10 @@ class EnStrings extends AppStrings {
   String strokesShort(int strokes) =>
       strokes == 1 ? '1 stroke' : '$strokes strokes';
 
+  @override
+  String noRankExcluded(int count) =>
+      '$count more kanji without a frequency rank excluded';
+
   // --------------------------------------------------------------- 设置
 
   @override
@@ -859,7 +932,8 @@ class EnStrings extends AppStrings {
       "On'yomi / kun'yomi / meanings / strokes / grade data";
 
   @override
-  String get licenseAnalyzer => 'Tokenization and reading analysis';
+  String get licenseAnalyzer =>
+      'Tokenization, reading analysis and common-word data';
 
   @override
   String get creditsSection => 'Credits';
@@ -871,7 +945,8 @@ class EnStrings extends AppStrings {
   String get creditKanjiData => "Kanji on'yomi, kun'yomi and meaning data";
 
   @override
-  String get creditTokenizerDict => 'Japanese tokenization dictionary';
+  String get creditTokenizerDict =>
+      'Japanese tokenization dictionary and common-word data';
 
   @override
   String get creditFramework => 'Cross-platform app framework';

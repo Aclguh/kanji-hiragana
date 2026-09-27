@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'core/japanese_analyzer.dart';
+import 'core/query_store.dart';
 import 'core/settings.dart';
 import 'core/strings.dart';
 import 'home_page.dart';
@@ -12,8 +13,9 @@ import 'theme.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 读取本地设置 (主题模式 / 旋转开关), 需在首帧前完成以免闪烁。
+  // 读取本地设置 (主题模式 / 旋转开关 / 语言 / 视图状态), 需在首帧前完成以免闪烁。
   await SettingsController.instance.load();
+  await QueryStore.instance.load();
 
   _applySystemUi(SettingsController.instance);
 

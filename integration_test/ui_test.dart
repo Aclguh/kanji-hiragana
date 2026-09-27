@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kanji_hiragana/home_page.dart';
 import 'package:kanji_hiragana/core/japanese_analyzer.dart';
+import 'package:kanji_hiragana/core/query_store.dart';
 import 'package:kanji_hiragana/core/strings.dart';
 import 'package:kanji_hiragana/theme.dart';
 import 'package:kanji_hiragana/widgets/about_page.dart';
@@ -13,6 +14,7 @@ import 'package:kanji_hiragana/widgets/furigana_view.dart';
 import 'package:kanji_hiragana/widgets/settings_drawer.dart';
 import 'package:kanji_hiragana/widgets/single_kanji_view.dart';
 import 'package:kanji_hiragana/widgets/vector_icon.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// 在设备 / 模拟器上驱动的界面测试。
 ///
@@ -22,10 +24,26 @@ import 'package:kanji_hiragana/widgets/vector_icon.dart';
 /// 3. 单个汉字: 展示音读 / 训读, 且**不显示**对照表与注音组件。
 /// 4. 右下角设置抽屉 / 左下角筛选抽屉, 以及关于页与全屏筛选页。
 /// 5. 两个悬浮按钮仅在主界面(空态)出现, 输入后消失。
+/// 6. 查询历史与收藏词条、收藏星标、单字详解的常见词汇区。
 void main() {
+  /// 用 mock preferences 复位查询历史与收藏。
+  ///
+  /// QueryStore 是单例, 状态会跨用例残留, 每个用例前都要复位。
+  Future<void> resetQueryStore() async {
+    SharedPreferences.setMockInitialValues({});
+    await QueryStore.instance.load();
+    QueryStore.instance.clearHistory();
+    for (final f in QueryStore.instance.favorites.toList()) {
+      QueryStore.instance.toggleFavorite(f);
+    }
+  }
+
   /// 悬停式搭建主界面 (等待词典就绪, 避免停在 loading)。
+  ///
+  /// 同时复位查询历史 / 收藏, 保证用例互不影响。
   Future<void> pumpHome(WidgetTester tester) async {
     await JapaneseAnalyzer.instance.warmUp();
+    await resetQueryStore();
     await tester.pumpWidget(
       MaterialApp(theme: AppTheme.dark(), home: const HomePage()),
     );
@@ -115,8 +133,12 @@ void main() {
     expect(find.text('对照表'), findsNothing);
 
     // 已无输入时再按返回: 交由系统处理 (此处 PopScope 应允许 pop)。
+    // 用谓词定位应用自己的 PopScope: 新版 Flutter 框架内部也持有
+    // PopScope, 按 byType 会匹配到多个。
     final scope = tester.widget<PopScope<Object?>>(
-      find.byType(PopScope<Object?>),
+      find.byWidgetPredicate(
+        (w) => w is PopScope<Object?> && w.child is Scaffold,
+      ),
     );
     expect(scope.canPop, isTrue);
   });
@@ -203,6 +225,85 @@ void main() {
     expect(find.text('对照表'), findsNothing);
   });
 
+  testWidgets('查询后清空, 空态出现历史词条且点按可回查', (tester) async {
+    await pumpHome(tester);
+
+    await tester.enterText(find.byType(TextField), '日本の文化');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), '');
+    await tester.pumpAndSettle();
+
+    // 空态出现「最近查询」区与刚查过的词条。
+    expect(find.text('最近查询'), findsOneWidget);
+    expect(find.text('日本の文化'), findsOneWidget);
+
+    // 点按词条 → 回填并重新展开结果。
+    await tester.tap(find.text('日本の文化'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlignmentTable), findsOneWidget);
+    expect(find.text('对照表'), findsOneWidget);
+  });
+
+  testWidgets('连续输入折叠为一条历史', (tester) async {
+    await pumpHome(tester);
+
+    // 打字过程中的中间态不应各自留痕。
+    await tester.enterText(find.byType(TextField), '私');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '私は学生');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), '');
+    await tester.pumpAndSettle();
+
+    expect(find.text('私は学生'), findsOneWidget);
+    expect(find.text('私'), findsNothing);
+  });
+
+  testWidgets('星标收藏查询, 空态出现收藏词条', (tester) async {
+    await pumpHome(tester);
+
+    await tester.enterText(find.byType(TextField), '日');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+
+    // 点 AppBar 星标收藏: 空心 → 实心。
+    await tester.tap(find.byIcon(Icons.star_border_rounded));
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.star_rounded), findsWidgets);
+
+    // 清空后空态出现「收藏」区。
+    await tester.enterText(find.byType(TextField), '');
+    await tester.pumpAndSettle();
+    expect(find.text('收藏'), findsOneWidget);
+    // 「日」同时出现在收藏区与历史区 (收藏不把条目从历史中移走)。
+    expect(find.text('日'), findsNWidgets(2));
+
+    // 点收藏词条恢复查询 → 单字详解。
+    await tester.tap(find.text('日').first);
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+    expect(find.byType(SingleKanjiView), findsOneWidget);
+  });
+
+  testWidgets('单字详解出现常见词汇区', (tester) async {
+    await pumpHome(tester);
+
+    await tester.enterText(find.byType(TextField), '日');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+
+    expect(find.text('常见词汇'), findsOneWidget);
+    // 词面 + 平假名读音各出现一次。
+    expect(find.text('日本'), findsOneWidget);
+    expect(find.text('にっぽん'), findsOneWidget);
+  });
+
   testWidgets('右下角按钮展开设置抽屉, 点遮罩可收起', (tester) async {
     await pumpHome(tester);
 
@@ -249,14 +350,24 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(FilterDrawerContent), findsOneWidget);
 
-    // 五个分组标题各出现一次(不再是「标题 + 不限胶囊」两处)。
-    for (final label in ['排序', '笔画数', '使用频率', '读音构成', '其他']) {
-      expect(find.text(label), findsOneWidget, reason: '缺少分组: $label');
+    // 抽屉内的文本查找统一限定在 FilterDrawerContent 内:
+    // 另一个抽屉面板同样挂载在树上, 会出现同名分组标题 (如「其他」)。
+    Finder drawerText(String label) => find.descendant(
+          of: find.byType(FilterDrawerContent),
+          matching: find.text(label),
+        );
+
+    // 分组标题各出现一次; 「使用频率」与「笔画数」因排序 chip 同名
+    // (排序 chips 全量渲染, 默认选中「使用频率」) 各出现两次。
+    for (final label in ['排序', '读音构成', '其他']) {
+      expect(drawerText(label), findsOneWidget, reason: '缺少分组: $label');
     }
+    expect(drawerText('使用频率'), findsNWidgets(2));
+    expect(drawerText('笔画数'), findsNWidgets(2));
 
     // 「其他」应排在「读音构成」之后。
-    final readingDy = tester.getTopLeft(find.text('读音构成')).dy;
-    final otherDy = tester.getTopLeft(find.text('其他')).dy;
+    final readingDy = tester.getTopLeft(drawerText('读音构成')).dy;
+    final otherDy = tester.getTopLeft(drawerText('其他')).dy;
     expect(otherDy > readingDy, isTrue,
         reason: '「其他」应排在「读音构成」之后');
 
@@ -264,7 +375,7 @@ void main() {
     expect(rangeFields(), findsNWidgets(4));
 
     // 「人名」对应 grade 9 与 10 两档, 应合并为一个选项而非重复出现。
-    expect(find.text('人名'), findsOneWidget);
+    expect(drawerText('人名'), findsOneWidget);
 
     // 留空即不限, 不应出现倒置提示。
     expect(find.text('下限大于上限, 将没有结果'), findsNothing);
@@ -353,24 +464,33 @@ void main() {
     await tester.tap(find.byTooltip('设置'));
     await tester.pumpAndSettle();
 
+    // 设置抽屉里的文本查找限定在面板内: 「语言」的分组标签与选择器标题
+    // 各出现一次, 「其他」也同时存在于筛选抽屉面板中。
+    final settingsScope = find.byType(SettingsDrawerContent);
+    Finder settingsText(String label) => find.descendant(
+          of: settingsScope,
+          matching: find.text(label),
+        );
+
     // 语言分组排在「其他」之前。
-    final langDy = tester.getTopLeft(find.text('语言')).dy;
-    final otherDy = tester.getTopLeft(find.text('其他')).dy;
+    final langDy = tester.getTopLeft(settingsText('语言').first).dy;
+    final otherDy = tester.getTopLeft(settingsText('其他')).dy;
     expect(langDy < otherDy, isTrue, reason: '语言应在其他之上');
 
     // 收起态只显示当前语言, 不显示另一个选项。
     expect(find.text('中文'), findsOneWidget);
     expect(find.text('English'), findsNothing);
 
-    // 点击后展开两个选项。
-    await tester.tap(find.text('语言'));
+    // 点击后展开两个选项: 当前语言「中文」同时出现在标题与选中项, 共两处。
+    await tester.tap(settingsText('语言').at(1));
     await tester.pumpAndSettle();
-    expect(find.text('中文'), findsOneWidget);
+    expect(find.text('中文'), findsNWidgets(2));
     expect(find.text('English'), findsOneWidget);
   });
 
   testWidgets('英文界面: 文案切换为英文, 漢字仮名 四字保持不变', (tester) async {
     await JapaneseAnalyzer.instance.warmUp();
+    await resetQueryStore();
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.dark(),
@@ -392,8 +512,9 @@ void main() {
     expect(find.byTooltip('Filter kanji'), findsOneWidget);
     expect(find.byTooltip('Settings'), findsOneWidget);
 
-    // 输入后工具栏与结果也是英文。
-    await tester.enterText(find.byType(TextField), '日本の文化');
+    // 输入后工具栏与结果也是英文。句子取 東京に行きます:
+    // 恰好覆盖 名詞/動詞/助動詞 三种词性各一次。
+    await tester.enterText(find.byType(TextField), '東京に行きます');
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pumpAndSettle();
     expect(find.text('Table'), findsOneWidget);
@@ -443,6 +564,7 @@ void main() {
 
   testWidgets('英文界面: 设置与筛选抽屉全部为英文', (tester) async {
     await JapaneseAnalyzer.instance.warmUp();
+    await resetQueryStore();
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.dark(),
@@ -463,7 +585,8 @@ void main() {
     expect(find.text('System'), findsOneWidget);
     expect(find.text('Screen'), findsOneWidget);
     expect(find.text('Auto-rotate'), findsOneWidget);
-    expect(find.text('Language'), findsOneWidget);
+    // 「Language」的分组标签与选择器标题各一次。
+    expect(find.text('Language'), findsNWidgets(2));
     expect(find.text('About'), findsOneWidget);
     // 中文残留
     expect(find.text('主题'), findsNothing);
@@ -472,16 +595,32 @@ void main() {
     await tester.tap(find.byTooltip('Close'));
     await tester.pumpAndSettle();
 
-    // 筛选抽屉
+    // 筛选抽屉。断言限定在面板内: 「Other」同时存在于设置抽屉的分组里。
     await tester.tap(find.byTooltip('Filter kanji'));
     await tester.pumpAndSettle();
-    expect(find.text('Sort'), findsOneWidget);
-    expect(find.text('Stroke count'), findsOneWidget);
-    expect(find.text('Frequency'), findsWidgets);
-    expect(find.text('Readings'), findsOneWidget);
-    expect(find.text('Other'), findsOneWidget);
-    expect(find.text('Reset'), findsOneWidget);
-    expect(find.text('View results'), findsOneWidget);
+    final filterScope = find.byType(FilterDrawerContent);
+    expect(
+        find.descendant(of: filterScope, matching: find.text('Sort')),
+        findsOneWidget);
+    expect(
+        find.descendant(of: filterScope, matching: find.text('Stroke count')),
+        findsOneWidget);
+    expect(
+        find.descendant(of: filterScope, matching: find.text('Frequency')),
+        findsWidgets);
+    expect(
+        find.descendant(of: filterScope, matching: find.text('Readings')),
+        // 「Readings」同时是 sectionReadings 标题与「读音数量」排序 chip。
+        findsNWidgets(2));
+    expect(
+        find.descendant(of: filterScope, matching: find.text('Other')),
+        findsOneWidget);
+    expect(
+        find.descendant(of: filterScope, matching: find.text('Reset')),
+        findsOneWidget);
+    expect(
+        find.descendant(of: filterScope, matching: find.text('View results')),
+        findsOneWidget);
     expect(find.text('Any'), findsWidgets);
     expect(find.text('排序'), findsNothing);
     expect(find.text('查看结果'), findsNothing);
@@ -496,7 +635,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(AboutPage), findsOneWidget);
-    expect(find.text('1.0.2'), findsWidgets);
+    expect(find.text('1.0.3'), findsWidgets);
     expect(
       find.text('https://github.com/Aclguh/kanji-hiragana'),
       findsOneWidget,

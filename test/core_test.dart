@@ -1,6 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kanji_hiragana/core/japanese_analyzer.dart';
 import 'package:kanji_hiragana/core/kana_romaji.dart';
+import 'package:kanji_hiragana/core/kanji_words_dict.dart';
+import 'package:kanji_hiragana/core/query_store.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   group('假名 ↔ 罗马音', () {
@@ -99,6 +102,82 @@ void main() {
     test('空输入返回空结果', () async {
       final r = await analyzer.analyze('   ');
       expect(r.isEmpty, isTrue);
+    });
+  });
+
+  group('查询历史与收藏 (QueryStore)', () {
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      await QueryStore.instance.load();
+      QueryStore.instance.clearHistory();
+      // 逐条移除收藏, 复位单例状态。
+      for (final f in QueryStore.instance.favorites.toList()) {
+        QueryStore.instance.toggleFavorite(f);
+      }
+    });
+
+    test('记录查询并去重置顶', () {
+      final store = QueryStore.instance;
+      store.recordQuery('日本');
+      store.recordQuery('文化');
+      store.recordQuery('日本');
+      expect(store.history, ['日本', '文化']);
+    });
+
+    test('延续输入折叠为一条', () {
+      final store = QueryStore.instance;
+      store.recordQuery('私', previous: '');
+      store.recordQuery('私は', previous: '私');
+      store.recordQuery('私は学生', previous: '私は');
+      expect(store.history, ['私は学生']);
+    });
+
+    test('清空后的新输入不再并入上一条', () {
+      final store = QueryStore.instance;
+      store.recordQuery('日');
+      store.clearHistory();
+      store.recordQuery('日本', previous: '日');
+      expect(store.history, ['日本']);
+    });
+
+    test('历史上限 20 条, 旧的先淘汰', () {
+      final store = QueryStore.instance;
+      for (var i = 0; i < 25; i++) {
+        store.recordQuery('查询$i');
+      }
+      expect(store.history.length, QueryStore.maxHistory);
+      expect(store.history.first, '查询24');
+      expect(store.history.contains('查询0'), isFalse);
+    });
+
+    test('收藏切换与往返持久化', () async {
+      final store = QueryStore.instance;
+      expect(store.isFavorite('東京'), isFalse);
+      expect(store.toggleFavorite('東京'), isTrue);
+      expect(store.isFavorite('東京'), isTrue);
+      expect(store.toggleFavorite('東京'), isFalse);
+      expect(store.isFavorite('東京'), isFalse);
+
+      // 重新 load 后仍能读到已收藏的值 (写入 mock preferences)。
+      store.toggleFavorite('京都');
+      SharedPreferences.setMockInitialValues({
+        'query.favorites': ['京都'],
+      });
+      await store.load();
+      expect(store.isFavorite('京都'), isTrue);
+    });
+
+    test('常见词表包含基础数据', () {
+      final wordsOfJapan = kanjiWordsDict['日']!
+          .map((w) => w.word)
+          .toList();
+      expect(wordsOfJapan, contains('日本'));
+      final school = kanjiWordsDict['学']!
+          .map((w) => w.word)
+          .toList();
+      expect(school, contains('学校'));
+      // 读音为规范平假名。
+      expect(kanjiWordsDict['日']!.first.hiragana, isNot(contains('ッ')));
     });
   });
 }
