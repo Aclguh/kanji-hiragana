@@ -63,7 +63,7 @@ class AlignmentTable extends StatelessWidget {
     final colors = AppTheme.of(context);
     final s = AppStrings.of(context);
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(12),
@@ -73,19 +73,36 @@ class AlignmentTable extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _summaryLine(
-              context, Icons.translate_rounded, s.fullHiragana, result.fullHiragana),
-          const SizedBox(height: 10),
+            context,
+            Icons.translate_rounded,
+            s.fullHiragana,
+            result.fullHiragana,
+            s.copiedFullHiragana,
+          ),
+          const SizedBox(height: 6),
           _summaryLine(
-              context, Icons.abc_rounded, s.fullRomaji, result.fullRomaji),
+            context,
+            Icons.abc_rounded,
+            s.fullRomaji,
+            result.fullRomaji,
+            s.copiedFullRomaji,
+          ),
         ],
       ),
     );
   }
 
-  Widget _summaryLine(BuildContext context, IconData icon, String label, String value) {
+  Widget _summaryLine(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value,
+    String copyTip,
+  ) {
     final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Icon(icon, size: 16, color: AppTheme.accent),
         const SizedBox(width: 8),
@@ -103,6 +120,22 @@ class AlignmentTable extends StatelessWidget {
               height: 1.5,
             ),
           ),
+        ),
+        IconButton(
+          tooltip: s.copy,
+          iconSize: 18,
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: value));
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                SnackBar(
+                  content: Text(copyTip),
+                  duration: const Duration(milliseconds: 900),
+                ),
+              );
+          },
+          icon: Icon(Icons.copy_rounded, color: colors.textSecondary),
         ),
       ],
     );

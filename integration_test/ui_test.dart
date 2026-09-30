@@ -210,6 +210,29 @@ void main() {
     expect(find.byType(SingleKanjiView), findsOneWidget);
   });
 
+  testWidgets('对照表全文平假名与罗马音可复制', (tester) async {
+    await pumpHome(tester);
+
+    await tester.enterText(find.byType(TextField), '日本');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AlignmentTable), findsOneWidget);
+    expect(find.text('全文平假名'), findsOneWidget);
+    expect(find.text('全文罗马音'), findsOneWidget);
+
+    // 对照表底部摘要有两个复制按钮
+    final copyButtons = find.descendant(
+      of: find.byType(AlignmentTable),
+      matching: find.byIcon(Icons.copy_rounded),
+    );
+    expect(copyButtons, findsNWidgets(2));
+
+    await tester.tap(copyButtons.first);
+    await tester.pumpAndSettle();
+    expect(find.text('已复制全文平假名'), findsOneWidget);
+  });
+
   testWidgets('清空后回到空态', (tester) async {
     await pumpHome(tester);
 

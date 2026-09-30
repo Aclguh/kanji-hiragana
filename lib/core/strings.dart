@@ -74,6 +74,7 @@ sealed class AppStrings {
   String get labelHiragana;
   String get labelPronunciation;
   String get copiedFullHiragana;
+  String get copiedFullRomaji;
   String get copiedPronunciation;
 
   String dictionaryInitFailed(Object error);
@@ -284,6 +285,9 @@ class ZhStrings extends AppStrings {
 
   @override
   String get copiedFullHiragana => '已复制全文平假名';
+
+  @override
+  String get copiedFullRomaji => '已复制全文罗马音';
 
   @override
   String get copiedPronunciation => '已复制发音';
@@ -670,6 +674,9 @@ class EnStrings extends AppStrings {
 
   @override
   String get copiedFullHiragana => 'Full hiragana copied';
+
+  @override
+  String get copiedFullRomaji => 'Full romaji copied';
 
   @override
   String get copiedPronunciation => 'Pronunciation copied';
