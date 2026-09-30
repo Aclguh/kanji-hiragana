@@ -304,24 +304,31 @@ def dart_escape(text: str) -> str:
 
 
 def render(index: dict, kanji_info: dict) -> str:
-    lines = [HEADER, '/// 一个常见词: 词面与规范平假名读音。', 'class KanjiWord {',
-             '  /// 词面 (词典形), 如「日本」。', '  final String word;', '',
-             '  /// 规范平假名读音, 如「にっぽん」。', '  final String hiragana;', '',
-             '  const KanjiWord({', '    required this.word,', '    required this.hiragana,', '  });',
-             '}', '',
-             f'/// 汉字 -> 常见词列表 (已按常用度排序, 每字至多 {MAX_WORDS_PER_KANJI} 个)。',
-             "/// 查不到的汉字不在表中, 调用方按空列表处理。",
-             'const Map<String, List<KanjiWord>> kanjiWordsDict = {']
+    lines = [
+        HEADER,
+        '/// 一个常见词: 词面与规范平假名读音。',
+        'class KanjiWord {',
+        '  /// 词面 (词典形), 如「日本」。',
+        '  final String word;',
+        '',
+        '  /// 规范平假名读音, 如「にっぽん」。',
+        '  final String hiragana;',
+        '',
+        '  const KanjiWord(this.word, this.hiragana);',
+        '}',
+        '',
+        f'/// 汉字 -> 常见词列表 (已按常用度排序, 每字至多 {MAX_WORDS_PER_KANJI} 个)。',
+        '/// 查不到的汉字不在表中, 调用方按空列表处理。',
+        'const Map<String, List<KanjiWord>> kanjiWordsDict = {',
+    ]
 
-    # 与 kanji_reading_dict.dart 一致: 高频汉字在前。
-    for ch in sorted(index, key=lambda c: (kanji_info[c][1], kanji_info[c][0])):
-        meaning_hint = ''  # 词面本身可读, 不再加中文释义注释。
-        lines.append(f"  '{dart_escape(ch)}': [")
-        for _score, _len, surface, hiragana in index[ch]:
-            lines.append(
-                "    KanjiWord(word: '%s', hiragana: '%s'),"
-                % (dart_escape(surface), dart_escape(hiragana)))
-        lines.append('  ],')
+    # 与 kanji_reading_dict.dart 一致: 高频汉字在前, 频次相同时按字符编码确定稳定顺序。
+    for ch in sorted(index, key=lambda c: (kanji_info[c][1], kanji_info[c][0], c)):
+        words_dart = ', '.join(
+            "KanjiWord('%s', '%s')" % (dart_escape(surface), dart_escape(hiragana))
+            for _score, _len, surface, hiragana in index[ch]
+        )
+        lines.append(f"  '{dart_escape(ch)}': [{words_dart}],")
     lines.append('};')
     return '\n'.join(lines) + '\n'
 

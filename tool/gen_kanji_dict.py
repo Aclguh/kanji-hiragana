@@ -310,19 +310,21 @@ def main():
     for kanji, info in entries:
         zh = zh_meanings(info['meanings'])
         en = en_meanings(info['meanings'])
-        lines.append('  // %s' % ' / '.join(zh))
         lines.append(
-            "  '%s': KanjiReading(" % kanji
+            "  '%s': KanjiReading(kanji: '%s', onyomi: [%s], kunyomi: [%s], "
+            "meanings: [%s], meaningsEn: [%s], grade: %d, strokes: %d, "
+            "frequencyRank: %d)," % (
+                kanji,
+                kanji,
+                dart_str_list(info['on']),
+                dart_str_list(info['kun']),
+                dart_str_list(zh),
+                dart_str_list(en),
+                info['grade'],
+                info['strokes'],
+                info['freq'],
+            )
         )
-        lines.append('    kanji: \'%s\',' % kanji)
-        lines.append('    onyomi: [%s],' % dart_str_list(info['on']))
-        lines.append('    kunyomi: [%s],' % dart_str_list(info['kun']))
-        lines.append('    meanings: [%s],' % dart_str_list(zh))
-        lines.append('    meaningsEn: [%s],' % dart_str_list(en))
-        lines.append('    grade: %d,' % info['grade'])
-        lines.append('    strokes: %d,' % info['strokes'])
-        lines.append('    frequencyRank: %d,' % info['freq'])
-        lines.append('  ),')
 
     lines.append('};')
     lines.append('')
