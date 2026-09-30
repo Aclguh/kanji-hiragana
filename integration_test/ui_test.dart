@@ -551,6 +551,71 @@ void main() {
     }
   });
 
+  testWidgets('筛选抽屉全链路: 笔画筛选 → 结果页 → 点入首字详情 → 收藏 → 返回首页空态验证', (tester) async {
+    await pumpHome(tester);
+
+    await tester.tap(find.byTooltip('筛选汉字'));
+    await tester.pumpAndSettle();
+
+    // 笔画 1 ~ 5
+    await tester.enterText(rangeFields().at(0), '1');
+    await tester.enterText(rangeFields().at(1), '5');
+    await tester.pumpAndSettle();
+
+    // 查看结果
+    await tester.tap(find.text('查看结果'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(FilterResultPage), findsOneWidget);
+    expect(find.byType(GridView), findsOneWidget);
+
+    // 找到首个汉字格并记录字符
+    final cellFinder = find.descendant(
+      of: find.byType(GridView),
+      matching: find.byWidgetPredicate(
+        (w) => w.runtimeType.toString() == '_KanjiCell',
+      ),
+    );
+    expect(cellFinder, findsWidgets);
+
+    final kanjiTextFinder = find.descendant(
+      of: cellFinder.first,
+      matching: find.byType(Text),
+    );
+    final kanji = tester.widget<Text>(kanjiTextFinder.first).data!;
+
+    // 点入首字进入详情页
+    await tester.tap(cellFinder.first);
+    await tester.pumpAndSettle();
+
+    // 详情页验证
+    expect(find.byType(SingleKanjiView), findsOneWidget);
+    final detailStarButton = find.descendant(
+      of: find.byType(AppBar),
+      matching: find.byIcon(Icons.star_border_rounded),
+    );
+    expect(detailStarButton, findsOneWidget);
+
+    // 点按收藏
+    await tester.tap(detailStarButton);
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.star_rounded), findsOneWidget);
+
+    // 返回结果页
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(find.byType(FilterResultPage), findsOneWidget);
+
+    // 返回主页
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(find.byType(FilterResultPage), findsNothing);
+
+    // 首页空态出现「收藏」区并包含刚刚收藏的汉字
+    expect(find.text('收藏'), findsOneWidget);
+    expect(find.text(kanji), findsOneWidget);
+  });
+
   testWidgets('设置抽屉: 旋转屏幕默认关闭', (tester) async {
     await pumpHome(tester);
 
