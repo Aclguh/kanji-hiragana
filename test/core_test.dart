@@ -377,6 +377,30 @@ void main() {
       expect(mTokyo.hasPronunciationShift, isTrue);
       expect(mTokyo.isParticleShift, isFalse);
     });
+
+    test('提取词性细分分类', () {
+      final tokenProper = {
+        'surface_form': '東京',
+        'pos': '名詞',
+        'pos_detail_1': '固有名詞',
+        'reading': 'トウキョウ',
+        'pronunciation': 'トーキョー',
+      };
+      final mProper = Morpheme.fromToken(tokenProper);
+      expect(mProper.partOfSpeech, '名詞');
+      expect(mProper.partOfSpeechDetail, '固有名詞');
+
+      final tokenNoDetail = {
+        'surface_form': 'ます',
+        'pos': '助動詞',
+        'pos_detail_1': '*',
+        'reading': 'マス',
+        'pronunciation': 'マス',
+      };
+      final mNoDetail = Morpheme.fromToken(tokenNoDetail);
+      expect(mNoDetail.partOfSpeech, '助動詞');
+      expect(mNoDetail.partOfSpeechDetail, isEmpty);
+    });
   });
 
   group('应用设置 (SettingsController)', () {

@@ -169,7 +169,7 @@ class _MorphemeRow extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 3),
-                  _posChip(context, m.partOfSpeech),
+                  _posChip(context, m),
                 ],
               ),
             ),
@@ -215,9 +215,14 @@ class _MorphemeRow extends StatelessWidget {
     );
   }
 
-  Widget _posChip(BuildContext context, String pos) {
-    if (pos.isEmpty) return const SizedBox.shrink();
+  Widget _posChip(BuildContext context, Morpheme m) {
+    if (m.partOfSpeech.isEmpty) return const SizedBox.shrink();
     final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
+    final text = m.partOfSpeechDetail.isNotEmpty
+        ? '${s.posLabel(m.partOfSpeech)} · ${s.posDetailLabel(m.partOfSpeechDetail)}'
+        : s.posLabel(m.partOfSpeech);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
       decoration: BoxDecoration(
@@ -225,8 +230,10 @@ class _MorphemeRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
-        AppStrings.of(context).posLabel(pos),
+        text,
         style: TextStyle(color: colors.textSecondary, fontSize: 10),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }

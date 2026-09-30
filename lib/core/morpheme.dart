@@ -17,6 +17,9 @@ class Morpheme {
   /// 词性, 如「名詞」「助詞」。
   final String partOfSpeech;
 
+  /// 词性细分, 如「一般」「固有名詞」「自立」, 无细分时为空字符串。
+  final String partOfSpeechDetail;
+
   /// 读音(片假名), 来自 kuromoji 的 reading, 如「トウキョウ」。
   final String readingKatakana;
 
@@ -38,6 +41,7 @@ class Morpheme {
   const Morpheme({
     required this.surface,
     required this.partOfSpeech,
+    this.partOfSpeechDetail = '',
     required this.readingKatakana,
     required this.pronunciationKatakana,
     required this.hiragana,
@@ -54,6 +58,9 @@ class Morpheme {
     final surface = (token['surface_form'] as String?) ?? '';
     final rawReading = (token['reading'] as String?) ?? '';
     final rawPron = (token['pronunciation'] as String?) ?? '';
+    final rawDetail = (token['pos_detail_1'] as String?) ?? '';
+    final posDetail =
+        (rawDetail.isNotEmpty && rawDetail != '*') ? rawDetail : '';
 
     String pick(String primary, String fallback) {
       final valid = primary.isNotEmpty && primary != '*';
@@ -70,6 +77,7 @@ class Morpheme {
     return Morpheme(
       surface: surface,
       partOfSpeech: (token['pos'] as String?) ?? '',
+      partOfSpeechDetail: posDetail,
       readingKatakana: readRaw,
       pronunciationKatakana: pronRaw,
       hiragana: hiragana,

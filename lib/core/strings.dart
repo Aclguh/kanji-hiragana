@@ -118,6 +118,9 @@ sealed class AppStrings {
   /// 英文界面下转换为英文, 未收录的分类原样保留。
   String posLabel(String pos);
 
+  /// 词性细分标签。
+  String posDetailLabel(String detail);
+
   // ------------------------------------------------------------- 单汉字
 
   String get onyomiHeading;
@@ -334,6 +337,9 @@ class ZhStrings extends AppStrings {
 
   @override
   String posLabel(String pos) => pos;
+
+  @override
+  String posDetailLabel(String detail) => detail;
 
   // ------------------------------------------------------------- 单汉字
 
@@ -732,6 +738,29 @@ class EnStrings extends AppStrings {
         'その他' => 'other',
         // 未收录的分类保留原文, 避免显示成空白。
         _ => pos,
+      };
+
+  @override
+  String posDetailLabel(String detail) => switch (detail) {
+        '一般' => 'general',
+        '固有名詞' => 'proper',
+        '副詞可能' => 'adverbial',
+        'サ変接続' => 'suru-noun',
+        '形容動詞語幹' => 'na-stem',
+        '数' => 'num.',
+        '自立' => 'main',
+        '非自立' => 'aux.',
+        '接続助詞' => 'conj.',
+        '格助詞' => 'case',
+        '係助詞' => 'binding',
+        '副助詞' => 'adverbial',
+        '終助詞' => 'final',
+        '接尾' => 'suffix',
+        '代名詞' => 'pronoun',
+        '地域' => 'place',
+        '人名' => 'person',
+        '組織' => 'org.',
+        _ => detail,
       };
 
   // ------------------------------------------------------------- 单汉字

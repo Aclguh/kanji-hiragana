@@ -606,12 +606,12 @@ void main() {
     expect(find.text('对照表'), findsNothing);
     expect(find.text('罗马音'), findsNothing);
 
-    // 词性标签来自 IPADIC 的日文分类, 英文界面下也要翻译。
-    expect(find.text('noun'), findsOneWidget);
-    expect(find.text('verb'), findsOneWidget);
+    // 词性标签来自 IPADIC 的日文分类, 英文界面下也要翻译 (包含细分分类)。
+    expect(find.text('noun · proper'), findsOneWidget);
+    expect(find.text('verb · main'), findsOneWidget);
     expect(find.text('aux.'), findsOneWidget);
-    expect(find.text('名詞'), findsNothing);
-    expect(find.text('動詞'), findsNothing);
+    expect(find.textContaining('名詞'), findsNothing);
+    expect(find.textContaining('動詞'), findsNothing);
   });
 
   testWidgets('英文界面: 单汉字释义取用英文原文', (tester) async {
