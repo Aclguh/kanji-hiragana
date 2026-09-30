@@ -347,6 +347,25 @@ void main() {
       final sortedReadings = fReadingCount.apply([k2, k1, k3]);
       expect(sortedReadings.first.kanji, '一'); // 2 个读音优先于 1 个读音
     });
+
+    test('全量预排列表与无参 apply()', () {
+      for (final s in KanjiSort.values) {
+        final list = KanjiFilter.allSorted(s);
+        expect(list.length, kanjiReadingDict.length);
+        // 验证列表不可变
+        expect(() => list.clear(), throwsUnsupportedError);
+      }
+
+      // 无参调用 apply() 自动使用全量字典
+      const f = KanjiFilter(strokesMin: 3, strokesMax: 4);
+      final withDefault = f.apply();
+      final withExplicit = f.apply(kanjiReadingDict.values);
+      expect(withDefault.length, withExplicit.length);
+      expect(
+        withDefault.map((r) => r.kanji).toList(),
+        withExplicit.map((r) => r.kanji).toList(),
+      );
+    });
   });
 
   group('分词与形态素 (Morpheme)', () {

@@ -139,10 +139,22 @@ class KanjiFilter {
     return true;
   }
 
-  /// 应用筛选与排序。
-  List<KanjiReading> apply(Iterable<KanjiReading> source) {
-    final out = source.where(matches).toList();
-    out.sort(switch (sort) {
+  /// 针对四种排序维度的全量汉字预排只读列表 (懒加载初始化)。
+  ///
+  /// 全量筛选时直接在对应排序列表中执行条件过滤, 避免每次重复排序 2999 字。
+  static final Map<KanjiSort, List<KanjiReading>> _presortedAll = {
+    for (final s in KanjiSort.values)
+      s: List<KanjiReading>.unmodifiable(
+        kanjiReadingDict.values.toList()..sort(comparator(s)),
+      ),
+  };
+
+  /// 获取按指定规则排好序的全量汉字只读列表。
+  static List<KanjiReading> allSorted(KanjiSort sort) => _presortedAll[sort]!;
+
+  /// 对应排序方式的比对器。
+  static int Function(KanjiReading, KanjiReading) comparator(KanjiSort sort) {
+    return switch (sort) {
       KanjiSort.frequency => (a, b) =>
           a.frequencyRank.compareTo(b.frequencyRank),
       KanjiSort.strokes => (a, b) {
@@ -159,7 +171,31 @@ class KanjiFilter {
           final c = cb.compareTo(ca);
           return c != 0 ? c : a.frequencyRank.compareTo(b.frequencyRank);
         },
-    });
+    };
+  }
+
+  static bool _isDictionarySource(Iterable<KanjiReading> source) {
+    if (identical(source, kanjiReadingDict.values)) return true;
+    for (final list in _presortedAll.values) {
+      if (identical(source, list)) return true;
+    }
+    if (source.length == kanjiReadingDict.length) {
+      if (identical(source.first, kanjiReadingDict.values.first)) return true;
+    }
+    return false;
+  }
+
+  /// 应用筛选与排序。
+  ///
+  /// 若未提供 [source] 或传入全量字典 [kanjiReadingDict.values]，
+  /// 会直接在对应预排列表中执行条件过滤，避免每次重复排序。
+  /// 若传入自定义数据源，则对筛选后的子集执行排序。
+  List<KanjiReading> apply([Iterable<KanjiReading>? source]) {
+    if (source == null || _isDictionarySource(source)) {
+      return _presortedAll[sort]!.where(matches).toList();
+    }
+    final out = source.where(matches).toList();
+    out.sort(comparator(sort));
     return out;
   }
 }
