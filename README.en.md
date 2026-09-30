@@ -28,12 +28,13 @@ on'yomi and kun'yomi.
   morphological analysis (kuromoji + IPADIC)
 - **Single-kanji detail**: type one kanji and get its **on'yomi** and **kun'yomi**
   together with romaji, stroke count, school grade, meanings and **common words**
-  containing the kanji
+  containing the kanji; tap any common word to query it directly or long-press to copy
 - **History & favorites**: queries are remembered automatically and can be starred;
-  the empty state lists them as tappable chips (long-press to remove, history can be
-  cleared at once). The star works in the app bar and in the filter detail page
+  the empty state lists them as tappable chips (long-press with haptic feedback to remove,
+  history can be cleared at once). The star works in the app bar and in the filter detail page
 - **Two switchable views**
-  - **Table**: three columns side by side (kanji / hiragana / romaji) with part-of-speech tags
+  - **Table**: three columns side by side (kanji / hiragana / romaji) with primary & subcategory
+    part-of-speech tags, plus one-tap copy buttons for full kana and romaji in the summary footer
   - **Furigana**: textbook-style ruby, reading above the kanji and romaji below
 - **Two-track readings**: standard spelling for annotation, plus the actual pronunciation
   - 東京 is annotated `とうきょう` with a pronunciation note of `とーきょー`
@@ -41,12 +42,12 @@ on'yomi and kun'yomi.
     (highlighted in vermilion — exactly the grammar point worth learning)
 - **Kanji filter**: strokes and frequency both accept an arbitrary range
   (lower ~ upper, leave blank for no bound), plus reading composition and school grade.
-  Sortable, with a full-screen grid you can tap into for details
+  Sortable, with active criteria summary chips on the results page, and tap into any cell for details & favorites
 - **Interface language**: switch between 简体中文 and English (Settings → Language).
   Every UI string *and* the kanji meanings follow the switch. The four characters
   漢字仮名 stay in traditional form as the app's mark
-- **Settings**: theme (light / dark / follow system), auto-rotate switch (off by default),
-  about page
+- **Settings**: theme (light / dark / follow system, system bars adaptively match),
+  auto-rotate switch (off by default), about page
 - Tap any word to copy it; one-tap copy of the full kana; romaji can be toggled
 - **Focus-first main screen**: opens with a single centred input box, then animates
   into the full interface as you type
@@ -220,10 +221,10 @@ flutter analyze
 # Logic verification (no flutter_test needed, runs anywhere, 86 assertions)
 dart run tool/verify.dart
 
-# Unit tests
+# Unit tests (39 tests)
 flutter test
 
-# On-device UI tests (requires a connected device)
+# On-device UI tests (requires a connected device, 29 tests)
 flutter test integration_test/ui_test.dart -d <device-id>
 
 # Run over USB
