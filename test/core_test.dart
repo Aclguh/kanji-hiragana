@@ -190,6 +190,16 @@ void main() {
       expect(store.isFavorite('京都'), isTrue);
     });
 
+    test('历史记录往返持久化', () async {
+      final store = QueryStore.instance;
+      store.recordQuery('大阪');
+      SharedPreferences.setMockInitialValues({
+        'query.history': ['大阪'],
+      });
+      await store.load();
+      expect(store.history, contains('大阪'));
+    });
+
     test('常见词表包含基础数据', () {
       final wordsOfJapan = kanjiWordsDict['日']!
           .map((w) => w.word)

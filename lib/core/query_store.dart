@@ -71,7 +71,7 @@ class QueryStore extends ChangeNotifier {
       }
     }
     notifyListeners();
-    _persist();
+    _persistHistory();
   }
 
   /// 切换收藏状态, 返回切换后是否已收藏。
@@ -82,12 +82,12 @@ class QueryStore extends ChangeNotifier {
     if (_favorites.contains(trimmed)) {
       _favorites = _favorites.where((e) => e != trimmed).toList();
       notifyListeners();
-      _persist();
+      _persistFavorites();
       return false;
     }
     _favorites = [trimmed, ..._favorites];
     notifyListeners();
-    _persist();
+    _persistFavorites();
     return true;
   }
 
@@ -95,7 +95,7 @@ class QueryStore extends ChangeNotifier {
   void removeHistory(String text) {
     _history = _history.where((e) => e != text).toList();
     notifyListeners();
-    _persist();
+    _persistHistory();
   }
 
   /// 清空历史 (收藏保留)。
@@ -103,11 +103,14 @@ class QueryStore extends ChangeNotifier {
     if (_history.isEmpty) return;
     _history = const [];
     notifyListeners();
-    _persist();
+    _persistHistory();
   }
 
-  void _persist() {
+  void _persistHistory() {
     _prefs?.setStringList(_kHistory, _history);
+  }
+
+  void _persistFavorites() {
     _prefs?.setStringList(_kFavorites, _favorites);
   }
 }
