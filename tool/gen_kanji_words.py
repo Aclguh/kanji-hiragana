@@ -290,7 +290,7 @@ def build_index(words: dict, kanji_info: dict) -> dict:
         for ch in kanjis:
             if ch in kanji_info:
                 by_kanji.setdefault(ch, []).append(
-                    (score, len(surface), surface, hiragana))
+                    (score, len(surface), surface, hiragana, pos_head))
 
     index = {}
     for ch, entries in by_kanji.items():
@@ -314,7 +314,10 @@ def render(index: dict, kanji_info: dict) -> str:
         '  /// 规范平假名读音, 如「にっぽん」。',
         '  final String hiragana;',
         '',
-        '  const KanjiWord(this.word, this.hiragana);',
+        '  /// 词性大类 (如「名詞」「動詞」「形容詞」)。',
+        '  final String pos;',
+        '',
+        '  const KanjiWord(this.word, this.hiragana, [this.pos = \'\']);',
         '}',
         '',
         f'/// 汉字 -> 常见词列表 (已按常用度排序, 每字至多 {MAX_WORDS_PER_KANJI} 个)。',
@@ -325,8 +328,13 @@ def render(index: dict, kanji_info: dict) -> str:
     # 与 kanji_reading_dict.dart 一致: 高频汉字在前, 频次相同时按字符编码确定稳定顺序。
     for ch in sorted(index, key=lambda c: (kanji_info[c][1], kanji_info[c][0], c)):
         words_dart = ', '.join(
-            "KanjiWord('%s', '%s')" % (dart_escape(surface), dart_escape(hiragana))
-            for _score, _len, surface, hiragana in index[ch]
+            "KanjiWord('%s', '%s', '%s')" % (
+                dart_escape(surface), dart_escape(hiragana), dart_escape(pos_head)
+            ) if pos_head else
+            "KanjiWord('%s', '%s')" % (
+                dart_escape(surface), dart_escape(hiragana)
+            )
+            for _score, _len, surface, hiragana, pos_head in index[ch]
         )
         lines.append(f"  '{dart_escape(ch)}': [{words_dart}],")
     lines.append('};')
@@ -351,7 +359,7 @@ def main() -> None:
     for probe in ('日', '学', '食', '東', '人', '行', '見', '時',
                   '会', '先', '電', '飲', '読', '優', '凛'):
         entries = index.get(probe, [])
-        joined = ', '.join(f'{s}({h})' for _s, _l, s, h in entries)
+        joined = ', '.join(f'{s}({h}/{p})' for _s, _l, s, h, p in entries)
         print(f'  抽查 {probe}: {joined or "(无)"}')
 
     OUTPUT.write_text(render(index, kanji_info), encoding='utf-8')

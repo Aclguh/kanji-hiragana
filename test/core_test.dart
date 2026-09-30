@@ -217,6 +217,9 @@ void main() {
       expect(school, contains('学校'));
       // 读音为规范平假名。
       expect(kanjiWordsDict['日']!.first.hiragana, isNot(contains('ッ')));
+      // 包含词性分类。
+      expect(kanjiWordsDict['日']!.first.pos, '名詞');
+      expect(kanjiWordsDict['学']!.any((w) => w.pos == '動詞'), isTrue);
     });
   });
 

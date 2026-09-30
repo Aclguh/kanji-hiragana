@@ -497,6 +497,7 @@ class _WordRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
     final romaji = hiraganaToRomaji(word.hiragana);
     return InkWell(
       onTap: () {
@@ -523,7 +524,22 @@ class _WordRow extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(width: 12),
+            if (word.pos.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                decoration: BoxDecoration(
+                  color: colors.surfaceVariant,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  s.posLabel(word.pos),
+                  style: TextStyle(color: colors.textSecondary, fontSize: 10),
+                ),
+              ),
+            ],
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 word.hiragana,
@@ -534,7 +550,7 @@ class _WordRow extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Text(
               romaji,
               style: const TextStyle(
