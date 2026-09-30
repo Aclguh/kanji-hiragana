@@ -69,6 +69,7 @@ void main() {
     test('促音与拨音边界情况', () {
       // 尾部促音不应越界
       expect(hiraganaToRomaji('あっ'), 'a');
+      expect(hiraganaToRomaji('あっっ'), 'a');
       // 单独与连续拨音
       expect(hiraganaToRomaji('ん'), 'n');
       expect(hiraganaToRomaji('んん'), 'nn');
@@ -341,6 +342,20 @@ void main() {
       expect(c3.frequencyMax, isNull);
     });
 
+    test('反转区间与边界无匹配', () {
+      // 笔画反转
+      const fInvertedStrokes = KanjiFilter(strokesMin: 10, strokesMax: 5);
+      expect(samples.any(fInvertedStrokes.matches), isFalse);
+
+      // 学年反转
+      const fInvertedGrade = KanjiFilter(gradeMin: 5, gradeMax: 2);
+      expect(samples.any(fInvertedGrade.matches), isFalse);
+
+      // 频率反转
+      const fInvertedFreq = KanjiFilter(frequencyMin: 500, frequencyMax: 100);
+      expect(samples.any(fInvertedFreq.matches), isFalse);
+    });
+
     test('排序方式与次级排序', () {
       // 笔画排序: strokes 从小到大, 笔画相同按频率 rank 升序
       const fStrokes = KanjiFilter(sort: KanjiSort.strokes);
@@ -434,6 +449,15 @@ void main() {
       final mNoDetail = Morpheme.fromToken(tokenNoDetail);
       expect(mNoDetail.partOfSpeech, '助動詞');
       expect(mNoDetail.partOfSpeechDetail, isEmpty);
+    });
+
+    test('空 token 与缺省字段安全回退', () {
+      final mEmpty = Morpheme.fromToken({});
+      expect(mEmpty.surface, isEmpty);
+      expect(mEmpty.hiragana, isEmpty);
+      expect(mEmpty.romaji, isEmpty);
+      expect(mEmpty.partOfSpeech, isEmpty);
+      expect(mEmpty.partOfSpeechDetail, isEmpty);
     });
   });
 
