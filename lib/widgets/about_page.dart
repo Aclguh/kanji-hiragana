@@ -8,9 +8,9 @@ import '../theme.dart';
 class AboutPage extends StatefulWidget {
   const AboutPage({super.key});
 
-  /// 与 pubspec.yaml 的 `version: 1.0.3+4` 保持一致 —— 改版本号时两处一起改。
-  static const String version = '1.0.3';
-  static const String buildNumber = '4';
+  /// 与 pubspec.yaml 的 `version: 1.1.0+5` 保持一致 —— 改版本号时两处一起改。
+  static const String version = '1.1.0';
+  static const String buildNumber = '5';
   static const String repoUrl = 'https://github.com/Aclguh/kanji-hiragana';
 
   @override

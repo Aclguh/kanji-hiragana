@@ -28,7 +28,7 @@ on'yomi and kun'yomi.
   morphological analysis (kuromoji + IPADIC)
 - **Single-kanji detail**: type one kanji and get its **on'yomi** and **kun'yomi**
   together with romaji, stroke count, school grade, meanings and **common words**
-  containing the kanji; tap any common word to query it directly or long-press to copy
+  (with part-of-speech tags) containing the kanji; tap any common word to query it directly or long-press to copy
 - **History & favorites**: queries are remembered automatically and can be starred;
   the empty state lists them as tappable chips (long-press with haptic feedback to remove,
   history can be cleared at once). The star works in the app bar and in the filter detail page
@@ -221,7 +221,7 @@ flutter analyze
 # Logic verification (no flutter_test needed, runs anywhere, 86 assertions)
 dart run tool/verify.dart
 
-# Unit tests (39 tests)
+# Unit tests (42 tests)
 flutter test
 
 # On-device UI tests (requires a connected device, 29 tests)
