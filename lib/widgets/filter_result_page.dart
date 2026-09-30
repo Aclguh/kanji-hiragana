@@ -85,6 +85,7 @@ class _FilterResultPageState extends State<FilterResultPage> {
           ? _buildEmpty()
           : Column(
               children: [
+                _buildActiveFilters(s, colors),
                 if (_excludedNoRank > 0)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
@@ -127,6 +128,73 @@ class _FilterResultPageState extends State<FilterResultPage> {
             ),
     );
   }
+
+  /// 当前生效的筛选条件摘要行。
+  ///
+  /// 依次显示学年、笔画、频率、读音构成中已设值的条件，
+  /// 全部为默认值时返回空组件不占位。
+  Widget _buildActiveFilters(AppStrings s, AppColors colors) {
+    final filter = widget.filter;
+    final chips = <String>[];
+
+    // 学年
+    if (filter.gradeMin != null || filter.gradeMax != null) {
+      final min = filter.gradeMin ?? filter.gradeMax!;
+      final max = filter.gradeMax ?? filter.gradeMin!;
+      chips.add(_gradeChipLabel(s, min, max));
+    }
+
+    // 笔画
+    if (filter.strokesMin != null || filter.strokesMax != null) {
+      chips.add(s.filterChipStrokes(filter.strokesMin, filter.strokesMax));
+    }
+
+    // 频率
+    if (filter.frequencyMin != null || filter.frequencyMax != null) {
+      chips.add(s.filterChipFrequency(filter.frequencyMin, filter.frequencyMax));
+    }
+
+    // 读音构成
+    if (filter.reading != ReadingRequirement.any) {
+      chips.add(s.readingLabel(filter.reading.name));
+    }
+
+    if (chips.isEmpty) return const SizedBox.shrink();
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Row(
+        children: [
+          for (var i = 0; i < chips.length; i++) ...[
+            if (i > 0) const SizedBox(width: 6),
+            _FilterConditionChip(label: chips[i], colors: colors),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// 学年筛选对应的 chip 标签。
+  ///
+  /// 与 filter_drawer.dart 保持一致逻辑, 不导出避免耦合。
+  static String _gradeChipLabel(AppStrings s, int min, int max) {
+    if (min == 9) return s.gradeNameChip;
+    if (min == 8) return s.gradeCommonChip;
+    if (min == max) return _singleGradeLabel(s, min);
+    return '${_singleGradeLabel(s, min)}~${_singleGradeLabel(s, max)}';
+  }
+
+  static String _singleGradeLabel(AppStrings s, int grade) => switch (grade) {
+        1 => s.grade1,
+        2 => s.grade2,
+        3 => s.grade3,
+        4 => s.grade4,
+        5 => s.grade5,
+        6 => s.grade6,
+        8 => s.gradeCommonChip,
+        _ => s.gradeNameChip,
+      };
 
   Widget _buildEmpty() {
     final colors = AppTheme.of(context);
@@ -275,6 +343,34 @@ class _KanjiDetailPageState extends State<_KanjiDetailPage> {
           primary: false,
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           child: SingleKanjiView(reading: widget.reading),
+        ),
+      ),
+    );
+  }
+}
+
+/// 筛选结果页条件摘要中的单个 chip。
+class _FilterConditionChip extends StatelessWidget {
+  final String label;
+  final AppColors colors;
+
+  const _FilterConditionChip({required this.label, required this.colors});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: colors.surfaceVariant,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: colors.border),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: colors.textSecondary,
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );

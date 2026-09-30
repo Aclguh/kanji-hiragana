@@ -166,6 +166,12 @@ sealed class AppStrings {
   String readingLabel(String readingName);
   String filterCount(int total);
 
+  /// 筛选结果页的条件摘要 chip 标签。
+  ///
+  /// [min] / [max] 至少有一个非 null（两端都空时不调用）。
+  String filterChipStrokes(int? min, int? max);
+  String filterChipFrequency(int? min, int? max);
+
   // --------------------------------------------------------------- 筛选结果
 
   String get resultsTitle;
@@ -455,6 +461,20 @@ class ZhStrings extends AppStrings {
 
   @override
   String filterCount(int total) => '从 $total 个汉字中查找';
+
+  @override
+  String filterChipStrokes(int? min, int? max) {
+    if (min != null && max != null) return '$min~$max 画';
+    if (min != null) return '≥$min 画';
+    return '≤${max!} 画';
+  }
+
+  @override
+  String filterChipFrequency(int? min, int? max) {
+    if (min != null && max != null) return '频率 $min~$max';
+    if (min != null) return '频率 ≥$min';
+    return '频率 ≤${max!}';
+  }
 
   // --------------------------------------------------------------- 筛选结果
 
@@ -836,6 +856,20 @@ class EnStrings extends AppStrings {
 
   @override
   String filterCount(int total) => 'Search $total kanji';
+
+  @override
+  String filterChipStrokes(int? min, int? max) {
+    if (min != null && max != null) return '$min~$max str.';
+    if (min != null) return '≥$min str.';
+    return '≤${max!} str.';
+  }
+
+  @override
+  String filterChipFrequency(int? min, int? max) {
+    if (min != null && max != null) return 'Freq. $min~$max';
+    if (min != null) return 'Freq. ≥$min';
+    return 'Freq. ≤${max!}';
+  }
 
   // --------------------------------------------------------------- 筛选结果
 
