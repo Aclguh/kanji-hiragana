@@ -32,7 +32,12 @@ class JapaneseAnalyzer {
   }
 
   Future<void> _build() async {
-    _tokenizer = await TokenizerBuilder().build();
+    try {
+      _tokenizer = await TokenizerBuilder().build();
+    } catch (_) {
+      _initializing = null;
+      rethrow;
+    }
   }
 
   /// 分析一段日语文本, 返回逐词的「汉字 / 平假名 / 罗马音」对应结果。
