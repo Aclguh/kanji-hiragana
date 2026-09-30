@@ -44,14 +44,27 @@ class JapaneseAnalyzer {
   ///
   /// 若输入恰好是**单个汉字**, 结果中会附带该字的音读/训读详情
   /// ([AnalysisResult.singleKanji])。
-  Future<AnalysisResult> analyze(String text) async {
+  ///
+  /// 若提供了 [isCancelled], 在分词前与分词后会检查该判定条件;
+  /// 若已被取消, 则提早返回空结果, 避免后续对象构造与无谓计算。
+  Future<AnalysisResult> analyze(
+    String text, {
+    bool Function()? isCancelled,
+  }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) {
       return AnalysisResult(source: text, morphemes: const []);
     }
 
     await warmUp();
+    if (isCancelled?.call() ?? false) {
+      return AnalysisResult(source: trimmed, morphemes: const []);
+    }
+
     final tokens = _tokenizer!.tokenize(trimmed);
+    if (isCancelled?.call() ?? false) {
+      return AnalysisResult(source: trimmed, morphemes: const []);
+    }
 
     final morphemes = tokens
         .map(Morpheme.fromToken)

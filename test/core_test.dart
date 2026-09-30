@@ -126,6 +126,11 @@ void main() {
       final r = await analyzer.analyze('   ');
       expect(r.isEmpty, isTrue);
     });
+
+    test('isCancelled 为 true 时提前中止并返回空结果', () async {
+      final r = await analyzer.analyze('日本の文化', isCancelled: () => true);
+      expect(r.morphemes, isEmpty);
+    });
   });
 
   group('查询历史与收藏 (QueryStore)', () {

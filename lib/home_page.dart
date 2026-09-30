@@ -132,10 +132,10 @@ class _HomePageState extends State<HomePage>
   }
 
   void _onChanged(String value) {
-    _debounce.run(() => _run(value));
+    _debounce.run((isCancelled) => _run(value, isCancelled));
   }
 
-  Future<void> _run(String text) async {
+  Future<void> _run(String text, [bool Function()? isCancelled]) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) {
       setState(() => _result = null);
@@ -143,9 +143,13 @@ class _HomePageState extends State<HomePage>
     }
     final seq = ++_requestSeq;
     try {
-      final r = await _analyzer.analyze(text);
-      // await 期间输入又变了: 本次结果已过期, 丢弃。
-      if (!mounted || seq != _requestSeq) return;
+      final r = await _analyzer.analyze(text, isCancelled: () {
+        return (isCancelled?.call() ?? false) || seq != _requestSeq;
+      });
+      // await 期间输入又变了或被取消: 本次结果已过期, 丢弃。
+      if (!mounted || seq != _requestSeq || (isCancelled?.call() ?? false)) {
+        return;
+      }
       setState(() {
         _result = r;
         _errorKind = null;
@@ -155,7 +159,9 @@ class _HomePageState extends State<HomePage>
       _lastAnalyzedText = trimmed;
       _queryStore.recordQuery(trimmed, previous: previous);
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || seq != _requestSeq || (isCancelled?.call() ?? false)) {
+        return;
+      }
       setState(() {
         _errorKind = _ErrorKind.analysis;
         _errorDetail = e;
@@ -165,6 +171,7 @@ class _HomePageState extends State<HomePage>
 
   /// 清空输入并保持焦点 (供界面上的 ✕ / 垃圾桶按钮使用)。
   void _clear() {
+    _debounce.cancel();
     _controller.clear();
     // 置空延续标记: 清空后的下一次输入是新查询, 不并入上一条历史。
     _lastAnalyzedText = '';
@@ -175,6 +182,7 @@ class _HomePageState extends State<HomePage>
   ///
   /// 返回键的语义是「退出当前状态」, 因此这里不再主动唤起键盘。
   void _clearAndDismissKeyboard() {
+    _debounce.cancel();
     _controller.clear();
     _lastAnalyzedText = '';
     _focusNode.unfocus();
@@ -184,6 +192,7 @@ class _HomePageState extends State<HomePage>
   ///
   /// 不主动聚焦, 让用户直接看到结果; 键盘若开着则收起。
   void _useQuery(String text) {
+    _debounce.cancel();
     _focusNode.unfocus();
     _controller.text = text;
     // controller 监听器会推进展开动画; 这里直接分析, 不再走防抖。
@@ -1051,17 +1060,30 @@ class _QueryChip extends StatelessWidget {
 
 double _lerp(double a, double b, double t) => a + (b - a) * t;
 
-/// 简易防抖, 避免每次按键都触发形态素分析。
+/// 简易防抖器, 避免每次按键都触发形态素分析, 同时支持取消已飞行的异步任务。
 class _Debouncer {
   final Duration delay;
   Timer? _timer;
+  int _activeId = 0;
 
   _Debouncer(this.delay);
 
-  void run(void Function() action) {
+  /// 安排执行 [action]。如果在等待期或异步执行期间安排了新任务，旧任务的
+  /// [isCancelled] 会返回 true，从而提早中止分词与状态更新。
+  void run(Future<void> Function(bool Function() isCancelled) action) {
     _timer?.cancel();
-    _timer = Timer(delay, action);
+    final id = ++_activeId;
+    _timer = Timer(delay, () {
+      if (id != _activeId) return;
+      action(() => id != _activeId);
+    });
   }
 
-  void dispose() => _timer?.cancel();
+  /// 取消当前等待中与飞行中的任务。
+  void cancel() {
+    _timer?.cancel();
+    _activeId++;
+  }
+
+  void dispose() => cancel();
 }
