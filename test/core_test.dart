@@ -517,4 +517,70 @@ void main() {
       expect(s.loadError, isNull);
     });
   });
+
+  group('多语言与界面文案 (AppStrings)', () {
+    test('AppLanguage 键值解析与默认回退', () {
+      expect(AppLanguage.fromName('zh'), AppLanguage.zh);
+      expect(AppLanguage.fromName('en'), AppLanguage.en);
+      expect(AppLanguage.fromName(null), AppLanguage.zh);
+      expect(AppLanguage.fromName('unknown'), AppLanguage.zh);
+    });
+
+    test('全部支持语言具备完整的 AppStrings 实现', () {
+      for (final lang in AppLanguage.values) {
+        final s = AppStrings.forLanguage(lang);
+        expect(s.language, lang);
+        expect(s.appTitle.isNotEmpty, isTrue);
+        expect(s.close.isNotEmpty, isTrue);
+        expect(s.copy.isNotEmpty, isTrue);
+        expect(s.tagline.isNotEmpty, isTrue);
+        expect(s.inputHint.isNotEmpty, isTrue);
+      }
+    });
+
+    test('中英文动态查表与回退逻辑对齐', () {
+      final zh = AppStrings.forLanguage(AppLanguage.zh);
+      final en = AppStrings.forLanguage(AppLanguage.en);
+
+      // 排序维度
+      for (final sort in KanjiSort.values) {
+        expect(zh.sortLabel(sort.name).isNotEmpty, isTrue);
+        expect(en.sortLabel(sort.name).isNotEmpty, isTrue);
+      }
+
+      // 读音要求
+      for (final req in ReadingRequirement.values) {
+        expect(zh.readingLabel(req.name).isNotEmpty, isTrue);
+        expect(en.readingLabel(req.name).isNotEmpty, isTrue);
+      }
+
+      // 主题模式
+      for (final mode in AppThemeMode.values) {
+        expect(zh.themeModeLabel(mode.name).isNotEmpty, isTrue);
+        expect(en.themeModeLabel(mode.name).isNotEmpty, isTrue);
+      }
+
+      // 词性标签映射
+      expect(zh.posLabel('名詞'), '名詞');
+      expect(en.posLabel('名詞'), 'noun');
+      expect(zh.posLabel('動詞'), '動詞');
+      expect(en.posLabel('動詞'), 'verb');
+      expect(zh.posLabel('形容詞'), '形容詞');
+      expect(en.posLabel('形容詞'), 'i-adj.');
+
+      // 词性细分映射
+      expect(zh.posDetailLabel('一般'), '一般');
+      expect(en.posDetailLabel('一般'), 'general');
+
+      // 动态参数文案生成
+      expect(zh.copiedSurface('日本'), contains('日本'));
+      expect(en.copiedSurface('日本'), contains('日本'));
+      expect(zh.filterCount(42), contains('42'));
+      expect(en.filterCount(42), contains('42'));
+      expect(zh.noRankExcluded(5), contains('5'));
+      expect(en.noRankExcluded(5), contains('5'));
+      expect(zh.frequencyUnranked.isNotEmpty, isTrue);
+      expect(en.frequencyUnranked.isNotEmpty, isTrue);
+    });
+  });
 }
