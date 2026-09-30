@@ -230,9 +230,12 @@ class _HomePageState extends State<HomePage>
       _filter = filter;
       _openDrawer = OpenDrawer.none;
     });
-    await Navigator.of(context).push(
+    final selectedWord = await Navigator.of(context).push<String>(
       MaterialPageRoute(builder: (_) => FilterResultPage(filter: filter)),
     );
+    if (selectedWord != null && selectedWord.isNotEmpty && mounted) {
+      _useQuery(selectedWord);
+    }
   }
 
   @override
@@ -829,7 +832,10 @@ class _HomePageState extends State<HomePage>
           // 单汉字: 只展示音读/训读详解, 不显示对照表与注音
           // (单个汉字没有上下文, 逐词对照与振假名在这里没有意义)。
           if (result.isSingleKanji)
-            SingleKanjiView(reading: result.singleKanji!)
+            SingleKanjiView(
+              reading: result.singleKanji!,
+              onWordTap: _useQuery,
+            )
           else if (_viewMode == ViewMode.alignment)
             AlignmentTable(result: result, showRomaji: _showRomaji)
           else ...[

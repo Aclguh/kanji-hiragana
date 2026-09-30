@@ -366,6 +366,26 @@ void main() {
     expect(find.text('にっぽん'), findsOneWidget);
   });
 
+  testWidgets('点按常见词跳转查询展开对照表', (tester) async {
+    await pumpHome(tester);
+
+    await tester.enterText(find.byType(TextField), '日');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SingleKanjiView), findsOneWidget);
+
+    // 点按常见搭配词「日本」
+    await tester.tap(find.text('日本'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+
+    // 自动以「日本」展开对照表分析结果
+    expect(find.byType(SingleKanjiView), findsNothing);
+    expect(find.byType(AlignmentTable), findsOneWidget);
+    expect(find.widgetWithText(TextField, '日本'), findsOneWidget);
+  });
+
   testWidgets('右下角按钮展开设置抽屉, 点遮罩可收起', (tester) async {
     await pumpHome(tester);
 

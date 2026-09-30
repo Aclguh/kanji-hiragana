@@ -51,12 +51,15 @@ class _FilterResultPageState extends State<FilterResultPage> {
     super.dispose();
   }
 
-  void _openDetail(KanjiReading reading) {
-    Navigator.of(context).push(
+  void _openDetail(KanjiReading reading) async {
+    final word = await Navigator.of(context).push<String>(
       MaterialPageRoute(
         builder: (_) => _KanjiDetailPage(reading: reading),
       ),
     );
+    if (word != null && mounted) {
+      Navigator.of(context).pop(word);
+    }
   }
 
   @override
@@ -342,7 +345,10 @@ class _KanjiDetailPageState extends State<_KanjiDetailPage> {
           controller: _scrollController,
           primary: false,
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-          child: SingleKanjiView(reading: widget.reading),
+          child: SingleKanjiView(
+            reading: widget.reading,
+            onWordTap: (word) => Navigator.of(context).pop(word),
+          ),
         ),
       ),
     );

@@ -14,11 +14,16 @@ import '../theme.dart';
 /// 另附该字的常见搭配词, 帮助学习者直接看到「这个字在哪些词里」。
 class SingleKanjiView extends StatelessWidget {
   final KanjiReading reading;
+  final ValueChanged<String>? onWordTap;
 
   /// 每一类读音最多展示多少条, 超出部分折叠为「等 N 项」。
   static const int maxPerGroup = 8;
 
-  const SingleKanjiView({super.key, required this.reading});
+  const SingleKanjiView({
+    super.key,
+    required this.reading,
+    this.onWordTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +57,7 @@ class SingleKanjiView extends StatelessWidget {
           ),
         if (words.isNotEmpty) ...[
           const SizedBox(height: 12),
-          _CommonWordsGroup(words: words),
+          _CommonWordsGroup(words: words, onWordTap: onWordTap),
         ],
         if (!reading.hasOnyomi && !reading.hasKunyomi)
           const _NoReadingNotice(),
@@ -359,11 +364,12 @@ class _ReadingChip extends StatelessWidget {
 /// 常见搭配词组: 每词一行「词 | 平假名 | 罗马音」, 点按复制词面。
 class _CommonWordsGroup extends StatefulWidget {
   final List<KanjiWord> words;
+  final ValueChanged<String>? onWordTap;
 
   /// 默认展示的词数, 超出折叠。
   static const int maxItems = 6;
 
-  const _CommonWordsGroup({required this.words});
+  const _CommonWordsGroup({required this.words, this.onWordTap});
 
   @override
   State<_CommonWordsGroup> createState() => _CommonWordsGroupState();
@@ -430,7 +436,7 @@ class _CommonWordsGroupState extends State<_CommonWordsGroup> {
           const SizedBox(height: 6),
           for (var i = 0; i < visible.length; i++) ...[
             if (i > 0) const SizedBox(height: 2),
-            _WordRow(word: visible[i]),
+            _WordRow(word: visible[i], onWordTap: widget.onWordTap),
           ],
           if (overflows) ...[
             const SizedBox(height: 8),
@@ -466,11 +472,25 @@ class _CommonWordsGroupState extends State<_CommonWordsGroup> {
   }
 }
 
-/// 单个常见词: 词面 + 平假名 + 罗马音, 点按复制词面。
+/// 单个常见词: 词面 + 平假名 + 罗马音, 点按查词, 长按复制词面。
 class _WordRow extends StatelessWidget {
   final KanjiWord word;
+  final ValueChanged<String>? onWordTap;
 
-  const _WordRow({required this.word});
+  const _WordRow({required this.word, this.onWordTap});
+
+  void _copy(BuildContext context) {
+    Clipboard.setData(ClipboardData(text: word.word));
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content:
+              Text(AppStrings.of(context).copiedSurface(word.word)),
+          duration: const Duration(milliseconds: 900),
+        ),
+      );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -478,14 +498,15 @@ class _WordRow extends StatelessWidget {
     final romaji = hiraganaToRomaji(word.hiragana);
     return InkWell(
       onTap: () {
-        Clipboard.setData(ClipboardData(text: word.word));
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:
-                Text(AppStrings.of(context).copiedSurface(word.word)),
-            duration: const Duration(milliseconds: 900),
-          ),
-        );
+        if (onWordTap != null) {
+          onWordTap!(word.word);
+        } else {
+          _copy(context);
+        }
+      },
+      onLongPress: () {
+        HapticFeedback.lightImpact();
+        _copy(context);
       },
       borderRadius: BorderRadius.circular(8),
       child: Padding(
