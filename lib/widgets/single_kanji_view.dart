@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../core/kana_romaji.dart';
+import '../core/kanji_filter.dart';
 import '../core/kanji_reading_dict.dart';
 import '../core/kanji_words_dict.dart';
 import '../core/strings.dart';
@@ -138,8 +139,8 @@ class SingleKanjiView extends StatelessWidget {
                     _metaItem(context, s.labelStrokes, '${reading.strokes}'),
                     _metaItem(
                         context, s.labelGrade, _gradeLabel(s, reading.grade)),
-                    _metaItem(
-                        context, s.labelFrequency, 'No.${reading.frequencyRank}'),
+                    _metaItem(context, s.labelFrequency,
+                        _frequencyLabel(s, reading.frequencyRank)),
                   ],
                 ),
               ],
@@ -171,6 +172,11 @@ class SingleKanjiView extends StatelessWidget {
     if (grade == 8) return s.gradeCommon;
     if (grade == 9 || grade == 10) return s.gradeNameUse;
     return s.gradeOther;
+  }
+
+  static String _frequencyLabel(AppStrings s, int rank) {
+    if (rank >= kNoFrequencyRank) return s.frequencyUnranked;
+    return 'No.$rank';
   }
 }
 

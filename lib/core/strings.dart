@@ -129,6 +129,7 @@ sealed class AppStrings {
   String get labelStrokes;
   String get labelGrade;
   String get labelFrequency;
+  String get frequencyUnranked;
   String get gradeCommon;
   String get gradeNameUse;
   String get gradeOther;
@@ -362,6 +363,9 @@ class ZhStrings extends AppStrings {
 
   @override
   String get labelFrequency => '频率';
+
+  @override
+  String get frequencyUnranked => '无排名';
 
   @override
   String get gradeCommon => '常用';
@@ -758,6 +762,9 @@ class EnStrings extends AppStrings {
 
   @override
   String get labelFrequency => 'Frequency';
+
+  @override
+  String get frequencyUnranked => 'Unranked';
 
   @override
   String get gradeCommon => 'Common use';
