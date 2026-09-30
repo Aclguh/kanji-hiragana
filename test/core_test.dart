@@ -448,6 +448,12 @@ void main() {
       expect(s.language, AppLanguage.en);
       expect(s.showRomaji, isFalse);
       expect(s.viewModeName, 'furigana');
+      expect(s.loadError, isNull);
+    });
+
+    test('加载成功时 loadError 为 null', () {
+      final s = SettingsController.instance;
+      expect(s.loadError, isNull);
     });
   });
 }

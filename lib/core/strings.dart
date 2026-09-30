@@ -195,6 +195,9 @@ sealed class AppStrings {
 
   // --------------------------------------------------------------- 设置
 
+  /// 设置加载失败提示。
+  String settingsLoadFailed(Object error);
+
   String get settingsSubtitle;
   String get sectionAppearance;
   String get sectionScreen;
@@ -519,6 +522,9 @@ class ZhStrings extends AppStrings {
   String noRankExcluded(int count) => '另有 $count 个无频率排名的汉字未计入';
 
   // --------------------------------------------------------------- 设置
+
+  @override
+  String settingsLoadFailed(Object error) => '设置加载失败，本次修改将不会保存 ($error)';
 
   @override
   String get settingsSubtitle => '外观与行为';
@@ -948,6 +954,10 @@ class EnStrings extends AppStrings {
       '$count more kanji without a frequency rank excluded';
 
   // --------------------------------------------------------------- 设置
+
+  @override
+  String settingsLoadFailed(Object error) =>
+      'Failed to load settings; changes will not be saved ($error)';
 
   @override
   String get settingsSubtitle => 'Appearance & behavior';

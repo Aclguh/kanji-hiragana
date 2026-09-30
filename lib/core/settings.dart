@@ -80,18 +80,30 @@ class SettingsController extends ChangeNotifier {
   /// 当前语言对应的全部文案。
   AppStrings get strings => AppStrings.forLanguage(_language);
 
+  Object? _loadError;
+
+  /// 本地设置加载异常 (若加载失败)。
+  Object? get loadError => _loadError;
+
   /// 是否已完成本地设置的加载。
   bool get isReady => _prefs != null;
 
   /// 从本地读取设置。应在 runApp 之前 await 完成。
   Future<void> load() async {
-    _prefs = await SharedPreferences.getInstance();
-    _themeMode = AppThemeMode.fromName(_prefs!.getString(_kThemeMode));
-    _autoRotate = _prefs!.getBool(_kAutoRotate) ?? false;
-    _language = AppLanguage.fromName(_prefs!.getString(_kLanguage));
-    _showRomaji = _prefs!.getBool(_kShowRomaji) ?? true;
-    _viewModeName = _prefs!.getString(_kViewMode) ?? 'alignment';
-    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _prefs = prefs;
+      _loadError = null;
+      _themeMode = AppThemeMode.fromName(prefs.getString(_kThemeMode));
+      _autoRotate = prefs.getBool(_kAutoRotate) ?? false;
+      _language = AppLanguage.fromName(prefs.getString(_kLanguage));
+      _showRomaji = prefs.getBool(_kShowRomaji) ?? true;
+      _viewModeName = prefs.getString(_kViewMode) ?? 'alignment';
+    } catch (e) {
+      _loadError = e;
+    } finally {
+      notifyListeners();
+    }
   }
 
   Future<void> setThemeMode(AppThemeMode mode) async {
