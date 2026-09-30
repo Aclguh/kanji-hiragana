@@ -34,25 +34,18 @@ void _applySystemUi(SettingsController settings) {
     AppThemeMode.light => false,
     AppThemeMode.system => systemDark,
   };
-  final colors = dark ? const _UiColors.dark() : const _UiColors.light();
+  final navBarColor = dark ? AppTheme.darkBg : AppTheme.lightBg;
 
   SystemChrome.setSystemUIOverlayStyle(
     SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness:
           dark ? Brightness.light : Brightness.dark,
-      systemNavigationBarColor: colors.navBar,
+      systemNavigationBarColor: navBarColor,
       systemNavigationBarIconBrightness:
           dark ? Brightness.light : Brightness.dark,
     ),
   );
-}
-
-/// 系统栏配色 (与 AppColors 解耦, 避免循环引用)。
-class _UiColors {
-  final Color navBar;
-  const _UiColors.dark() : navBar = AppTheme.darkBg;
-  const _UiColors.light() : navBar = AppTheme.lightBg;
 }
 
 class KanjiApp extends StatefulWidget {

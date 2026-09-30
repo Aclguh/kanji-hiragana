@@ -317,13 +317,15 @@ class _ReadingChip extends StatelessWidget {
   final String reading;
   final Color color;
 
+  static final _parenPattern = RegExp(r'[()]');
+
   const _ReadingChip({required this.reading, required this.color});
 
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
     // 训读可能带送假名标记, 如 まな(ぶ) / (び), 需清理后再转罗马音。
-    final pure = reading.replaceAll(RegExp(r'[()]'), '');
+    final pure = reading.replaceAll(_parenPattern, '');
     final romaji = hiraganaToRomaji(pure);
 
     return Container(
