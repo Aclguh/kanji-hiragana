@@ -247,6 +247,44 @@ void main() {
     expect(find.text('对照表'), findsOneWidget);
   });
 
+  testWidgets('长按历史词条移除并弹出提示', (tester) async {
+    await pumpHome(tester);
+
+    await tester.enterText(find.byType(TextField), '日本の文化');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), '');
+    await tester.pumpAndSettle();
+
+    expect(find.text('日本の文化'), findsOneWidget);
+
+    // 长按词条移除。
+    await tester.longPress(find.text('日本の文化'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('已移除历史「日本の文化」'), findsOneWidget);
+    expect(find.text('日本の文化'), findsNothing);
+  });
+
+  testWidgets('点按清空历史移除全部词条并弹出提示', (tester) async {
+    await pumpHome(tester);
+
+    await tester.enterText(find.byType(TextField), '日本の文化');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), '');
+    await tester.pumpAndSettle();
+
+    expect(find.text('最近查询'), findsOneWidget);
+    await tester.tap(find.text('清空'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('已清空历史'), findsOneWidget);
+    expect(find.text('最近查询'), findsNothing);
+  });
+
   testWidgets('连续输入折叠为一条历史', (tester) async {
     await pumpHome(tester);
 
@@ -289,6 +327,30 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pumpAndSettle();
     expect(find.byType(SingleKanjiView), findsOneWidget);
+  });
+
+  testWidgets('长按收藏词条取消收藏并弹出提示', (tester) async {
+    await pumpHome(tester);
+
+    await tester.enterText(find.byType(TextField), '日');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+
+    // 收藏
+    await tester.tap(find.byIcon(Icons.star_border_rounded));
+    await tester.pumpAndSettle();
+
+    // 清空输入回到空态
+    await tester.enterText(find.byType(TextField), '');
+    await tester.pumpAndSettle();
+
+    expect(find.text('收藏'), findsOneWidget);
+    // 「日」在收藏和历史各一个，收藏区排在前面
+    await tester.longPress(find.text('日').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('已取消收藏「日」'), findsOneWidget);
+    expect(find.text('收藏'), findsNothing);
   });
 
   testWidgets('单字详解出现常见词汇区', (tester) async {

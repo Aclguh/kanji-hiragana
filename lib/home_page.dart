@@ -619,7 +619,18 @@ class _HomePageState extends State<HomePage>
               // 只有历史提供清空; 收藏需逐条长按移除, 避免误操作。
               if (!favorite)
                 GestureDetector(
-                  onTap: _queryStore.clearHistory,
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    _queryStore.clearHistory();
+                    ScaffoldMessenger.of(context)
+                      ..hideCurrentSnackBar()
+                      ..showSnackBar(
+                        SnackBar(
+                          content: Text(s.historyCleared),
+                          duration: const Duration(milliseconds: 900),
+                        ),
+                      );
+                  },
                   child: Text(
                     s.clearHistory,
                     style: TextStyle(
@@ -641,10 +652,28 @@ class _HomePageState extends State<HomePage>
                     favorite: favorite,
                     onTap: () => _useQuery(items[i]),
                     onLongPress: () {
+                      HapticFeedback.lightImpact();
+                      final item = items[i];
                       if (favorite) {
-                        _queryStore.toggleFavorite(items[i]);
+                        _queryStore.toggleFavorite(item);
+                        ScaffoldMessenger.of(context)
+                          ..hideCurrentSnackBar()
+                          ..showSnackBar(
+                            SnackBar(
+                              content: Text(s.favoriteRemoved(item)),
+                              duration: const Duration(milliseconds: 900),
+                            ),
+                          );
                       } else {
-                        _queryStore.removeHistory(items[i]);
+                        _queryStore.removeHistory(item);
+                        ScaffoldMessenger.of(context)
+                          ..hideCurrentSnackBar()
+                          ..showSnackBar(
+                            SnackBar(
+                              content: Text(s.historyRemoved(item)),
+                              duration: const Duration(milliseconds: 900),
+                            ),
+                          );
                       }
                     },
                   ),

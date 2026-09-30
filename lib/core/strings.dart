@@ -94,6 +94,12 @@ sealed class AppStrings {
   /// 取消收藏提示。
   String favoriteRemoved(String query);
 
+  /// 移除历史成功提示。
+  String historyRemoved(String query);
+
+  /// 清空历史成功提示。
+  String get historyCleared;
+
   // ----------------------------------------------------------- 对照表 / 注音
 
   String get columnKanji;
@@ -295,6 +301,12 @@ class ZhStrings extends AppStrings {
 
   @override
   String favoriteRemoved(String query) => '已取消收藏「$query」';
+
+  @override
+  String historyRemoved(String query) => '已移除历史「$query」';
+
+  @override
+  String get historyCleared => '已清空历史';
 
   // ----------------------------------------------------------- 对照表 / 注音
 
@@ -667,6 +679,12 @@ class EnStrings extends AppStrings {
 
   @override
   String favoriteRemoved(String query) => 'Removed "$query" from favorites';
+
+  @override
+  String historyRemoved(String query) => 'Removed "$query" from history';
+
+  @override
+  String get historyCleared => 'History cleared';
 
   // ----------------------------------------------------------- 对照表 / 注音
 
