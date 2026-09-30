@@ -55,17 +55,43 @@ class _UiColors {
   const _UiColors.light() : navBar = AppTheme.lightBg;
 }
 
-class KanjiApp extends StatelessWidget {
+class KanjiApp extends StatefulWidget {
   const KanjiApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final settings = SettingsController.instance;
+  State<KanjiApp> createState() => _KanjiAppState();
+}
 
+class _KanjiAppState extends State<KanjiApp> with WidgetsBindingObserver {
+  final _settings = SettingsController.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangePlatformBrightness() {
+    super.didChangePlatformBrightness();
+    if (_settings.themeMode == AppThemeMode.system) {
+      _applySystemUi(_settings);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: settings,
+      animation: _settings,
       builder: (context, _) {
-        final strings = settings.strings;
+        _applySystemUi(_settings);
+        final strings = _settings.strings;
         return AppStringsScope(
           strings: strings,
           child: MaterialApp(
@@ -73,9 +99,9 @@ class KanjiApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light(),
             darkTheme: AppTheme.dark(),
-            themeMode: settings.themeMode.material,
+            themeMode: _settings.themeMode.material,
             home: RotationGuard(
-              enabled: settings.autoRotate,
+              enabled: _settings.autoRotate,
               child: const HomePage(),
             ),
           ),
