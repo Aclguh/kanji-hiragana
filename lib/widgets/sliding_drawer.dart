@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../core/strings.dart';
@@ -46,6 +48,12 @@ class SlidingDrawer extends StatefulWidget {
 
   /// 展开/收起的动画时长。
   static const Duration duration = Duration(milliseconds: 320);
+
+  /// 面板宽度上限 (逻辑像素)。
+  ///
+  /// 平板 / 横屏下按比例算出的宽度会远超内容可读宽度
+  /// (单列设置项在数百 dp 的面板里很难看), 设上限兜底。
+  static const double maxPanelWidth = 420;
 
   const SlidingDrawer({
     super.key,
@@ -120,7 +128,10 @@ class _SlidingDrawerState extends State<SlidingDrawer>
     return LayoutBuilder(
       builder: (context, constraints) {
         final colors = AppTheme.of(context);
-        final panelWidth = constraints.maxWidth * widget.widthFactor;
+        final panelWidth = math.min(
+          constraints.maxWidth * widget.widthFactor,
+          SlidingDrawer.maxPanelWidth,
+        );
 
         return AnimatedBuilder(
           animation: _controller,
