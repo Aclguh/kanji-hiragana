@@ -8,6 +8,38 @@ import 'kanji_reading_dict.dart';
 /// 混进 `1~1000` 之类的结果里。
 const int kNoFrequencyRank = 99999;
 
+/// 字典实际覆盖的笔画数范围 (含端点), 如 `(1, 29)`。
+///
+/// 首次访问时从 [kanjiReadingDict] 统计一次 (O(n), 毫秒级),
+/// 字典更新后自动跟随, 不依赖手工维护的硬编码。
+final (int, int) kStrokeRange = _computeRange(
+  (r) => r.strokes,
+  exclude: (_) => false,
+);
+
+/// 字典实际覆盖的频率排名范围 (含端点), 已排除 [kNoFrequencyRank] 哨兵。
+///
+/// 首次访问时从 [kanjiReadingDict] 统计一次。
+final (int, int) kFrequencyRange = _computeRange(
+  (r) => r.frequencyRank,
+  exclude: (rank) => rank <= 0 || rank >= kNoFrequencyRank,
+);
+
+(int, int) _computeRange(
+  int Function(KanjiReading) pick, {
+  required bool Function(int) exclude,
+}) {
+  var min = 0x7FFFFFFF;
+  var max = 0;
+  for (final r in kanjiReadingDict.values) {
+    final value = pick(r);
+    if (exclude(value)) continue;
+    if (value < min) min = value;
+    if (value > max) max = value;
+  }
+  return (min, max);
+}
+
 /// 排序方式。
 ///
 /// 显示名称由 `AppStrings.sortLabel(name)` 按当前语言给出,

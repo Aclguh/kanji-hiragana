@@ -1,5 +1,8 @@
 // 独立验证脚本: 不依赖 flutter_test, 直接用 dart 运行。
-// 用法: dart run tool/verify.dart
+// 用法: dart run tool/verify.dart (须在仓库根目录, 断言会读 pubspec.yaml)
+import 'dart:io';
+
+import 'package:kanji_hiragana/core/app_meta.dart';
 import 'package:kanji_hiragana/core/japanese_analyzer.dart';
 import 'package:kanji_hiragana/core/kana_romaji.dart';
 import 'package:kanji_hiragana/core/kanji_filter.dart';
@@ -228,6 +231,22 @@ Future<void> main() async {
 
   // 常驻分词 isolate 会阻止裸 dart 进程在 main 返回后退出, 用完即关。
   JapaneseAnalyzer.instance.close();
+
+  print('--- 版本与字典范围同步 ---');
+  // 改版本号漏改 about 页常量时, 在这里变成显式失败而非上线后才发现。
+  final pubspec = File('pubspec.yaml').readAsStringSync();
+  final version = RegExp(
+    r'^version:\s*(\d+\.\d+\.\d+)\+(\d+)\s*$',
+    multiLine: true,
+  ).firstMatch(pubspec);
+  expectEq(version?.group(1), AppMeta.version,
+      'pubspec version 与 AppMeta.version 一致');
+  expectEq(version?.group(2), AppMeta.buildNumber,
+      'pubspec versionCode 基数与 AppMeta.buildNumber 一致');
+  // 字典范围由 core 实时统计, 此处固定当前期望: 字典换代导致范围
+  // 变化时, 先确认筛选界面提示与预期一致再更新这里的数字。
+  expectEq(kStrokeRange, (1, 29), '字典笔画范围 1~29');
+  expectEq(kFrequencyRange, (1, 2501), '字典频率范围 1~2501');
 
   print('\n结果: $_pass 通过, $_fail 失败');
   if (_fail > 0) throw StateError('有 $_fail 项未通过');

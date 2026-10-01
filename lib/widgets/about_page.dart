@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../core/app_meta.dart';
 import '../core/strings.dart';
 import '../theme.dart';
 
@@ -8,9 +9,9 @@ import '../theme.dart';
 class AboutPage extends StatefulWidget {
   const AboutPage({super.key});
 
-  /// 与 pubspec.yaml 的 `version: 1.1.0+5` 保持一致 —— 改版本号时两处一起改。
-  static const String version = '1.1.0';
-  static const String buildNumber = '5';
+  /// 显示用版本常量, 唯一真值在 [AppMeta] (pubspec 同步由 verify 断言)。
+  static const String version = AppMeta.version;
+  static const String buildNumber = AppMeta.buildNumber;
   static const String repoUrl = 'https://github.com/Aclguh/kanji-hiragana';
 
   @override

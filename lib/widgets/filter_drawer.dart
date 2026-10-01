@@ -45,11 +45,13 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
     text: _filter.frequencyMax?.toString() ?? '',
   );
 
-  /// 笔画数的实际取值范围 (由字典统计得出)。
-  static const _strokeDomain = '1 ~ 29';
+  /// 笔画数的实际取值范围 (由 core 从字典统计, 字典更新后自动跟随)。
+  static final _strokeDomain =
+      '${kStrokeRange.$1} ~ ${kStrokeRange.$2}';
 
-  /// 使用频率的实际取值范围 (无排名的汉字靠 99999 标记, 已单独排除)。
-  static const _freqDomain = '1 ~ 10000';
+  /// 使用频率的实际取值范围 (无排名的汉字已由 core 排除)。
+  static final _freqDomain =
+      '${kFrequencyRange.$1} ~ ${kFrequencyRange.$2}';
 
   /// 学年选项: 对应的 grade 区间, 标签由当前语言决定。
   ///
