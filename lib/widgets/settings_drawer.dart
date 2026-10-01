@@ -21,10 +21,19 @@ class SettingsDrawerContent extends StatelessWidget {
       title: s.settings,
       subtitle: s.settingsSubtitle,
       children: [
-        if (settings.loadError != null) ...[
-          _buildErrorNotice(s, settings.loadError!),
-          const SizedBox(height: 18),
-        ],
+        // loadError 可能在抽屉打开后才异步变化 (如加载在后台重试),
+        // 必须监听 settings 而不是只在 build 时读一次。
+        AnimatedBuilder(
+          animation: settings,
+          builder: (context, _) {
+            final error = settings.loadError;
+            if (error == null) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 18),
+              child: _buildErrorNotice(s, error),
+            );
+          },
+        ),
 
         // 主题切换
         DrawerSectionLabel(s.sectionAppearance),

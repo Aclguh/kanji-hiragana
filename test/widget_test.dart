@@ -7,10 +7,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kanji_hiragana/core/kanji_filter.dart';
 import 'package:kanji_hiragana/core/kanji_reading_dict.dart';
 import 'package:kanji_hiragana/core/kanji_words_dict.dart';
+import 'package:kanji_hiragana/core/settings.dart';
 import 'package:kanji_hiragana/theme.dart';
 import 'package:kanji_hiragana/widgets/filter_drawer.dart';
+import 'package:kanji_hiragana/widgets/filter_result_page.dart';
+import 'package:kanji_hiragana/widgets/settings_drawer.dart';
 import 'package:kanji_hiragana/widgets/single_kanji_view.dart';
 import 'package:kanji_hiragana/widgets/sliding_drawer.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Widget _host(Widget child) => MaterialApp(
       theme: AppTheme.dark(),
@@ -171,6 +175,39 @@ void main() {
       // 词面来自构建期生成的字典数据, 取真实首词断言。
       expect(kanjiWordsDict['生'], isNotNull);
       expect(find.text(kanjiWordsDict['生']!.first.word), findsOneWidget);
+    });
+  });
+
+  group('错误与空态路径', () {
+    testWidgets('设置加载失败提示在抽屉打开后才发生也能实时出现', (tester) async {
+      // 正常加载后打开抽屉: 无提示。
+      SharedPreferences.setMockInitialValues({});
+      await SettingsController.instance.load();
+      await tester.pumpWidget(
+        _host(SettingsDrawerContent(onOpenAbout: () {})),
+      );
+      expect(find.textContaining('设置加载失败'), findsNothing);
+
+      // 抽屉打开后才异步发生一次失败的加载: 提示必须实时出现 ——
+      // loadError 的展示监听 settings, 而不是只在 build 时读一次。
+      SharedPreferences.setMockInitialValues({
+        'settings.show_romaji': 'corrupted',
+      });
+      await SettingsController.instance.load();
+      await tester.pump();
+
+      expect(find.textContaining('设置加载失败'), findsOneWidget);
+    });
+
+    testWidgets('筛选无结果时显示空态提示', (tester) async {
+      // 笔画下限超出字典上限, 必然空结果 (前提由模型层先验证)。
+      const filter = KanjiFilter(strokesMin: 99);
+      expect(filter.apply(kanjiReadingDict.values), isEmpty);
+
+      await tester.pumpWidget(_host(FilterResultPage(filter: filter)));
+
+      expect(find.text('没有符合条件的汉字'), findsOneWidget);
+      expect(find.text('试试放宽笔画或频率范围'), findsOneWidget);
     });
   });
 }
