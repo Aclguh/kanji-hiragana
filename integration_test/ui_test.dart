@@ -398,7 +398,11 @@ void main() {
 
     expect(find.byType(SingleKanjiView), findsOneWidget);
 
-    // 点按常见搭配词「日本」
+    // 点按常见搭配词「日本」。
+    // 键盘弹出时该词可能位于键盘遮挡的滚动区外, 先滚动到可见再点,
+    // 与真实用户的操作一致 (tap 只按坐标命中, 不检查可见性)。
+    await tester.ensureVisible(find.text('日本'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('日本'));
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pumpAndSettle();

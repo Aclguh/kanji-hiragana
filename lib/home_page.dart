@@ -78,6 +78,12 @@ class _HomePageState extends State<HomePage>
   /// 是否有输入内容(决定处于展开态还是聚焦态)。
   bool get _hasInput => _controller.text.trim().isNotEmpty;
 
+  /// 上一次同步时的 [_hasInput] 值。
+  ///
+  /// AppBar 有无 / 悬浮按钮显隐 / 返回键拦截都依赖这个状态;
+  /// 只在「空 ↔ 非空」跃迁时整页重建, 输入过程中的动画帧不再全页 setState。
+  bool _lastHasInput = false;
+
   /// 抽屉是否处于展开状态。
   bool get _drawerOpen => _openDrawer != OpenDrawer.none;
 
@@ -121,7 +127,8 @@ class _HomePageState extends State<HomePage>
   }
 
   void _syncAnim() {
-    final target = _hasInput ? 1.0 : 0.0;
+    final hasInput = _hasInput;
+    final target = hasInput ? 1.0 : 0.0;
     if (_anim.value != target) {
       if (target == 1.0) {
         _anim.forward();
@@ -129,7 +136,13 @@ class _HomePageState extends State<HomePage>
         _anim.reverse();
       }
     }
-    setState(() {});
+    // 状态跃迁 (开始输入 / 完全清空) 影响 AppBar 与悬浮按钮, 需要整页
+    // 重建; 逐字输入只有动画值变化, 由 _buildAnimatedBody 的
+    // AnimatedBuilder 局部消化, 不再重建整页。
+    if (hasInput != _lastHasInput) {
+      _lastHasInput = hasInput;
+      if (mounted) setState(() {});
+    }
   }
 
   void _onChanged(String value) {
@@ -276,7 +289,7 @@ class _HomePageState extends State<HomePage>
       backgroundColor: Colors.transparent,
       appBar: _hasInput ? _buildAppBar() : null,
       body: SafeArea(
-        child: _loading ? _buildLoading() : _buildAnimatedBody(),
+        child: _loading ? const _LoadingView() : _buildAnimatedBody(),
       ),
     );
 
@@ -412,22 +425,6 @@ class _HomePageState extends State<HomePage>
     );
   }
 
-  Widget _buildLoading() {
-    final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const CircularProgressIndicator(color: AppTheme.accent),
-          const SizedBox(height: 16),
-          Text(s.loadingDictionary,
-              style: TextStyle(color: colors.textSecondary)),
-        ],
-      ),
-    );
-  }
-
   /// 聚焦态与展开态共用一个布局, 通过动画在两者间过渡。
   ///
   /// - 聚焦态: 输入框垂直居中, 其余控件透明度为 0 且不可交互。
@@ -462,13 +459,16 @@ class _HomePageState extends State<HomePage>
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // 聚焦态在输入框上方显示标题。
-                  _buildHeroTitle(t),
+                  _HeroTitle(t: t),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: _buildInput(t),
                   ),
                   // 聚焦态展示收藏与最近查询, 展开后淡出。
-                  _buildQueryChips(t),
+                  _QueryChips(
+                    t: t,
+                    onUseQuery: _useQuery,
+                  ),
                   // 其余控件随动画淡入。
                   _buildReveal(t),
                 ],
@@ -477,45 +477,6 @@ class _HomePageState extends State<HomePage>
           },
         );
       },
-    );
-  }
-
-  /// 聚焦态显示的品牌标题, 展开后淡出。
-  ///
-  /// 「漢字仮名」四字任何语言下都保持繁体原样, 作为应用标识。
-  Widget _buildHeroTitle(double t) {
-    final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
-    final opacity = (1 - t).clamp(0.0, 1.0);
-    if (opacity <= 0.001) return const SizedBox(height: 4);
-
-    return Opacity(
-      opacity: opacity,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 24),
-        child: Column(
-          children: [
-            Text(
-              '漢字仮名',
-              style: TextStyle(
-                color: colors.textPrimary,
-                fontSize: 30,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 4,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              s.tagline,
-              style: TextStyle(
-                color: colors.textSecondary.withValues(alpha: 0.9),
-                fontSize: 13,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -552,149 +513,6 @@ class _HomePageState extends State<HomePage>
     );
   }
 
-  /// 聚焦态显示的收藏与最近查询词条, 展开后随动画淡出。
-  Widget _buildQueryChips(double t) {
-    final opacity = (1 - t).clamp(0.0, 1.0);
-    if (opacity <= 0.001) return const SizedBox.shrink();
-
-    return AnimatedBuilder(
-      animation: _queryStore,
-      builder: (context, _) {
-        final favorites = _queryStore.favorites;
-        final history = _queryStore.history;
-        if (favorites.isEmpty && history.isEmpty) {
-          return const SizedBox.shrink();
-        }
-
-        return Opacity(
-          opacity: opacity,
-          child: IgnorePointer(
-            ignoring: opacity < 0.5,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 14),
-                if (favorites.isNotEmpty)
-                  _buildChipSection(
-                    icon: Icons.star_rounded,
-                    label: AppStrings.of(context).favoritesLabel,
-                    items: favorites,
-                    favorite: true,
-                  ),
-                if (favorites.isNotEmpty && history.isNotEmpty)
-                  const SizedBox(height: 12),
-                if (history.isNotEmpty)
-                  _buildChipSection(
-                    icon: Icons.history_rounded,
-                    label: AppStrings.of(context).historyLabel,
-                    items: history,
-                    favorite: false,
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  /// 一组查询词条: 小标签行 + 横向滑动的 chip。
-  Widget _buildChipSection({
-    required IconData icon,
-    required String label,
-    required List<String> items,
-    required bool favorite,
-  }) {
-    final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 13, color: colors.textSecondary),
-              const SizedBox(width: 5),
-              Text(
-                label,
-                style: TextStyle(
-                  color: colors.textSecondary,
-                  fontSize: 11,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const Spacer(),
-              // 只有历史提供清空; 收藏需逐条长按移除, 避免误操作。
-              if (!favorite)
-                GestureDetector(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    _queryStore.clearHistory();
-                    ScaffoldMessenger.of(context)
-                      ..hideCurrentSnackBar()
-                      ..showSnackBar(
-                        SnackBar(
-                          content: Text(s.historyCleared),
-                          duration: const Duration(milliseconds: 900),
-                        ),
-                      );
-                  },
-                  child: Text(
-                    s.clearHistory,
-                    style: TextStyle(
-                        color: colors.textSecondary, fontSize: 11),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            clipBehavior: Clip.none,
-            child: Row(
-              children: [
-                for (var i = 0; i < items.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 8),
-                  _QueryChip(
-                    text: items[i],
-                    favorite: favorite,
-                    onTap: () => _useQuery(items[i]),
-                    onLongPress: () {
-                      HapticFeedback.lightImpact();
-                      final item = items[i];
-                      if (favorite) {
-                        _queryStore.toggleFavorite(item);
-                        ScaffoldMessenger.of(context)
-                          ..hideCurrentSnackBar()
-                          ..showSnackBar(
-                            SnackBar(
-                              content: Text(s.favoriteRemoved(item)),
-                              duration: const Duration(milliseconds: 900),
-                            ),
-                          );
-                      } else {
-                        _queryStore.removeHistory(item);
-                        ScaffoldMessenger.of(context)
-                          ..hideCurrentSnackBar()
-                          ..showSnackBar(
-                            SnackBar(
-                              content: Text(s.historyRemoved(item)),
-                              duration: const Duration(milliseconds: 900),
-                            ),
-                          );
-                      }
-                    },
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   /// 展开态才可见的工具栏与结果区。
   Widget _buildReveal(double t) {
     // 完全收起时不构建内容, 避免无谓计算。
@@ -713,97 +531,19 @@ class _HomePageState extends State<HomePage>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SizedBox(height: isSingleKanji ? 4 : 12),
-              if (!isSingleKanji) _buildToolbar(),
+              if (!isSingleKanji)
+                _Toolbar(
+                  viewMode: _viewMode,
+                  showRomaji: _showRomaji,
+                  onSelectMode: (mode) => setState(() => _viewMode = mode),
+                  onRomajiChanged: (value) =>
+                      setState(() => _showRomaji = value),
+                ),
               _buildContent(),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildToolbar() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-      child: Row(
-        children: [
-          _buildModeSwitcher(),
-          const Spacer(),
-          _buildRomajiToggle(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildModeSwitcher() {
-    final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: colors.border),
-      ),
-      child: Row(
-        children: [
-          _segment(s.viewAlignment, ViewMode.alignment,
-              Icons.table_rows_rounded),
-          _segment(s.viewFurigana, ViewMode.furigana,
-              Icons.text_fields_rounded),
-        ],
-      ),
-    );
-  }
-
-  Widget _segment(String label, ViewMode mode, IconData icon) {
-    final colors = AppTheme.of(context);
-    final selected = _viewMode == mode;
-    return GestureDetector(
-      onTap: () => setState(() => _viewMode = mode),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: selected ? AppTheme.accent : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            Icon(icon,
-                size: 14,
-                color: selected ? Colors.white : colors.textSecondary),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: TextStyle(
-                color: selected ? Colors.white : colors.textSecondary,
-                fontSize: 13,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRomajiToggle() {
-    final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
-    return Row(
-      children: [
-        Text(s.romajiToggle,
-            style: TextStyle(
-                color: _showRomaji ? colors.textPrimary : colors.textSecondary,
-                fontSize: 13)),
-        const SizedBox(width: 4),
-        Switch(
-          value: _showRomaji,
-          onChanged: (v) => setState(() => _showRomaji = v),
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-      ],
     );
   }
 
@@ -847,14 +587,347 @@ class _HomePageState extends State<HomePage>
           else ...[
             FuriganaView(result: result, showRomaji: _showRomaji),
             const SizedBox(height: 16),
-            _buildFuriganaFooter(result),
+            _FuriganaFooter(result: result),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildFuriganaFooter(AnalysisResult result) {
+  Widget _buildMessage(IconData icon, String msg, {Color? color}) {
+    final colors = AppTheme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 36, color: color ?? colors.textSecondary),
+            const SizedBox(height: 12),
+            Text(msg,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: colors.textSecondary, fontSize: 13)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 词典预热中的加载态。
+class _LoadingView extends StatelessWidget {
+  const _LoadingView();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(color: AppTheme.accent),
+          const SizedBox(height: 16),
+          Text(s.loadingDictionary,
+              style: TextStyle(color: colors.textSecondary)),
+        ],
+      ),
+    );
+  }
+}
+
+/// 聚焦态显示的品牌标题, 展开后淡出。
+///
+/// 「漢字仮名」四字任何语言下都保持繁体原样, 作为应用标识。
+class _HeroTitle extends StatelessWidget {
+  final double t;
+
+  const _HeroTitle({required this.t});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
+    final opacity = (1 - t).clamp(0.0, 1.0);
+    if (opacity <= 0.001) return const SizedBox(height: 4);
+
+    return Opacity(
+      opacity: opacity,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 24),
+        child: Column(
+          children: [
+            Text(
+              '漢字仮名',
+              style: TextStyle(
+                color: colors.textPrimary,
+                fontSize: 30,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 4,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              s.tagline,
+              style: TextStyle(
+                color: colors.textSecondary.withValues(alpha: 0.9),
+                fontSize: 13,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 聚焦态显示的收藏与最近查询词条, 展开后随动画淡出。
+class _QueryChips extends StatelessWidget {
+  /// 展开动画值, 决定透明度与可交互性。
+  final double t;
+
+  final ValueChanged<String> onUseQuery;
+
+  const _QueryChips({required this.t, required this.onUseQuery});
+
+  @override
+  Widget build(BuildContext context) {
+    final opacity = (1 - t).clamp(0.0, 1.0);
+    if (opacity <= 0.001) return const SizedBox.shrink();
+
+    final store = QueryStore.instance;
+    return AnimatedBuilder(
+      animation: store,
+      builder: (context, _) {
+        final favorites = store.favorites;
+        final history = store.history;
+        if (favorites.isEmpty && history.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return Opacity(
+          opacity: opacity,
+          child: IgnorePointer(
+            ignoring: opacity < 0.5,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 14),
+                if (favorites.isNotEmpty)
+                  _buildChipSection(
+                    context,
+                    icon: Icons.star_rounded,
+                    label: AppStrings.of(context).favoritesLabel,
+                    items: favorites,
+                    favorite: true,
+                  ),
+                if (favorites.isNotEmpty && history.isNotEmpty)
+                  const SizedBox(height: 12),
+                if (history.isNotEmpty)
+                  _buildChipSection(
+                    context,
+                    icon: Icons.history_rounded,
+                    label: AppStrings.of(context).historyLabel,
+                    items: history,
+                    favorite: false,
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// 一组查询词条: 小标签行 + 横向滑动的 chip。
+  Widget _buildChipSection(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required List<String> items,
+    required bool favorite,
+  }) {
+    final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
+    final store = QueryStore.instance;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 13, color: colors.textSecondary),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 11,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const Spacer(),
+              // 只有历史提供清空; 收藏需逐条长按移除, 避免误操作。
+              if (!favorite)
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    store.clearHistory();
+                    showToast(context, s.historyCleared);
+                  },
+                  child: Text(
+                    s.clearHistory,
+                    style: TextStyle(
+                        color: colors.textSecondary, fontSize: 11),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            clipBehavior: Clip.none,
+            child: Row(
+              children: [
+                for (var i = 0; i < items.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 8),
+                  _QueryChip(
+                    text: items[i],
+                    favorite: favorite,
+                    onTap: () => onUseQuery(items[i]),
+                    onLongPress: () {
+                      HapticFeedback.lightImpact();
+                      final item = items[i];
+                      if (favorite) {
+                        store.toggleFavorite(item);
+                        showToast(context, s.favoriteRemoved(item));
+                      } else {
+                        store.removeHistory(item);
+                        showToast(context, s.historyRemoved(item));
+                      }
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 展开态工具栏: 对照 / 振假名视图切换 + 罗马音开关。
+///
+/// 无状态: 状态持久化在 SettingsController, 由宿主 [HomePage] setState
+/// 驱动重建 (切换必须同时刷新下方结果区, 不能只重绘工具栏自身)。
+class _Toolbar extends StatelessWidget {
+  final ViewMode viewMode;
+  final bool showRomaji;
+  final ValueChanged<ViewMode> onSelectMode;
+  final ValueChanged<bool> onRomajiChanged;
+
+  const _Toolbar({
+    required this.viewMode,
+    required this.showRomaji,
+    required this.onSelectMode,
+    required this.onRomajiChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: colors.border),
+            ),
+            child: Row(
+              children: [
+                _segment(context, s.viewAlignment, ViewMode.alignment,
+                    Icons.table_rows_rounded),
+                _segment(context, s.viewFurigana, ViewMode.furigana,
+                    Icons.text_fields_rounded),
+              ],
+            ),
+          ),
+          const Spacer(),
+          Row(
+            children: [
+              Text(s.romajiToggle,
+                  style: TextStyle(
+                      color: showRomaji
+                          ? colors.textPrimary
+                          : colors.textSecondary,
+                      fontSize: 13)),
+              const SizedBox(width: 4),
+              Switch(
+                value: showRomaji,
+                onChanged: onRomajiChanged,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _segment(
+    BuildContext context,
+    String label,
+    ViewMode mode,
+    IconData icon,
+  ) {
+    final colors = AppTheme.of(context);
+    final selected = viewMode == mode;
+    return GestureDetector(
+      onTap: () => onSelectMode(mode),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? AppTheme.accent : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(icon,
+                size: 14,
+                color: selected ? Colors.white : colors.textSecondary),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                color: selected ? Colors.white : colors.textSecondary,
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 振假名视图页脚: 全文平假名与实际发音, 支持复制。
+class _FuriganaFooter extends StatelessWidget {
+  final AnalysisResult result;
+
+  const _FuriganaFooter({required this.result});
+
+  @override
+  Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
     final s = AppStrings.of(context);
     return Container(
@@ -866,7 +939,7 @@ class _HomePageState extends State<HomePage>
       ),
       child: Column(
         children: [
-          _footerLine(
+          _FooterLine(
             icon: Icons.volume_up_rounded,
             label: s.labelHiragana,
             value: result.fullHiragana,
@@ -876,7 +949,7 @@ class _HomePageState extends State<HomePage>
           // 存在发音差异时补充一行实际发音。
           if (result.hasAnyPronunciationShift) ...[
             const SizedBox(height: 10),
-            _footerLine(
+            _FooterLine(
               icon: Icons.record_voice_over_rounded,
               label: s.labelPronunciation,
               value: result.fullPronunciation,
@@ -888,14 +961,26 @@ class _HomePageState extends State<HomePage>
       ),
     );
   }
+}
 
-  Widget _footerLine({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-    required String copyTip,
-  }) {
+/// 页脚中的一行: 图标 + 标签 + 可选中内容 + 复制按钮。
+class _FooterLine extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+  final String copyTip;
+
+  const _FooterLine({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.copyTip,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
     final s = AppStrings.of(context);
     return Row(
@@ -923,25 +1008,6 @@ class _HomePageState extends State<HomePage>
           icon: Icon(Icons.copy_rounded, color: colors.textSecondary),
         ),
       ],
-    );
-  }
-
-  Widget _buildMessage(IconData icon, String msg, {Color? color}) {
-    final colors = AppTheme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 36, color: color ?? colors.textSecondary),
-            const SizedBox(height: 12),
-            Text(msg,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: colors.textSecondary, fontSize: 13)),
-          ],
-        ),
-      ),
     );
   }
 }
