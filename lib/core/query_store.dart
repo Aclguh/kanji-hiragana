@@ -21,6 +21,11 @@ class QueryStore extends ChangeNotifier {
 
   SharedPreferences? _prefs;
 
+  Object? _loadError;
+
+  /// 本地数据加载异常 (若加载失败)。
+  Object? get loadError => _loadError;
+
   /// 最近查询, 新的在前。
   List<String> _history = const [];
 
@@ -38,11 +43,23 @@ class QueryStore extends ChangeNotifier {
   bool isFavorite(String text) => _favorites.contains(text.trim());
 
   /// 从本地读取。应在 runApp 之前 await 完成。
+  ///
+  /// 与 [SettingsController.load] 同一套降级策略: SharedPreferences
+  /// 异常 (数据损坏等) 不炸 `main()` 的 await, 记录 [loadError] 后
+  /// 以空历史/收藏继续。若 getInstance 本身失败, `_prefs` 保持
+  /// null, 写入路径静默跳过; 若仅读取解析失败, 后续写入会用合法
+  /// 值覆盖损坏键。
   Future<void> load() async {
-    _prefs = await SharedPreferences.getInstance();
-    _history = _prefs!.getStringList(_kHistory) ?? const [];
-    _favorites = _prefs!.getStringList(_kFavorites) ?? const [];
-    notifyListeners();
+    try {
+      _prefs = await SharedPreferences.getInstance();
+      _history = _prefs!.getStringList(_kHistory) ?? const [];
+      _favorites = _prefs!.getStringList(_kFavorites) ?? const [];
+      _loadError = null;
+    } catch (e) {
+      _loadError = e;
+    } finally {
+      notifyListeners();
+    }
   }
 
   /// 记录一次成功的查询。

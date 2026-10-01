@@ -230,6 +230,24 @@ void main() {
       expect(prefs.getStringList('query.history'), ['京都', '大阪']);
     });
 
+    test('本地数据损坏时以空数据继续并记录 loadError', () async {
+      // getStringList 对非列表值做类型转换, 会抛 TypeError ——
+      // 模拟持久化数据被外部工具写坏的真实场景。
+      SharedPreferences.setMockInitialValues({
+        'query.history': 'corrupted',
+      });
+      await QueryStore.instance.load();
+
+      final store = QueryStore.instance;
+      expect(store.loadError, isNotNull);
+      expect(store.history, isEmpty);
+      expect(store.favorites, isEmpty);
+
+      // 降级后功能照常, 内存态可用。
+      store.recordQuery('测试');
+      expect(store.history, ['测试']);
+    });
+
     test('常见词表包含基础数据', () {
       final wordsOfJapan = kanjiWordsDict['日']!
           .map((w) => w.word)
