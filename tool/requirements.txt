@@ -1,0 +1,3 @@
+# tool/gen_icon.py 的依赖 (其余脚本均为纯标准库)。
+# 安装: pip install -r tool/requirements.txt
+Pillow

@@ -178,10 +178,11 @@ test/
 integration_test/
   ui_test.dart               真机 UI 测试
 tool/
-  verify.dart                独立验证脚本（86 项断言，dart run 即可跑）
+  verify.dart                独立验证脚本（90 项断言，dart run 即可跑）
   gen_kanji_dict.py          KANJIDIC2 → Dart 数据生成脚本
   gen_kanji_words.py         kuromoji 内嵌 IPADIC → 常见词数据生成脚本
-  gen_icon.py                应用图标生成脚本
+  gen_icon.py                应用图标生成脚本（依赖 Pillow，见 requirements.txt）
+  requirements.txt           tool/ 的 Python 依赖声明
   data/                      KANJIDIC2 原始数据（仅 .gz，约 1.5MB）
 ```
 
@@ -193,7 +194,7 @@ flutter pub get
 # 静态检查
 flutter analyze
 
-# 逻辑验证（不依赖 flutter_test，任何环境都能跑，86 项断言）
+# 逻辑验证（不依赖 flutter_test，任何环境都能跑，90 项断言）
 dart run tool/verify.dart
 
 # 单元测试（42 项测试）
@@ -228,7 +229,8 @@ python tool/gen_kanji_words.py
 两个脚本分别读 `.gz` 与包内嵌二进制，自动挑选教育 / 常用 / 人名用汉字。
 （解压后的 16MB XML 不必入库，已在 `.gitignore` 中排除。）
 
-应用图标同样是生成出来的，改了设计后重跑：
+应用图标同样是生成出来的，改了设计后重跑（需先
+`pip install -r tool/requirements.txt` 安装 Pillow）：
 
 ```bash
 python tool/gen_icon.py   # 输出到 android/app/src/main/res/

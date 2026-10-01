@@ -203,10 +203,11 @@ test/
 integration_test/
   ui_test.dart               On-device UI tests
 tool/
-  verify.dart                Standalone verification (86 assertions, runs with dart run)
+  verify.dart                Standalone verification (90 assertions, runs with dart run)
   gen_kanji_dict.py          KANJIDIC2 → Dart data generator
   gen_kanji_words.py         kuromoji-embedded IPADIC → common-word data generator
-  gen_icon.py                App icon generator
+  gen_icon.py                App icon generator (needs Pillow, see requirements.txt)
+  requirements.txt           Python dependencies for tool/
   data/                      KANJIDIC2 source data (.gz only, ~1.5 MB)
 ```
 
@@ -218,7 +219,7 @@ flutter pub get
 # Static analysis
 flutter analyze
 
-# Logic verification (no flutter_test needed, runs anywhere, 86 assertions)
+# Logic verification (no flutter_test needed, runs anywhere, 90 assertions)
 dart run tool/verify.dart
 
 # Unit tests (42 tests)
@@ -255,7 +256,8 @@ binary dictionary. Both pick out the kyōiku / jōyō / jinmeiyō kanji.
 (The 16 MB decompressed XML is not kept in the repository; it is excluded by
 `.gitignore`.)
 
-The app icon is generated too — re-run this after changing the design:
+The app icon is generated too — re-run this after changing the design
+(install Pillow first with `pip install -r tool/requirements.txt`):
 
 ```bash
 python tool/gen_icon.py   # writes to android/app/src/main/res/
