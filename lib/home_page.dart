@@ -300,7 +300,7 @@ class _HomePageState extends State<HomePage>
         _onBackPressed();
       },
       child: Scaffold(
-        body: DrawerCloseNotification(
+        body: DrawerCloseScope(
           onClose: _closeDrawer,
           child: SlidingDrawer(
             // 设置按钮在右下角, 抽屉自右侧滑出。

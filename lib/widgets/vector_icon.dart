@@ -68,7 +68,9 @@ class _VectorIconPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     // 统一在 24×24 设计栅格上绘制, 再整体缩放到目标尺寸。
+    // size 为 0 时 scale 除零会让描边宽度变成 Infinity, 直接跳过。
     final scale = size.width / 24.0;
+    if (scale <= 0) return;
     canvas.save();
     canvas.scale(scale);
 

@@ -248,6 +248,21 @@ Future<void> main() async {
   expectEq(kStrokeRange, (1, 29), '字典笔画范围 1~29');
   expectEq(kFrequencyRange, (1, 2501), '字典频率范围 1~2501');
 
+  // 包名两处同步: about 页显示的包名是手工维护的显示常量, 与
+  // build.gradle.kts 的 applicationId 不一致时, 要等发布校验
+  // (aapt2 dump badging) 才会发现。
+  final gradle =
+      File('android/app/build.gradle.kts').readAsStringSync();
+  final applicationId = RegExp(r'applicationId\s*=\s*"([^"]+)"')
+      .firstMatch(gradle)
+      ?.group(1);
+  final about =
+      File('lib/widgets/about_page.dart').readAsStringSync();
+  final aboutPackage = RegExp(r"s.packageLabel,\s*'([^']+)'")
+      .firstMatch(about)
+      ?.group(1);
+  expectEq(aboutPackage, applicationId, 'about 页包名与 applicationId 一致');
+
   print('\n结果: $_pass 通过, $_fail 失败');
   if (_fail > 0) throw StateError('有 $_fail 项未通过');
 }

@@ -47,7 +47,15 @@ void main() {
     await JapaneseAnalyzer.instance.warmUp();
     await resetQueryStore();
     await tester.pumpWidget(
-      MaterialApp(theme: AppTheme.dark(), home: const HomePage()),
+      MaterialApp(
+        theme: AppTheme.dark(),
+        // AppStringsScope 与 main.dart 一致: AppStrings.of 在缺失 scope
+        // 时 debug 下会断言失败 (不再静默回退中文)。
+        home: const AppStringsScope(
+          strings: ZhStrings(),
+          child: HomePage(),
+        ),
+      ),
     );
     await tester.pumpAndSettle();
   }

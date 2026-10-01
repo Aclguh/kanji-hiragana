@@ -69,7 +69,7 @@ class SlidingDrawer extends StatefulWidget {
 
   /// 请求关闭当前抽屉 (交由宿主处理)。
   static void close(BuildContext context) {
-    final handler = DrawerCloseNotification.maybeOf(context);
+    final handler = DrawerCloseScope.maybeOf(context);
     handler?.call();
   }
 }
@@ -204,10 +204,13 @@ class _SlidingDrawerState extends State<SlidingDrawer>
 }
 
 /// 让抽屉面板内部可以请求关闭, 而不必层层传递回调。
-class DrawerCloseNotification extends InheritedWidget {
+///
+/// 名为 Scope 是因为它本质是 [InheritedWidget] —— Flutter 里
+/// Notification 是另一套冒泡机制, 沿用旧名会误导查找方向。
+class DrawerCloseScope extends InheritedWidget {
   final VoidCallback onClose;
 
-  const DrawerCloseNotification({
+  const DrawerCloseScope({
     super.key,
     required this.onClose,
     required super.child,
@@ -215,12 +218,12 @@ class DrawerCloseNotification extends InheritedWidget {
 
   static VoidCallback? maybeOf(BuildContext context) {
     return context
-        .dependOnInheritedWidgetOfExactType<DrawerCloseNotification>()
+        .dependOnInheritedWidgetOfExactType<DrawerCloseScope>()
         ?.onClose;
   }
 
   @override
-  bool updateShouldNotify(DrawerCloseNotification oldWidget) => false;
+  bool updateShouldNotify(DrawerCloseScope oldWidget) => false;
 }
 
 /// 抽屉面板外框 (底色 + 描边), 供设置/筛选共用。

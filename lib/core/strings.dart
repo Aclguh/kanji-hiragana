@@ -34,10 +34,15 @@ sealed class AppStrings {
 
   /// 当前语言的全部文案。
   static AppStrings of(BuildContext context) {
-    return context
-            .dependOnInheritedWidgetOfExactType<AppStringsScope>()
-            ?.strings ??
-        const ZhStrings();
+    final scope =
+        context.dependOnInheritedWidgetOfExactType<AppStringsScope>();
+    assert(
+      scope != null,
+      'AppStrings.of: 未找到 AppStringsScope, 已静默回退中文。\n'
+      '测试宿主请用 AppStringsScope(strings: ...) 包裹 MaterialApp, '
+      '与 main.dart 的做法一致。',
+    );
+    return scope?.strings ?? const ZhStrings();
   }
 
   static AppStrings forLanguage(AppLanguage language) => switch (language) {

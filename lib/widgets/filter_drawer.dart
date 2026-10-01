@@ -224,38 +224,30 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
 
   /// 把笔画输入框的内容写回筛选条件。
   ///
-  /// 直接构造 [KanjiFilter] 而非走 `copyWith` —— copyWith 用
-  /// `新值 ?? 旧值` 兜底, 无法区分「把这一端清空」和「保持原值」,
-  /// 于是删掉输入框里的数字也无法解除限制。这里两个端点都从输入框
-  /// 现取, 空字符串即 null, 才能正确表达「该端不限」。
+  /// 两步 copyWith 代替手工逐字段重建: 先 `clearStrokes: true` 整维
+  /// 清空, 再把两端写为输入框现值 (空字符串即 null, 正确表达
+  /// 「该端不限」)。手工重建在 KanjiFilter 新增字段时会静默丢值,
+  /// copyWith 则始终保留未提及的字段。
   void _applyStrokes() {
     setState(() {
-      _filter = KanjiFilter(
-        gradeMin: _filter.gradeMin,
-        gradeMax: _filter.gradeMax,
-        strokesMin: int.tryParse(_strokeMin.text),
-        strokesMax: int.tryParse(_strokeMax.text),
-        frequencyMin: _filter.frequencyMin,
-        frequencyMax: _filter.frequencyMax,
-        reading: _filter.reading,
-        sort: _filter.sort,
-      );
+      _filter = _filter
+          .copyWith(clearStrokes: true)
+          .copyWith(
+            strokesMin: int.tryParse(_strokeMin.text),
+            strokesMax: int.tryParse(_strokeMax.text),
+          );
     });
   }
 
   /// 把频率输入框的内容写回筛选条件 (理由同 [_applyStrokes])。
   void _applyFrequency() {
     setState(() {
-      _filter = KanjiFilter(
-        gradeMin: _filter.gradeMin,
-        gradeMax: _filter.gradeMax,
-        strokesMin: _filter.strokesMin,
-        strokesMax: _filter.strokesMax,
-        frequencyMin: int.tryParse(_freqMin.text),
-        frequencyMax: int.tryParse(_freqMax.text),
-        reading: _filter.reading,
-        sort: _filter.sort,
-      );
+      _filter = _filter
+          .copyWith(clearFrequency: true)
+          .copyWith(
+            frequencyMin: int.tryParse(_freqMin.text),
+            frequencyMax: int.tryParse(_freqMax.text),
+          );
     });
   }
 

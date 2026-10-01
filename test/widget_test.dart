@@ -13,6 +13,7 @@ import 'package:kanji_hiragana/core/kanji_filter.dart';
 import 'package:kanji_hiragana/core/kanji_reading_dict.dart';
 import 'package:kanji_hiragana/core/kanji_words_dict.dart';
 import 'package:kanji_hiragana/core/settings.dart';
+import 'package:kanji_hiragana/core/strings.dart';
 import 'package:kanji_hiragana/theme.dart';
 import 'package:kanji_hiragana/widgets/filter_drawer.dart';
 import 'package:kanji_hiragana/widgets/filter_result_page.dart';
@@ -28,17 +29,23 @@ void main() {
     final name = entry.key;
     final theme = entry.value;
 
-    Widget host(Widget child) => MaterialApp(
-          theme: theme,
-          home: Scaffold(body: child),
+    Widget host(Widget child) => AppStringsScope(
+          strings: const ZhStrings(),
+          child: MaterialApp(
+            theme: theme,
+            home: Scaffold(body: child),
+          ),
         );
 
     /// [SingleKanjiView] 是不滚动的 Column, 需要可滚动宿主
     /// (真机上由结果区提供; 测试里缺失会直接溢出判失败)。
-    Widget scrollHost(Widget child) => MaterialApp(
-          theme: theme,
-          home: Scaffold(
-            body: SingleChildScrollView(child: child),
+    Widget scrollHost(Widget child) => AppStringsScope(
+          strings: const ZhStrings(),
+          child: MaterialApp(
+            theme: theme,
+            home: Scaffold(
+              body: SingleChildScrollView(child: child),
+            ),
           ),
         );
 
