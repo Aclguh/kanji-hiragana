@@ -96,6 +96,11 @@ class AppTheme {
   }) {
     return base.copyWith(
       scaffoldBackgroundColor: colors.bg,
+      // 日文内容统一 fallback 到日文字体栈, 保证假名与汉字字形
+      // 在不同设备上更一致; 拉丁文本不受影响 (第一优先字体已覆盖)。
+      textTheme: base.textTheme.apply(
+        fontFamilyFallback: AppTheme.japaneseFontFallback,
+      ),
       colorScheme: base.colorScheme.copyWith(
         brightness: brightness,
         primary: accent,
@@ -181,6 +186,7 @@ class AppTheme {
 /// 组件不应直接引用 [AppTheme.darkBg] 之类的常量, 而应通过
 /// `AppTheme.of(context)` 读取, 这样切换主题时界面会自动跟随。
 class AppColors extends ThemeExtension<AppColors> {
+  final Brightness brightness;
   final Color bg;
   final Color surface;
   final Color surfaceVariant;
@@ -188,10 +194,12 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color textPrimary;
   final Color textSecondary;
   final Color kanjiHighlight;
+  final Color romaji;
   final Color scrim;
 
   /// 由 [copyWith] / [lerp] 使用的全字段构造。
   const AppColors._raw({
+    required this.brightness,
     required this.bg,
     required this.surface,
     required this.surfaceVariant,
@@ -199,35 +207,44 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.textPrimary,
     required this.textSecondary,
     required this.kanjiHighlight,
+    required this.romaji,
     required this.scrim,
   });
 
   const AppColors._dark()
-      : bg = AppTheme.darkBg,
+      : brightness = Brightness.dark,
+        bg = AppTheme.darkBg,
         surface = AppTheme.darkSurface,
         surfaceVariant = AppTheme.darkSurfaceVariant,
         border = AppTheme.darkBorder,
         textPrimary = AppTheme.darkTextPrimary,
         textSecondary = AppTheme.darkTextSecondary,
         kanjiHighlight = AppTheme.kanjiHighlight,
+        romaji = AppTheme.indigo,
         scrim = const Color(0xCC000000);
 
   const AppColors._light()
-      : bg = AppTheme.lightBg,
+      : brightness = Brightness.light,
+        bg = AppTheme.lightBg,
         surface = AppTheme.lightSurface,
         surfaceVariant = AppTheme.lightSurfaceVariant,
         border = AppTheme.lightBorder,
         textPrimary = AppTheme.lightTextPrimary,
         textSecondary = AppTheme.lightTextSecondary,
         kanjiHighlight = AppTheme.lightKanjiHighlight,
+        romaji = AppTheme.indigo,
         scrim = const Color(0x99000000);
 
   /// 是否处于深色模式 (用于需要按亮度微调的场合)。
-  bool get isDark => bg == AppTheme.darkBg;
+  ///
+  /// 显式存储而非用 `bg == darkBg` 推断: 主题过渡动画期间
+  /// [lerp] 产生的中间色与两套基准色都不相等, 推断会跳变。
+  bool get isDark => brightness == Brightness.dark;
 
   /// 主题切换时的插值, 让配色随 [AnimatedTheme] 平滑过渡。
   @override
   AppColors copyWith({
+    Brightness? brightness,
     Color? bg,
     Color? surface,
     Color? surfaceVariant,
@@ -235,9 +252,11 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? textPrimary,
     Color? textSecondary,
     Color? kanjiHighlight,
+    Color? romaji,
     Color? scrim,
   }) {
     return AppColors._raw(
+      brightness: brightness ?? this.brightness,
       bg: bg ?? this.bg,
       surface: surface ?? this.surface,
       surfaceVariant: surfaceVariant ?? this.surfaceVariant,
@@ -245,6 +264,7 @@ class AppColors extends ThemeExtension<AppColors> {
       textPrimary: textPrimary ?? this.textPrimary,
       textSecondary: textSecondary ?? this.textSecondary,
       kanjiHighlight: kanjiHighlight ?? this.kanjiHighlight,
+      romaji: romaji ?? this.romaji,
       scrim: scrim ?? this.scrim,
     );
   }
@@ -253,6 +273,7 @@ class AppColors extends ThemeExtension<AppColors> {
   AppColors lerp(covariant AppColors? other, double t) {
     if (other == null) return this;
     return AppColors._raw(
+      brightness: t < 0.5 ? brightness : other.brightness,
       bg: Color.lerp(bg, other.bg, t)!,
       surface: Color.lerp(surface, other.surface, t)!,
       surfaceVariant:
@@ -263,6 +284,7 @@ class AppColors extends ThemeExtension<AppColors> {
           Color.lerp(textSecondary, other.textSecondary, t)!,
       kanjiHighlight:
           Color.lerp(kanjiHighlight, other.kanjiHighlight, t)!,
+      romaji: Color.lerp(romaji, other.romaji, t)!,
       scrim: Color.lerp(scrim, other.scrim, t)!,
     );
   }

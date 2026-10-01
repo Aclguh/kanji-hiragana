@@ -507,8 +507,10 @@ class _WordRow extends StatelessWidget {
             const SizedBox(width: 10),
             Text(
               romaji,
-              style: const TextStyle(
-                color: AppTheme.indigo,
+              // 罗马音色走主题: 避免散落的 AppTheme.indigo 静态常量,
+              // 浅色主题下需要更深配色时只改 theme.dart 一处。
+              style: TextStyle(
+                color: colors.romaji,
                 fontSize: 11,
                 fontStyle: FontStyle.italic,
               ),
