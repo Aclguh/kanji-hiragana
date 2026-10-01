@@ -206,6 +206,30 @@ void main() {
       expect(store.history, contains('大阪'));
     });
 
+    // 直接以字面键名断言 mock preferences 的落盘内容 (而非注入后再读回):
+    // setter 写错键名时, 「注入 → load」式往返测试依然全绿, 数据实际丢失。
+    test('收藏写入真实持久化键 query.favorites', () async {
+      final store = QueryStore.instance;
+      final prefs = await SharedPreferences.getInstance();
+
+      store.toggleFavorite('東京');
+      store.toggleFavorite('京都');
+      expect(prefs.getStringList('query.favorites'), ['京都', '東京']);
+
+      // 取消收藏同样落盘。
+      store.toggleFavorite('京都');
+      expect(prefs.getStringList('query.favorites'), ['東京']);
+    });
+
+    test('历史写入真实持久化键 query.history', () async {
+      final store = QueryStore.instance;
+      final prefs = await SharedPreferences.getInstance();
+
+      store.recordQuery('大阪');
+      store.recordQuery('京都');
+      expect(prefs.getStringList('query.history'), ['京都', '大阪']);
+    });
+
     test('常见词表包含基础数据', () {
       final wordsOfJapan = kanjiWordsDict['日']!
           .map((w) => w.word)
@@ -535,6 +559,25 @@ void main() {
       expect(s.showRomaji, isFalse);
       expect(s.viewModeName, 'furigana');
       expect(s.loadError, isNull);
+    });
+
+    // 字面键名直接断言落盘值, 补齐「写 → 落盘」半程:
+    // 往返测试 (注入 → load) 无法发现 setter 写错键名。
+    test('设置写入真实持久化键', () async {
+      final s = SettingsController.instance;
+      final prefs = await SharedPreferences.getInstance();
+
+      await s.setThemeMode(AppThemeMode.dark);
+      await s.setAutoRotate(true);
+      await s.setLanguage(AppLanguage.en);
+      await s.setShowRomaji(false);
+      await s.setViewModeName('furigana');
+
+      expect(prefs.getString('settings.theme_mode'), 'dark');
+      expect(prefs.getBool('settings.auto_rotate'), isTrue);
+      expect(prefs.getString('settings.language'), 'en');
+      expect(prefs.getBool('settings.show_romaji'), isFalse);
+      expect(prefs.getString('settings.view_mode'), 'furigana');
     });
 
     test('加载成功时 loadError 为 null', () {
