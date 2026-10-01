@@ -1,0 +1,41 @@
+# CI 门禁: 覆盖 AGENTS.md 验证门槛的前三步 (analyze / test / verify)。
+#
+# 第 4 步「真机 UI 测试」(integration_test/ui_test.dart) 无法在
+# GitHub 托管环境执行, 仍须本地连接设备后手动运行, 不在本工作流内。
+#
+# verify.dart 不依赖 flutter_test, 但 pubspec 声明了 flutter SDK 依赖,
+# 解析依赖仍需要 Flutter SDK, 因此两个 job 均安装 Flutter 后分别执行。
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  # 纯 Dart 逻辑断言 (tool/verify.dart), 失败即非零退出, 适合做最快门禁。
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart run tool/verify.dart
+
+  # 静态检查 + 单元测试 (core 逻辑与 QueryStore)。
+  analyze-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze --fatal-warnings
+      - run: flutter test
