@@ -55,6 +55,21 @@ android {
             signingConfig = if (hasReleaseKeystore) {
                 signingConfigs.getByName("release")
             } else {
+                if (project.hasProperty("requireReleaseKey") &&
+                    project.property("requireReleaseKey") == "true"
+                ) {
+                    throw GradleException(
+                        "requireReleaseKey=true 但未找到 key.properties: " +
+                            "release 包将使用 debug 签名, 无法覆盖升级正式版本, 已拒绝构建。"
+                    )
+                }
+                // 回落保留给开源 clone 的构建便利, 但必须足够醒目,
+                // 避免「发了 debug 签名的包」这种事后才能发现的事故。
+                logger.error(
+                    "未找到 key.properties, release 构建回落到 DEBUG 签名, " +
+                        "该安装包无法覆盖升级正式版本; " +
+                        "发版请配置签名或使用 -PrequireReleaseKey=true 强制校验。"
+                )
                 signingConfigs.getByName("debug")
             }
         }
