@@ -58,16 +58,41 @@ class KanjiApp extends StatefulWidget {
 class _KanjiAppState extends State<KanjiApp> with WidgetsBindingObserver {
   final _settings = SettingsController.instance;
 
+  /// 上次应用系统栏样式时的主题模式。
+  ///
+  /// 设置变化并不都影响系统栏 (如显示罗马音), 记录上次值,
+  /// 只在主题模式真正变化时才走平台通道。
+  AppThemeMode? _lastSystemUiMode;
+
+  /// 根配置缓存键: 只有这几项变化才重建 [MaterialApp]。
+  ///
+  /// 显示罗马音 / 视图模式等结果区设置由 [HomePage] 自行消费
+  /// (内部 setState), 无需重建根; 返回缓存的同一 widget 实例时,
+  /// 框架按 identical 短路整棵子树的重建。
+  (AppThemeMode, AppLanguage, bool)? _rootKey;
+
+  Widget? _cachedRoot;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _lastSystemUiMode = _settings.themeMode;
+    _settings.addListener(_onSettingsChanged);
   }
 
   @override
   void dispose() {
+    _settings.removeListener(_onSettingsChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _onSettingsChanged() {
+    if (_settings.themeMode != _lastSystemUiMode) {
+      _lastSystemUiMode = _settings.themeMode;
+      _applySystemUi(_settings);
+    }
   }
 
   @override
@@ -80,25 +105,33 @@ class _KanjiAppState extends State<KanjiApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _settings,
+    return ListenableBuilder(
+      listenable: _settings,
       builder: (context, _) {
-        _applySystemUi(_settings);
-        final strings = _settings.strings;
-        return AppStringsScope(
-          strings: strings,
-          child: MaterialApp(
-            title: strings.appTitle,
-            debugShowCheckedModeBanner: false,
-            theme: AppTheme.light(),
-            darkTheme: AppTheme.dark(),
-            themeMode: _settings.themeMode.material,
-            home: RotationGuard(
-              enabled: _settings.autoRotate,
-              child: const HomePage(),
-            ),
-          ),
+        final key = (
+          _settings.themeMode,
+          _settings.language,
+          _settings.autoRotate,
         );
+        if (key != _rootKey) {
+          _rootKey = key;
+          final strings = _settings.strings;
+          _cachedRoot = AppStringsScope(
+            strings: strings,
+            child: MaterialApp(
+              title: strings.appTitle,
+              debugShowCheckedModeBanner: false,
+              theme: AppTheme.light(),
+              darkTheme: AppTheme.dark(),
+              themeMode: _settings.themeMode.material,
+              home: RotationGuard(
+                enabled: _settings.autoRotate,
+                child: const HomePage(),
+              ),
+            ),
+          );
+        }
+        return _cachedRoot!;
       },
     );
   }
