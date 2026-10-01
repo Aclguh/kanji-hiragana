@@ -226,6 +226,9 @@ Future<void> main() async {
       .length;
   expectEq(tooMany, 0, '释义条目均不超过 3 条');
 
+  // 常驻分词 isolate 会阻止裸 dart 进程在 main 返回后退出, 用完即关。
+  JapaneseAnalyzer.instance.close();
+
   print('\n结果: $_pass 通过, $_fail 失败');
   if (_fail > 0) throw StateError('有 $_fail 项未通过');
 }
