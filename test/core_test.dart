@@ -389,6 +389,31 @@ void main() {
         withExplicit.map((r) => r.kanji).toList(),
       );
     });
+
+    test('与字典等长但内容不同的列表不得被误判为全量', () {
+      // 构造「长度与字典相同且首元素 identical」的自定义列表:
+      // 第二个元素替换为字典里不存在的假字 (频率排名 1, 落在筛选区间内)。
+      // 若 apply 误判为全量并走预排列表分支, 结果里不会出现该假字。
+      const fake = KanjiReading(
+        kanji: '†',
+        onyomi: [],
+        kunyomi: [],
+        meanings: [],
+        meaningsEn: [],
+        grade: 1,
+        strokes: 1,
+        frequencyRank: 1,
+      );
+      final mutated = kanjiReadingDict.values.toList();
+      mutated[1] = fake;
+
+      const f = KanjiFilter(frequencyMin: 1, frequencyMax: 100);
+      final result = f.apply(mutated);
+
+      // 结果必须按传入列表筛选 (含假字), 而不是全量字典的筛选结果。
+      expect(result, contains(fake));
+      expect(result.length, mutated.where(f.matches).length);
+    });
   });
 
   group('分词与形态素 (Morpheme)', () {

@@ -206,13 +206,15 @@ class KanjiFilter {
     };
   }
 
+  /// [source] 是否就是全量字典或其预排列表 (仅用 identical 判断)。
+  ///
+  /// 不做「长度等于字典且首元素相同」之类的启发式推断: 任何恰好满足
+  /// 这类特征的自定义列表都会被误判为全量, apply 转而返回未按 source
+  /// 收窄的结果, 静默产生错误数据。identical 比较只有 5 次, 成本可忽略。
   static bool _isDictionarySource(Iterable<KanjiReading> source) {
     if (identical(source, kanjiReadingDict.values)) return true;
     for (final list in _presortedAll.values) {
       if (identical(source, list)) return true;
-    }
-    if (source.length == kanjiReadingDict.length) {
-      if (identical(source.first, kanjiReadingDict.values.first)) return true;
     }
     return false;
   }
