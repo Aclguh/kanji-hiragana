@@ -269,7 +269,7 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
         final (min, max) = range;
         final selected = _filter.gradeMin == min && _filter.gradeMax == max;
         return _Chip(
-          label: _gradeChipLabel(s, min, max),
+          label: s.gradeChipLabel(min, max),
           selected: selected,
           onTap: () => setState(() {
             _filter = selected
@@ -285,20 +285,6 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
             setState(() => _filter = _filter.copyWith(clearGrade: true)),
       ),
     ]);
-  }
-
-  /// 学年胶囊的文字: 1-6 年、常用、人名 (覆盖 grade 9~10)。
-  static String _gradeChipLabel(AppStrings s, int min, int max) {
-    if (min == 9) return s.gradeNameChip;
-    return switch (min) {
-      1 => s.grade1,
-      2 => s.grade2,
-      3 => s.grade3,
-      4 => s.grade4,
-      5 => s.grade5,
-      6 => s.grade6,
-      _ => s.gradeCommonChip,
-    };
   }
 
   Widget _buildReadingChips(AppStrings s) {

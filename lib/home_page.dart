@@ -12,6 +12,7 @@ import 'core/strings.dart';
 import 'theme.dart';
 import 'widgets/about_page.dart';
 import 'widgets/alignment_table.dart';
+import 'widgets/feedback.dart';
 import 'widgets/filter_drawer.dart';
 import 'widgets/filter_result_page.dart';
 import 'widgets/furigana_view.dart';
@@ -205,14 +206,10 @@ class _HomePageState extends State<HomePage>
     if (text.isEmpty) return;
     final added = _queryStore.toggleFavorite(text);
     final s = AppStrings.of(context);
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(added ? s.favoriteAdded(text) : s.favoriteRemoved(text)),
-          duration: const Duration(milliseconds: 900),
-        ),
-      );
+    showToast(
+      context,
+      added ? s.favoriteAdded(text) : s.favoriteRemoved(text),
+    );
   }
 
   void _toggleDrawer(OpenDrawer which) {
@@ -922,15 +919,7 @@ class _HomePageState extends State<HomePage>
         IconButton(
           tooltip: s.copy,
           iconSize: 18,
-          onPressed: () {
-            Clipboard.setData(ClipboardData(text: value));
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(copyTip),
-                duration: const Duration(milliseconds: 900),
-              ),
-            );
-          },
+          onPressed: () => copyWithToast(context, value, copyTip),
           icon: Icon(Icons.copy_rounded, color: colors.textSecondary),
         ),
       ],

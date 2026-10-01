@@ -172,6 +172,39 @@ sealed class AppStrings {
   String get gradeCommonChip;
   String get gradeNameChip;
 
+  /// 学年范围 (含端点) 的胶囊标签, 筛选抽屉与筛选结果页共用。
+  ///
+  /// 人名用汉字在字典里分 grade 9 与 10 两档, 合并为一个「人名」;
+  /// (8, 8) 为「常用」档; 其余按端点拼接 (如「3年~4年」)。
+  /// 单个学年的文案见 [grade1] 等字段。
+  String gradeChipLabel(int min, int max) {
+    if (min == 9) return gradeNameChip;
+    if (min == 8) return gradeCommonChip;
+    if (min == max) {
+      return switch (min) {
+        1 => grade1,
+        2 => grade2,
+        3 => grade3,
+        4 => grade4,
+        5 => grade5,
+        6 => grade6,
+        _ => gradeNameChip,
+      };
+    }
+    return '${_gradeSingle(min)}~${_gradeSingle(max)}';
+  }
+
+  String _gradeSingle(int grade) => switch (grade) {
+        1 => grade1,
+        2 => grade2,
+        3 => grade3,
+        4 => grade4,
+        5 => grade5,
+        6 => grade6,
+        8 => gradeCommonChip,
+        _ => gradeNameChip,
+      };
+
   /// 筛选项标签。
   String sortLabel(String sortName);
   String readingLabel(String readingName);

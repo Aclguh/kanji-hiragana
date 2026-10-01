@@ -144,7 +144,7 @@ class _FilterResultPageState extends State<FilterResultPage> {
     if (filter.gradeMin != null || filter.gradeMax != null) {
       final min = filter.gradeMin ?? filter.gradeMax!;
       final max = filter.gradeMax ?? filter.gradeMin!;
-      chips.add(_gradeChipLabel(s, min, max));
+      chips.add(s.gradeChipLabel(min, max));
     }
 
     // 笔画
@@ -177,27 +177,6 @@ class _FilterResultPageState extends State<FilterResultPage> {
       ),
     );
   }
-
-  /// 学年筛选对应的 chip 标签。
-  ///
-  /// 与 filter_drawer.dart 保持一致逻辑, 不导出避免耦合。
-  static String _gradeChipLabel(AppStrings s, int min, int max) {
-    if (min == 9) return s.gradeNameChip;
-    if (min == 8) return s.gradeCommonChip;
-    if (min == max) return _singleGradeLabel(s, min);
-    return '${_singleGradeLabel(s, min)}~${_singleGradeLabel(s, max)}';
-  }
-
-  static String _singleGradeLabel(AppStrings s, int grade) => switch (grade) {
-        1 => s.grade1,
-        2 => s.grade2,
-        3 => s.grade3,
-        4 => s.grade4,
-        5 => s.grade5,
-        6 => s.grade6,
-        8 => s.gradeCommonChip,
-        _ => s.gradeNameChip,
-      };
 
   Widget _buildEmpty() {
     final colors = AppTheme.of(context);

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../core/morpheme.dart';
 import '../core/strings.dart';
 import '../theme.dart';
+import 'feedback.dart';
 
 /// 对照表视图: 逐词以「汉字 / 平假名 / 罗马音」三列并排呈现对应关系,
 /// 类似翻译软件的对照排版。
@@ -124,17 +124,7 @@ class AlignmentTable extends StatelessWidget {
         IconButton(
           tooltip: s.copy,
           iconSize: 18,
-          onPressed: () {
-            Clipboard.setData(ClipboardData(text: value));
-            ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(
-                SnackBar(
-                  content: Text(copyTip),
-                  duration: const Duration(milliseconds: 900),
-                ),
-              );
-          },
+          onPressed: () => copyWithToast(context, value, copyTip),
           icon: Icon(Icons.copy_rounded, color: colors.textSecondary),
         ),
       ],
@@ -156,15 +146,11 @@ class _MorphemeRow extends StatelessWidget {
     final highlight = m.containsKanji;
 
     return InkWell(
-      onTap: () {
-        Clipboard.setData(ClipboardData(text: m.surface));
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppStrings.of(context).copiedSurface(m.surface)),
-            duration: const Duration(milliseconds: 900),
-          ),
-        );
-      },
+      onTap: () => copyWithToast(
+        context,
+        m.surface,
+        AppStrings.of(context).copiedSurface(m.surface),
+      ),
       borderRadius: BorderRadius.circular(10),
       child: Container(
         margin: const EdgeInsets.only(bottom: 6),

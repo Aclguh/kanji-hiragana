@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../core/app_meta.dart';
 import '../core/strings.dart';
 import '../theme.dart';
+import 'feedback.dart';
 
 /// 关于页面: 版本号、仓库、许可与致谢。
 class AboutPage extends StatefulWidget {
@@ -108,13 +108,8 @@ class _AboutPageState extends State<AboutPage> {
   }
 
   static void _copy(BuildContext context, String text, String tip) {
-    Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(tip),
-        duration: const Duration(milliseconds: 1200),
-      ),
-    );
+    // 与全应用的复制交互统一 (900ms 提示, 弹出前收起旧提示)。
+    copyWithToast(context, text, tip);
   }
 
   Widget _buildHeader(BuildContext context) {

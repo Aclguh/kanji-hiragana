@@ -7,6 +7,7 @@ import '../core/kanji_reading_dict.dart';
 import '../core/kanji_words_dict.dart';
 import '../core/strings.dart';
 import '../theme.dart';
+import 'feedback.dart';
 
 /// 单汉字详解视图: 展示该字的音读与训读。
 ///
@@ -280,30 +281,11 @@ class _ReadingGroupState extends State<_ReadingGroup> {
           ),
           if (overflows) ...[
             const SizedBox(height: 10),
-            GestureDetector(
-              onTap: () => setState(() => _expanded = !_expanded),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    _expanded
-                        ? AppStrings.of(context).collapse
-                        : AppStrings.of(context).collapseHidden(hidden),
-                    style: TextStyle(
-                        color: widget.color,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(width: 3),
-                  Icon(
-                    _expanded
-                        ? Icons.keyboard_arrow_up_rounded
-                        : Icons.keyboard_arrow_down_rounded,
-                    size: 16,
-                    color: widget.color,
-                  ),
-                ],
-              ),
+            _CollapseFooter(
+              expanded: _expanded,
+              hidden: hidden,
+              color: widget.color,
+              onToggle: () => setState(() => _expanded = !_expanded),
             ),
           ],
         ],
@@ -442,30 +424,11 @@ class _CommonWordsGroupState extends State<_CommonWordsGroup> {
           ],
           if (overflows) ...[
             const SizedBox(height: 8),
-            GestureDetector(
-              onTap: () => setState(() => _expanded = !_expanded),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    _expanded
-                        ? s.collapse
-                        : s.collapseHidden(hidden),
-                    style: TextStyle(
-                        color: color,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(width: 3),
-                  Icon(
-                    _expanded
-                        ? Icons.keyboard_arrow_up_rounded
-                        : Icons.keyboard_arrow_down_rounded,
-                    size: 16,
-                    color: color,
-                  ),
-                ],
-              ),
+            _CollapseFooter(
+              expanded: _expanded,
+              hidden: hidden,
+              color: color,
+              onToggle: () => setState(() => _expanded = !_expanded),
             ),
           ],
         ],
@@ -481,19 +444,6 @@ class _WordRow extends StatelessWidget {
 
   const _WordRow({required this.word, this.onWordTap});
 
-  void _copy(BuildContext context) {
-    Clipboard.setData(ClipboardData(text: word.word));
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content:
-              Text(AppStrings.of(context).copiedSurface(word.word)),
-          duration: const Duration(milliseconds: 900),
-        ),
-      );
-  }
-
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
@@ -504,12 +454,16 @@ class _WordRow extends StatelessWidget {
         if (onWordTap != null) {
           onWordTap!(word.word);
         } else {
-          _copy(context);
+          copyWithToast(
+            context,
+            word.word,
+            s.copiedSurface(word.word),
+          );
         }
       },
       onLongPress: () {
         HapticFeedback.lightImpact();
-        _copy(context);
+        copyWithToast(context, word.word, s.copiedSurface(word.word));
       },
       borderRadius: BorderRadius.circular(8),
       child: Padding(
@@ -589,6 +543,50 @@ class _NoReadingNotice extends StatelessWidget {
               AppStrings.of(context).readingsNotFound,
               style: TextStyle(color: colors.textSecondary, fontSize: 13),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 「展开 / 收起」尾块: 折叠时显示「还有 n 个」, 已展开时显示收起。
+///
+/// 读音与常见词两组的折叠列表共用; 文案复用
+/// `s.collapse` / `s.collapseHidden`, 不新造折叠文案。
+class _CollapseFooter extends StatelessWidget {
+  final bool expanded;
+  final int hidden;
+  final Color color;
+  final VoidCallback onToggle;
+
+  const _CollapseFooter({
+    required this.expanded,
+    required this.hidden,
+    required this.color,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
+    return GestureDetector(
+      onTap: onToggle,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            expanded ? s.collapse : s.collapseHidden(hidden),
+            style: TextStyle(
+                color: color, fontSize: 12, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(width: 3),
+          Icon(
+            expanded
+                ? Icons.keyboard_arrow_up_rounded
+                : Icons.keyboard_arrow_down_rounded,
+            size: 16,
+            color: color,
           ),
         ],
       ),
