@@ -106,6 +106,27 @@ void main() {
         isTrue,
       );
     });
+
+    testWidgets('关闭动画期间面板内容仍构建, 结束后才卸载', (tester) async {
+      await pump(tester, true);
+
+      // 切换为关闭态后动画进行中: 内容必须还在树里,
+      // 否则滑出的只是空框 (关闭动画形同虚设)。
+      await tester.pumpWidget(_host(
+        SlidingDrawer(
+          side: DrawerSide.left,
+          open: false,
+          panel: const Text('面板内容'),
+          child: const Text('主内容'),
+        ),
+      ));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('面板内容'), findsOneWidget);
+      expect(find.text('主内容'), findsOneWidget);
+
+      await tester.pumpAndSettle();
+      expect(find.text('面板内容'), findsNothing);
+    });
   });
 
   group('SingleKanjiView 分组渲染', () {

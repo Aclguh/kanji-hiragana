@@ -28,7 +28,7 @@ enum OpenDrawer {
 /// 与 [Scaffold.drawer] 的区别在于:
 /// - 面板宽度为屏幕的 [widthFactor] (默认 2/3), 而非固定宽度;
 /// - 遮罩 (scrim) 覆盖整个屏幕, 点击任意处即可收起, 主内容不做位移。
-class SlidingDrawer extends StatelessWidget {
+class SlidingDrawer extends StatefulWidget {
   /// 抽屉停靠方向。
   final DrawerSide side;
 
@@ -57,70 +57,129 @@ class SlidingDrawer extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final colors = AppTheme.of(context);
-        final panelWidth = constraints.maxWidth * widthFactor;
-
-        return Stack(
-          children: [
-            // 主内容: 不做位移, 只被遮罩压暗。
-            child,
-
-            // 压暗遮罩: 覆盖整个屏幕, 点击收起。未展开时不拦截手势。
-            //
-            // 必须显式 Positioned.fill, 否则 ColoredBox 在该 Stack 中
-            // 没有约束, 命中区域会退化为零。
-            Positioned.fill(
-              child: IgnorePointer(
-                ignoring: !open,
-                child: AnimatedOpacity(
-                  opacity: open ? 1 : 0,
-                  duration: duration,
-                  child: GestureDetector(
-                    onTap: () => close(context),
-                    behavior: HitTestBehavior.opaque,
-                    child: ColoredBox(color: colors.scrim),
-                  ),
-                ),
-              ),
-            ),
-
-            // 抽屉面板: 从屏幕外侧滑入 (关闭时完全移出可视区域)。
-            //
-            // 完全收起时不构建面板内容, 避免未展开的抽屉仍然参与
-            // 语义树与命中测试 (例如两处「关闭」按钮同时可被找到)。
-            AnimatedPositioned(
-              duration: duration,
-              curve: Curves.easeOutCubic,
-              top: 0,
-              bottom: 0,
-              width: panelWidth,
-              left: side == DrawerSide.left
-                  ? (open ? 0 : -panelWidth)
-                  : null,
-              right: side == DrawerSide.right
-                  ? (open ? 0 : -panelWidth)
-                  : null,
-              child: IgnorePointer(
-                ignoring: !open,
-                child: ExcludeSemantics(
-                  excluding: !open,
-                  child: open ? panel : const SizedBox.expand(),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  State<SlidingDrawer> createState() => _SlidingDrawerState();
 
   /// 请求关闭当前抽屉 (交由宿主处理)。
   static void close(BuildContext context) {
     final handler = DrawerCloseNotification.maybeOf(context);
     handler?.call();
+  }
+}
+
+class _SlidingDrawerState extends State<SlidingDrawer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final CurvedAnimation _curve;
+
+  /// 面板内容是否仍挂在树上。
+  ///
+  /// 「面板是否构建内容」与「面板是否参与动画」是两件事: 关闭时若立即
+  /// 卸载内容, 滑出的只是一个空透明框, 动画形同虚设。因此关闭动画期间
+  /// 保留内容 (位置由动画值驱动), 动画结束 (dismissed) 后才真正卸载。
+  bool _panelMounted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: SlidingDrawer.duration,
+      value: widget.open ? 1.0 : 0.0,
+    );
+    _curve = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
+    _panelMounted = widget.open;
+    _controller.addStatusListener(_onStatusChanged);
+  }
+
+  void _onStatusChanged(AnimationStatus status) {
+    if (status == AnimationStatus.dismissed &&
+        !widget.open &&
+        _panelMounted) {
+      setState(() => _panelMounted = false);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant SlidingDrawer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.open == oldWidget.open) return;
+    if (widget.open) {
+      setState(() => _panelMounted = true);
+      _controller.forward();
+    } else {
+      _controller.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final colors = AppTheme.of(context);
+        final panelWidth = constraints.maxWidth * widget.widthFactor;
+
+        return AnimatedBuilder(
+          animation: _controller,
+          builder: (context, _) {
+            final panelOffset = panelWidth * (1 - _curve.value);
+
+            return Stack(
+              children: [
+                // 主内容: 不做位移, 只被遮罩压暗。
+                widget.child,
+
+                // 压暗遮罩: 覆盖整个屏幕, 点击收起。未展开时不拦截手势。
+                //
+                // 必须显式 Positioned.fill, 否则 ColoredBox 在该 Stack 中
+                // 没有约束, 命中区域会退化为零。
+                Positioned.fill(
+                  child: IgnorePointer(
+                    ignoring: !widget.open,
+                    child: AnimatedOpacity(
+                      opacity: widget.open ? 1 : 0,
+                      duration: SlidingDrawer.duration,
+                      child: GestureDetector(
+                        onTap: () => SlidingDrawer.close(context),
+                        behavior: HitTestBehavior.opaque,
+                        child: ColoredBox(color: colors.scrim),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // 抽屉面板: 从屏幕外侧滑入, 滑出过程由动画值驱动,
+                // 关闭动画期间内容仍构建 (见 [_panelMounted])。
+                //
+                // 语义与命中只在完全展开时参与: 关闭一发出, 面板在语义树
+                // 里就已消失, 读屏不会摸到正在滑出的内容。
+                Positioned(
+                  top: 0,
+                  bottom: 0,
+                  width: panelWidth,
+                  left: widget.side == DrawerSide.left ? -panelOffset : null,
+                  right: widget.side == DrawerSide.right ? -panelOffset : null,
+                  child: IgnorePointer(
+                    ignoring: !widget.open,
+                    child: ExcludeSemantics(
+                      excluding: !widget.open,
+                      child: _panelMounted
+                          ? widget.panel
+                          : const SizedBox.expand(),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 }
 
