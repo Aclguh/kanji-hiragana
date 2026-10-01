@@ -1,0 +1,13 @@
+# 依赖更新策略: kuromoji 是核心功能依赖, 与 gen_kanji_words.py 存在
+# 二进制格式耦合 (升级须走 AGENTS.md「升级 kuromoji 的固定检查单」),
+# 小步跟进比跨多个大版本一次性升级风险低得多。
+version: 2
+updates:
+  - package-ecosystem: "pub"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
