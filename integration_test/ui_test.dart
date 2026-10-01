@@ -60,6 +60,24 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// 反复 pump 直到 [finder] 出现或超时。
+  ///
+  /// 输入触发的防抖 (220ms) 与 isolate 分析的完成时刻随设备性能
+  /// 浮动, 固定时长 pump 在慢设备上有 flake 风险; 这里显式等待
+  /// 目标出现, 而不是假设某个固定时长一定够。
+  Future<void> pumpUntilFound(
+    WidgetTester tester,
+    Finder finder, {
+    Duration timeout = const Duration(seconds: 10),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      await tester.pump(const Duration(milliseconds: 40));
+      if (finder.evaluate().isNotEmpty) return;
+    }
+    fail('等待超时: $finder');
+  }
+
   /// 悬浮按钮是否可见 (透明度为 1 视作可见)。
   bool buttonsVisible(WidgetTester tester) {
     final widgets = tester.widgetList<AnimatedOpacity>(
@@ -109,13 +127,13 @@ void main() {
 
     // 输入多字后按钮消失。
     await tester.enterText(find.byType(TextField), '日本の文化');
-    await tester.pump(const Duration(milliseconds: 300));
+    await pumpUntilFound(tester, find.byType(AlignmentTable));
     await tester.pumpAndSettle();
     expect(buttonsVisible(tester), isFalse);
 
     // 输入单个汉字同样不显示按钮。
     await tester.enterText(find.byType(TextField), '日');
-    await tester.pump(const Duration(milliseconds: 300));
+    await pumpUntilFound(tester, find.byType(SingleKanjiView));
     await tester.pumpAndSettle();
     expect(buttonsVisible(tester), isFalse);
 
@@ -130,7 +148,7 @@ void main() {
 
     // 输入内容后按下返回键: 应清空文本而非退出。
     await tester.enterText(find.byType(TextField), '日本の文化');
-    await tester.pump(const Duration(milliseconds: 300));
+    await pumpUntilFound(tester, find.byType(AlignmentTable));
     await tester.pumpAndSettle();
     expect(find.text('对照表'), findsOneWidget);
 
@@ -169,7 +187,7 @@ void main() {
 
     await tester.enterText(find.byType(TextField), '日本の文化');
     // 等待防抖 + 解析 + 动画。
-    await tester.pump(const Duration(milliseconds: 300));
+    await pumpUntilFound(tester, find.byType(AlignmentTable));
     await tester.pumpAndSettle();
 
     // 工具栏出现。
@@ -184,7 +202,7 @@ void main() {
     await pumpHome(tester);
 
     await tester.enterText(find.byType(TextField), '日');
-    await tester.pump(const Duration(milliseconds: 300));
+    await pumpUntilFound(tester, find.byType(SingleKanjiView));
     await tester.pumpAndSettle();
 
     // 音读 / 训读分组标题。
@@ -208,13 +226,13 @@ void main() {
 
     // 多字: 出现对照表。
     await tester.enterText(find.byType(TextField), '日本の文化');
-    await tester.pump(const Duration(milliseconds: 300));
+    await pumpUntilFound(tester, find.byType(AlignmentTable));
     await tester.pumpAndSettle();
     expect(find.byType(AlignmentTable), findsOneWidget);
 
     // 删到只剩一个汉字: 对照表消失, 改为音训读详解。
     await tester.enterText(find.byType(TextField), '日');
-    await tester.pump(const Duration(milliseconds: 300));
+    await pumpUntilFound(tester, find.byType(SingleKanjiView));
     await tester.pumpAndSettle();
     expect(find.byType(AlignmentTable), findsNothing);
     expect(find.byType(SingleKanjiView), findsOneWidget);
@@ -224,7 +242,7 @@ void main() {
     await pumpHome(tester);
 
     await tester.enterText(find.byType(TextField), '日本');
-    await tester.pump(const Duration(milliseconds: 300));
+    await pumpUntilFound(tester, find.byType(AlignmentTable));
     await tester.pumpAndSettle();
 
     expect(find.byType(AlignmentTable), findsOneWidget);
@@ -247,7 +265,7 @@ void main() {
     await pumpHome(tester);
 
     await tester.enterText(find.byType(TextField), '日本');
-    await tester.pump(const Duration(milliseconds: 300));
+    await pumpUntilFound(tester, find.byType(AlignmentTable));
     await tester.pumpAndSettle();
     expect(find.text('对照表'), findsOneWidget);
 
@@ -262,7 +280,7 @@ void main() {
     await pumpHome(tester);
 
     await tester.enterText(find.byType(TextField), '日本の文化');
-    await tester.pump(const Duration(milliseconds: 300));
+    await pumpUntilFound(tester, find.byType(AlignmentTable));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), '');
@@ -274,7 +292,7 @@ void main() {
 
     // 点按词条 → 回填并重新展开结果。
     await tester.tap(find.text('日本の文化'));
-    await tester.pump(const Duration(milliseconds: 300));
+    await pumpUntilFound(tester, find.byType(AlignmentTable));
     await tester.pumpAndSettle();
     expect(find.byType(AlignmentTable), findsOneWidget);
     expect(find.text('对照表'), findsOneWidget);
@@ -284,7 +302,7 @@ void main() {
     await pumpHome(tester);
 
     await tester.enterText(find.byType(TextField), '日本の文化');
-    await tester.pump(const Duration(milliseconds: 300));
+    await pumpUntilFound(tester, find.byType(AlignmentTable));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), '');
@@ -304,7 +322,7 @@ void main() {
     await pumpHome(tester);
 
     await tester.enterText(find.byType(TextField), '日本の文化');
-    await tester.pump(const Duration(milliseconds: 300));
+    await pumpUntilFound(tester, find.byType(AlignmentTable));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), '');
@@ -323,10 +341,10 @@ void main() {
 
     // 打字过程中的中间态不应各自留痕。
     await tester.enterText(find.byType(TextField), '私');
-    await tester.pump(const Duration(milliseconds: 300));
+    await pumpUntilFound(tester, find.byType(SingleKanjiView));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), '私は学生');
-    await tester.pump(const Duration(milliseconds: 300));
+    await pumpUntilFound(tester, find.byType(AlignmentTable));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), '');
@@ -340,7 +358,7 @@ void main() {
     await pumpHome(tester);
 
     await tester.enterText(find.byType(TextField), '日');
-    await tester.pump(const Duration(milliseconds: 300));
+    await pumpUntilFound(tester, find.byType(SingleKanjiView));
     await tester.pumpAndSettle();
 
     // 点 AppBar 星标收藏: 空心 → 实心。
@@ -357,7 +375,7 @@ void main() {
 
     // 点收藏词条恢复查询 → 单字详解。
     await tester.tap(find.text('日').first);
-    await tester.pump(const Duration(milliseconds: 300));
+    await pumpUntilFound(tester, find.byType(SingleKanjiView));
     await tester.pumpAndSettle();
     expect(find.byType(SingleKanjiView), findsOneWidget);
   });
@@ -366,7 +384,7 @@ void main() {
     await pumpHome(tester);
 
     await tester.enterText(find.byType(TextField), '日');
-    await tester.pump(const Duration(milliseconds: 300));
+    await pumpUntilFound(tester, find.byType(SingleKanjiView));
     await tester.pumpAndSettle();
 
     // 收藏
@@ -390,7 +408,7 @@ void main() {
     await pumpHome(tester);
 
     await tester.enterText(find.byType(TextField), '日');
-    await tester.pump(const Duration(milliseconds: 300));
+    await pumpUntilFound(tester, find.byType(SingleKanjiView));
     await tester.pumpAndSettle();
 
     expect(find.text('常见词汇'), findsOneWidget);
@@ -403,7 +421,7 @@ void main() {
     await pumpHome(tester);
 
     await tester.enterText(find.byType(TextField), '日');
-    await tester.pump(const Duration(milliseconds: 300));
+    await pumpUntilFound(tester, find.byType(SingleKanjiView));
     await tester.pumpAndSettle();
 
     expect(find.byType(SingleKanjiView), findsOneWidget);
@@ -414,7 +432,7 @@ void main() {
     await tester.ensureVisible(find.text('日本'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('日本'));
-    await tester.pump(const Duration(milliseconds: 300));
+    await pumpUntilFound(tester, find.byType(AlignmentTable));
     await tester.pumpAndSettle();
 
     // 自动以「日本」展开对照表分析结果
@@ -592,20 +610,18 @@ void main() {
     expect(find.byType(FilterResultPage), findsOneWidget);
     expect(find.byType(GridView), findsOneWidget);
 
-    // 找到首个汉字格并记录字符
+    // 首个汉字格: 结果按使用频率排序, 首字从字典实时算出,
+    // 不与字典数据硬编码耦合; 用 Key 定位而非私有类名字符串 ——
+    // 类名重构会静默失效, Key 约定与格子定义在同一处维护。
+    const strokesFilter = KanjiFilter(strokesMin: 1, strokesMax: 5);
+    final firstKanji =
+        strokesFilter.apply(kanjiReadingDict.values).first.kanji;
     final cellFinder = find.descendant(
       of: find.byType(GridView),
-      matching: find.byWidgetPredicate(
-        (w) => w.runtimeType.toString() == '_KanjiCell',
-      ),
+      matching: find.byKey(ValueKey('kanji_cell:$firstKanji')),
     );
-    expect(cellFinder, findsWidgets);
-
-    final kanjiTextFinder = find.descendant(
-      of: cellFinder.first,
-      matching: find.byType(Text),
-    );
-    final kanji = tester.widget<Text>(kanjiTextFinder.first).data!;
+    expect(cellFinder, findsOneWidget);
+    final kanji = firstKanji;
 
     // 点入首字进入详情页
     await tester.tap(cellFinder.first);
@@ -708,7 +724,7 @@ void main() {
     // 输入后工具栏与结果也是英文。句子取 東京に行きます:
     // 恰好覆盖 名詞/動詞/助動詞 三种词性各一次。
     await tester.enterText(find.byType(TextField), '東京に行きます');
-    await tester.pump(const Duration(milliseconds: 300));
+    await pumpUntilFound(tester, find.byType(AlignmentTable));
     await tester.pumpAndSettle();
     expect(find.text('Table'), findsOneWidget);
     expect(find.text('Furigana'), findsOneWidget);
@@ -739,7 +755,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), '生');
-    await tester.pump(const Duration(milliseconds: 300));
+    await pumpUntilFound(tester, find.byType(SingleKanjiView));
     await tester.pumpAndSettle();
 
     // 「生」的英文释义取自 KANJIDIC2 原文。

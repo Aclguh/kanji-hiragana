@@ -121,6 +121,9 @@ class _FilterResultPageState extends State<FilterResultPage> {
                       ),
                       itemCount: _results.length,
                       itemBuilder: (context, i) => _KanjiCell(
+                        // Key 约定供 integration 测试定位格子,
+                        // 替代对私有类名的字符串匹配。
+                        key: ValueKey('kanji_cell:${_results[i].kanji}'),
                         reading: _results[i],
                         onTap: () => _openDetail(_results[i]),
                       ),
@@ -216,7 +219,7 @@ class _KanjiCell extends StatelessWidget {
   final KanjiReading reading;
   final VoidCallback onTap;
 
-  const _KanjiCell({required this.reading, required this.onTap});
+  const _KanjiCell({super.key, required this.reading, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
