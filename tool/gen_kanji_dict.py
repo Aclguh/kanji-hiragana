@@ -8,13 +8,15 @@
 选取范围: grade 1-6 (教育汉字) + grade 8 (常用汉字) + grade 9/10 (人名用汉字)
 """
 import gzip
-import os
-import re
 import sys
+import xml.etree.ElementTree as ET
+from pathlib import Path
 
-SRC_GZ = 'tool/data/kanjidic2.xml.gz'
-SRC_XML = 'tool/data/kanjidic2.xml'
-OUT = 'lib/core/kanji_reading_dict.dart'
+# 锚定到脚本所在仓库, 任意工作目录均可运行。
+REPO_ROOT = Path(__file__).resolve().parent.parent
+SRC_GZ = REPO_ROOT / 'tool' / 'data' / 'kanjidic2.xml.gz'
+SRC_XML = REPO_ROOT / 'tool' / 'data' / 'kanjidic2.xml'
+OUT = REPO_ROOT / 'lib' / 'core' / 'kanji_reading_dict.dart'
 
 # 训读中 '-び' 这样的前后缀标记改用括号形式更易读, 如 び(-)
 def clean_kun(reading: str) -> str:
@@ -40,22 +42,16 @@ def clean_kun(reading: str) -> str:
     return r
 
 
-def has_suffix_dash(reading: str) -> bool:
-    return reading.startswith('-') or reading.endswith('-')
-
-
-def load_source() -> str:
-    """读取 KANJIDIC2 原始数据。
+def load_source():
+    """打开 KANJIDIC2 原始数据 (二进制流, 供 ElementTree 解析)。
 
     优先用压缩包(.gz, 约 1.5MB, 随仓库提交), 没有则回退到解压后的
     XML(约 16MB, 不进版本库)。两者内容一致。
     """
-    if os.path.exists(SRC_GZ):
-        with gzip.open(SRC_GZ, 'rt', encoding='utf-8') as f:
-            return f.read()
-    if os.path.exists(SRC_XML):
-        with open(SRC_XML, encoding='utf-8') as f:
-            return f.read()
+    if SRC_GZ.exists():
+        return gzip.open(SRC_GZ, 'rb')
+    if SRC_XML.exists():
+        return open(SRC_XML, 'rb')
     raise SystemExit(
         f'未找到词典源文件。请先下载:\n'
         f'  curl -L -o {SRC_GZ} '
@@ -64,33 +60,56 @@ def load_source() -> str:
 
 
 def parse():
-    data = load_source()
-    # 按 <character> 块切分
-    entries = re.findall(r'<character>(.*?)</character>', data, re.S)
+    """ElementTree 解析 KANJIDIC2, 自动处理 XML 实体 (如 &amp;)。
+
+    按使用频率排序返回, 便于控制生成体积时优先保留高频字。
+    """
+    with load_source() as f:
+        tree = ET.parse(f)
+    root = tree.getroot()
     result = {}
 
-    for entry in entries:
-        lit = re.search(r'<literal>(.*?)</literal>', entry)
-        if not lit:
+    for character in root.iter('character'):
+        lit = character.find('literal')
+        if lit is None or not (lit.text or '').strip():
             continue
-        kanji = lit.group(1)
+        kanji = lit.text.strip()
 
-        grade_m = re.search(r'<grade>(\d+)</grade>', entry)
-        grade = int(grade_m.group(1)) if grade_m else None
+        misc = character.find('misc')
+        grade = None
+        freq = 99999
+        strokes = 0
+        if misc is not None:
+            grade_el = misc.find('grade')
+            grade = int(grade_el.text) if grade_el is not None else None
+            freq_el = misc.find('freq')
+            freq = int(freq_el.text) if freq_el is not None else 99999
+            strokes_el = misc.find('stroke_count')
+            strokes = (
+                int(strokes_el.text) if strokes_el is not None else 0)
 
         # 只保留常用汉字与教育汉字
         if grade not in (1, 2, 3, 4, 5, 6, 8, 9, 10):
             continue
 
-        on = re.findall(r'<reading r_type="ja_on">(.*?)</reading>', entry)
-        kun = re.findall(r'<reading r_type="ja_kun">(.*?)</reading>', entry)
-        meanings = re.findall(r'<meaning>(.*?)</meaning>', entry)
-
-        freq_m = re.search(r'<freq>(\d+)</freq>', entry)
-        freq = int(freq_m.group(1)) if freq_m else 99999
-
-        strokes_m = re.search(r'<stroke_count>(\d+)</stroke_count>', entry)
-        strokes = int(strokes_m.group(1)) if strokes_m else 0
+        on = []
+        kun = []
+        meanings = []
+        rm = character.find('reading_meaning')
+        if rm is not None:
+            for group in rm.findall('rmgroup'):
+                for r in group.findall('reading'):
+                    r_type = r.get('r_type')
+                    text = (r.text or '').strip()
+                    if r_type == 'ja_on':
+                        on.append(text)
+                    elif r_type == 'ja_kun':
+                        kun.append(text)
+                for m in group.findall('meaning'):
+                    # 无 m_lang 属性的才是英文释义,
+                    # 其余为 KANJIDIC2 内嵌的法语/西语/葡语翻译。
+                    if not m.get('m_lang'):
+                        meanings.append((m.text or '').strip())
 
         # 音读: 片假名 -> 平假名, 去重保序
         on_hira = []
@@ -118,9 +137,7 @@ def parse():
             'strokes': strokes,
         }
 
-    # 按使用频率排序, 便于控制生成体积时优先保留高频字
-    ordered = sorted(result.items(), key=lambda kv: kv[1]['freq'])
-    return ordered
+    return sorted(result.items(), key=lambda kv: kv[1]['freq'])
 
 
 # 英文释义的中文对照 (常见高频词汇, 未命中则保留英文)
@@ -239,8 +256,17 @@ def en_meanings(meanings):
     return out[:3]
 
 
+def dart_escape(text: str) -> str:
+    """Dart 单引号字符串转义。
+
+    必须先转义反斜杠再转义单引号 —— 顺序颠倒会把 `\\'` 里的
+    反斜杠再次转义, 生成非法 Dart。
+    """
+    return text.replace('\\', r'\\').replace("'", r"\'")
+
+
 def dart_str_list(items):
-    return ', '.join("'" + s.replace("'", r"\'") + "'" for s in items)
+    return ', '.join("'" + dart_escape(s) + "'" for s in items)
 
 
 def main():
@@ -329,10 +355,11 @@ def main():
     lines.append('};')
     lines.append('')
 
-    with open(OUT, 'w', encoding='utf-8') as f:
+    with open(OUT, 'w', encoding='utf-8', newline='\n') as f:
         f.write('\n'.join(lines))
 
     print(f'已生成 {OUT}', file=sys.stderr)
 
 
-main()
+if __name__ == '__main__':
+    main()
