@@ -175,6 +175,7 @@ lib/
     vector_icon.dart         手绘矢量图标（齿轮 / 放大镜）
 test/
   core_test.dart             单元测试（含 QueryStore）
+  widget_test.dart           重组件宿主机 widget 测试（筛选抽屉 / 滑动抽屉 / 单字详解）
 integration_test/
   ui_test.dart               真机 UI 测试
 tool/
@@ -197,10 +198,10 @@ flutter analyze
 # 逻辑验证（不依赖 flutter_test，任何环境都能跑，90 项断言）
 dart run tool/verify.dart
 
-# 单元测试（42 项测试）
+# 单元测试 + 组件测试（49 项测试，无需设备）
 flutter test
 
-# 真机 UI 测试（需连接设备，29 项测试）
+# 真机 UI 测试（需连接设备，29 项测试，最终门槛）
 flutter test integration_test/ui_test.dart -d <device-id>
 
 # USB 调试直连运行

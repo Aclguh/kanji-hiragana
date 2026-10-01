@@ -200,6 +200,7 @@ lib/
     vector_icon.dart         Hand-drawn vector icons (gear / magnifier)
 test/
   core_test.dart             Unit tests (incl. QueryStore)
+  widget_test.dart           Host-side widget tests for the heavy widgets (filter drawer / sliding drawer / single-kanji view)
 integration_test/
   ui_test.dart               On-device UI tests
 tool/
@@ -222,10 +223,10 @@ flutter analyze
 # Logic verification (no flutter_test needed, runs anywhere, 90 assertions)
 dart run tool/verify.dart
 
-# Unit tests (42 tests)
+# Unit + widget tests (49 tests, no device needed)
 flutter test
 
-# On-device UI tests (requires a connected device, 29 tests)
+# On-device UI tests (requires a connected device, 29 tests, final gate)
 flutter test integration_test/ui_test.dart -d <device-id>
 
 # Run over USB
