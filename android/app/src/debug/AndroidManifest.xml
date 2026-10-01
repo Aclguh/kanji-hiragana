@@ -4,4 +4,13 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Impeller 在本仓库的 debug 构建上会陷入 GLES shader 链接死循环
+         (黑屏 + 主线程高 CPU, 设备 7c2af7741023 实测), debug 走 Skia;
+         release/profile 构建不受此文件影响, 保持 Impeller。 -->
+    <application>
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false"/>
+    </application>
 </manifest>
