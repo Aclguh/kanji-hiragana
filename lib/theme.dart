@@ -51,20 +51,15 @@ class AppTheme {
   // 主题构建
   // ---------------------------------------------------------------------------
 
-  /// 当前生效的配色。
-  ///
-  /// 由 [MaterialApp] 在切换到对应主题时写入; 组件侧请优先使用
-  /// `AppTheme.of(context)`, 它在主题变化时会自动重建。
-  static AppColors _current = const AppColors._dark();
-
-  static AppColors get colors => _current;
-
   /// 读取当前主题配色。
   ///
   /// 从 [Theme.of] 取 [AppColors](一个 [ThemeExtension]), 因此主题切换时
-  /// 依赖它的组件会自动重建。
+  /// 依赖它的组件会自动重建。正常用法下 extension 必然注册
+  /// ([dark] / [light] 均已注册), 回退仅为防御未走本类主题的误用,
+  /// 固定为深色 const, 不随构建顺序漂移。
   static AppColors of(BuildContext context) {
-    return Theme.of(context).extension<AppColors>() ?? _current;
+    return Theme.of(context).extension<AppColors>() ??
+        const AppColors._dark();
   }
 
   static ThemeData dark() {
@@ -90,8 +85,6 @@ class AppTheme {
     required AppColors colors,
     required ThemeData base,
   }) {
-    // 切换主题时同步全局配色, 供暂无 context 的场合读取。
-    _current = colors;
     return base.copyWith(
       scaffoldBackgroundColor: colors.bg,
       colorScheme: base.colorScheme.copyWith(
