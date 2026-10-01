@@ -57,9 +57,18 @@ class AppTheme {
   /// 依赖它的组件会自动重建。正常用法下 extension 必然注册
   /// ([dark] / [light] 均已注册), 回退仅为防御未走本类主题的误用,
   /// 固定为深色 const, 不随构建顺序漂移。
+  ///
+  /// 浅色界面下误用会无声拿到深色配色, 开发期很难察觉 —— 因此
+  /// debug 模式下断言 extension 已注册, release 保持静默回退。
   static AppColors of(BuildContext context) {
-    return Theme.of(context).extension<AppColors>() ??
-        const AppColors._dark();
+    final colors = Theme.of(context).extension<AppColors>();
+    assert(
+      colors != null,
+      'AppTheme.of: 当前 ThemeData 未注册 AppColors extension, '
+      '已回退到深色配色。请用 AppTheme.dark() / AppTheme.light() '
+      '构建主题, 不要用裸 ThemeData()。',
+    );
+    return colors ?? const AppColors._dark();
   }
 
   static ThemeData dark() {
