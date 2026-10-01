@@ -22,7 +22,7 @@ enum AppThemeMode {
       };
 
   /// 界面显示用的名称, 随当前语言变化。
-  String label(AppStrings s) => s.themeModeLabel(name);
+  String label(AppStrings s) => s.themeModeLabel(this);
 
   static AppThemeMode fromName(String? name) {
     return AppThemeMode.values.firstWhere(

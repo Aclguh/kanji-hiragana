@@ -157,10 +157,10 @@ class _FilterResultPageState extends State<FilterResultPage> {
       chips.add(s.filterChipFrequency(filter.frequencyMin, filter.frequencyMax));
     }
 
-    // 读音构成
-    if (filter.reading != ReadingRequirement.any) {
-      chips.add(s.readingLabel(filter.reading.name));
-    }
+  // 读音构成
+  if (filter.reading != ReadingRequirement.any) {
+    chips.add(s.readingLabel(filter.reading));
+  }
 
     if (chips.isEmpty) return const SizedBox.shrink();
 

@@ -630,20 +630,20 @@ void main() {
 
       // 排序维度
       for (final sort in KanjiSort.values) {
-        expect(zh.sortLabel(sort.name).isNotEmpty, isTrue);
-        expect(en.sortLabel(sort.name).isNotEmpty, isTrue);
+        expect(zh.sortLabel(sort).isNotEmpty, isTrue);
+        expect(en.sortLabel(sort).isNotEmpty, isTrue);
       }
 
       // 读音要求
       for (final req in ReadingRequirement.values) {
-        expect(zh.readingLabel(req.name).isNotEmpty, isTrue);
-        expect(en.readingLabel(req.name).isNotEmpty, isTrue);
+        expect(zh.readingLabel(req).isNotEmpty, isTrue);
+        expect(en.readingLabel(req).isNotEmpty, isTrue);
       }
 
       // 主题模式
       for (final mode in AppThemeMode.values) {
-        expect(zh.themeModeLabel(mode.name).isNotEmpty, isTrue);
-        expect(en.themeModeLabel(mode.name).isNotEmpty, isTrue);
+        expect(zh.themeModeLabel(mode).isNotEmpty, isTrue);
+        expect(en.themeModeLabel(mode).isNotEmpty, isTrue);
       }
 
       // 词性标签映射

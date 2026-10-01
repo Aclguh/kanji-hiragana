@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'kanji_filter.dart';
+import 'settings.dart';
+
 /// 界面语言。
 enum AppLanguage {
   /// 简体中文。
@@ -206,8 +209,11 @@ sealed class AppStrings {
       };
 
   /// 筛选项标签。
-  String sortLabel(String sortName);
-  String readingLabel(String readingName);
+  ///
+  /// 直接接收枚举并 switch 穷举 (不写 `_` 兜底): 枚举新增值后漏译
+  /// 会编译报错, 与密封类其余部分的漏译检查对齐。
+  String sortLabel(KanjiSort sort);
+  String readingLabel(ReadingRequirement reading);
   String filterCount(int total);
 
   /// 筛选结果页的条件摘要 chip 标签。
@@ -238,7 +244,7 @@ sealed class AppStrings {
   String get sectionLanguage;
   String get sectionOtherSettings;
   String get theme;
-  String themeModeLabel(String modeName);
+  String themeModeLabel(AppThemeMode mode);
   String get autoRotate;
   String get autoRotateOn;
   String get autoRotateOff;
@@ -506,19 +512,19 @@ class ZhStrings extends AppStrings {
   String get gradeNameChip => '人名';
 
   @override
-  String sortLabel(String sortName) => switch (sortName) {
-        'frequency' => '使用频率',
-        'strokes' => '笔画数',
-        'grade' => '学年',
-        _ => '读音数量',
+  String sortLabel(KanjiSort sort) => switch (sort) {
+        KanjiSort.frequency => '使用频率',
+        KanjiSort.strokes => '笔画数',
+        KanjiSort.grade => '学年',
+        KanjiSort.readingCount => '读音数量',
       };
 
   @override
-  String readingLabel(String readingName) => switch (readingName) {
-        'onyomiOnly' => '仅音读',
-        'kunyomiOnly' => '仅训读',
-        'both' => '音训兼备',
-        _ => '不限',
+  String readingLabel(ReadingRequirement reading) => switch (reading) {
+        ReadingRequirement.any => '不限',
+        ReadingRequirement.onyomiOnly => '仅音读',
+        ReadingRequirement.kunyomiOnly => '仅训读',
+        ReadingRequirement.both => '音训兼备',
       };
 
   @override
@@ -582,10 +588,10 @@ class ZhStrings extends AppStrings {
   String get theme => '主题';
 
   @override
-  String themeModeLabel(String modeName) => switch (modeName) {
-        'light' => '浅色',
-        'dark' => '深色',
-        _ => '跟随系统',
+  String themeModeLabel(AppThemeMode mode) => switch (mode) {
+        AppThemeMode.light => '浅色',
+        AppThemeMode.dark => '深色',
+        AppThemeMode.system => '跟随系统',
       };
 
   @override
@@ -939,19 +945,19 @@ class EnStrings extends AppStrings {
   String get gradeNameChip => 'Names';
 
   @override
-  String sortLabel(String sortName) => switch (sortName) {
-        'frequency' => 'Frequency',
-        'strokes' => 'Strokes',
-        'grade' => 'Grade',
-        _ => 'Readings',
+  String sortLabel(KanjiSort sort) => switch (sort) {
+        KanjiSort.frequency => 'Frequency',
+        KanjiSort.strokes => 'Strokes',
+        KanjiSort.grade => 'Grade',
+        KanjiSort.readingCount => 'Readings',
       };
 
   @override
-  String readingLabel(String readingName) => switch (readingName) {
-        'onyomiOnly' => "On'yomi only",
-        'kunyomiOnly' => "Kun'yomi only",
-        'both' => 'Both',
-        _ => 'Any',
+  String readingLabel(ReadingRequirement reading) => switch (reading) {
+        ReadingRequirement.any => 'Any',
+        ReadingRequirement.onyomiOnly => "On'yomi only",
+        ReadingRequirement.kunyomiOnly => "Kun'yomi only",
+        ReadingRequirement.both => 'Both',
       };
 
   @override
@@ -1018,10 +1024,10 @@ class EnStrings extends AppStrings {
   String get theme => 'Theme';
 
   @override
-  String themeModeLabel(String modeName) => switch (modeName) {
-        'light' => 'Light',
-        'dark' => 'Dark',
-        _ => 'System',
+  String themeModeLabel(AppThemeMode mode) => switch (mode) {
+        AppThemeMode.light => 'Light',
+        AppThemeMode.dark => 'Dark',
+        AppThemeMode.system => 'System',
       };
 
   @override

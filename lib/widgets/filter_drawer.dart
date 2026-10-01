@@ -186,7 +186,7 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
     return _chipWrap(
       KanjiSort.values.map((sort) {
         return _Chip(
-          label: s.sortLabel(sort.name),
+          label: s.sortLabel(sort),
           selected: _filter.sort == sort,
           onTap: () => setState(() => _filter = _filter.copyWith(sort: sort)),
         );
@@ -291,7 +291,7 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
     return _chipWrap(
       ReadingRequirement.values.map((r) {
         return _Chip(
-          label: s.readingLabel(r.name),
+          label: s.readingLabel(r),
           selected: _filter.reading == r,
           onTap: () =>
               setState(() => _filter = _filter.copyWith(reading: r)),
