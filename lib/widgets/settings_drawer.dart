@@ -73,11 +73,7 @@ class SettingsDrawerContent extends StatelessWidget {
 
         // 关于
         DrawerSectionLabel(s.sectionOtherSettings),
-        _NavTile(
-          title: s.about,
-          subtitle: s.aboutSubtitle,
-          onTap: onOpenAbout,
-        ),
+        _NavTile(title: s.about, subtitle: s.aboutSubtitle, onTap: onOpenAbout),
       ],
     );
   }
@@ -88,9 +84,7 @@ class SettingsDrawerContent extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.accent.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: AppTheme.accent.withValues(alpha: 0.35),
-        ),
+        border: Border.all(color: AppTheme.accent.withValues(alpha: 0.35)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -133,50 +127,61 @@ class _ThemeModeSelector extends StatelessWidget {
         final selected = mode == value;
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: InkWell(
-            onTap: () => onChanged(mode),
-            borderRadius: BorderRadius.circular(10),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: selected
-                    ? AppTheme.accent.withValues(alpha: 0.12)
-                    : colors.surfaceVariant,
+          child: MergeSemantics(
+            child: Semantics(
+              selected: selected,
+              child: InkWell(
+                onTap: () => onChanged(mode),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: selected ? AppTheme.accent : colors.border,
-                  width: selected ? 1.5 : 1,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    _iconFor(mode),
-                    size: 17,
-                    color:
-                        selected ? AppTheme.accent : colors.textSecondary,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      mode.label(s),
-                      style: TextStyle(
-                        color: selected
-                            ? colors.textPrimary
-                            : colors.textSecondary,
-                        fontSize: 14,
-                        fontWeight: selected
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                      ),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? AppTheme.accent.withValues(alpha: 0.12)
+                        : colors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: selected ? AppTheme.accent : colors.border,
+                      width: selected ? 1.5 : 1,
                     ),
                   ),
-                  if (selected)
-                    const Icon(Icons.check_rounded,
-                        size: 17, color: AppTheme.accent),
-                ],
+                  child: Row(
+                    children: [
+                      Icon(
+                        _iconFor(mode),
+                        size: 17,
+                        color: selected
+                            ? AppTheme.accent
+                            : colors.textSecondary,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          mode.label(s),
+                          style: TextStyle(
+                            color: selected
+                                ? colors.textPrimary
+                                : colors.textSecondary,
+                            fontSize: 14,
+                            fontWeight: selected
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                      if (selected)
+                        const Icon(
+                          Icons.check_rounded,
+                          size: 17,
+                          color: AppTheme.accent,
+                        ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -186,10 +191,10 @@ class _ThemeModeSelector extends StatelessWidget {
   }
 
   static IconData _iconFor(AppThemeMode mode) => switch (mode) {
-        AppThemeMode.light => Icons.light_mode_rounded,
-        AppThemeMode.dark => Icons.dark_mode_rounded,
-        AppThemeMode.system => Icons.brightness_auto_rounded,
-      };
+    AppThemeMode.light => Icons.light_mode_rounded,
+    AppThemeMode.dark => Icons.dark_mode_rounded,
+    AppThemeMode.system => Icons.brightness_auto_rounded,
+  };
 }
 
 /// 语言选择: 收起时只显示当前语言, 点击后展开两个选项。
@@ -225,49 +230,64 @@ class _LanguageSelectorState extends State<_LanguageSelector> {
       ),
       child: Column(
         children: [
-          // 收起态: 标题 + 当前语言 + 展开箭头。
-          InkWell(
-            onTap: () => setState(() => _expanded = !_expanded),
-            borderRadius: BorderRadius.circular(10),
-            child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-              child: Row(
-                children: [
-                  Icon(Icons.translate_rounded,
-                      size: 17,
-                      color: _expanded
-                          ? AppTheme.accent
-                          : colors.textSecondary),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      widget.title,
-                      style: TextStyle(
-                        color: colors.textPrimary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
+          // 收起态: 标题 + 当前语言 + 展开箭头。语义上是一个
+          // 带展开/折叠状态的按钮。
+          MergeSemantics(
+            child: Semantics(
+              button: true,
+              expanded: _expanded,
+              onTap: () => setState(() => _expanded = !_expanded),
+              child: InkWell(
+                onTap: () => setState(() => _expanded = !_expanded),
+                borderRadius: BorderRadius.circular(10),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 13,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.translate_rounded,
+                        size: 17,
+                        color: _expanded
+                            ? AppTheme.accent
+                            : colors.textSecondary,
                       ),
-                    ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          widget.title,
+                          style: TextStyle(
+                            color: colors.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        widget.value.label,
+                        style: TextStyle(
+                          color: _expanded
+                              ? AppTheme.accent
+                              : colors.textSecondary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      AnimatedRotation(
+                        turns: _expanded ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 180),
+                        child: Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          size: 20,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    widget.value.label,
-                    style: TextStyle(
-                      color: _expanded
-                          ? AppTheme.accent
-                          : colors.textSecondary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  AnimatedRotation(
-                    turns: _expanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 180),
-                    child: Icon(Icons.keyboard_arrow_down_rounded,
-                        size: 20, color: colors.textSecondary),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -279,35 +299,45 @@ class _LanguageSelectorState extends State<_LanguageSelector> {
               child: Column(
                 children: AppLanguage.values.map((lang) {
                   final selected = lang == widget.value;
-                  return InkWell(
-                    onTap: () {
-                      widget.onChanged(lang);
-                      setState(() => _expanded = false);
-                    },
-                    borderRadius: BorderRadius.circular(8),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 10),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              lang.label,
-                              style: TextStyle(
-                                color: selected
-                                    ? AppTheme.accent
-                                    : colors.textPrimary,
-                                fontSize: 14,
-                                fontWeight: selected
-                                    ? FontWeight.w600
-                                    : FontWeight.w400,
-                              ),
-                            ),
+                  return MergeSemantics(
+                    child: Semantics(
+                      selected: selected,
+                      child: InkWell(
+                        onTap: () {
+                          widget.onChanged(lang);
+                          setState(() => _expanded = false);
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 10,
                           ),
-                          if (selected)
-                            const Icon(Icons.check_rounded,
-                                size: 17, color: AppTheme.accent),
-                        ],
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  lang.label,
+                                  style: TextStyle(
+                                    color: selected
+                                        ? AppTheme.accent
+                                        : colors.textPrimary,
+                                    fontSize: 14,
+                                    fontWeight: selected
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
+                                  ),
+                                ),
+                              ),
+                              if (selected)
+                                const Icon(
+                                  Icons.check_rounded,
+                                  size: 17,
+                                  color: AppTheme.accent,
+                                ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   );
@@ -338,45 +368,53 @@ class _SwitchTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: colors.surfaceVariant,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: colors.border),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: colors.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    color: colors.textSecondary,
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            ),
+    // 整行作为开关的大热区; MergeSemantics 把标题/副标题/开关状态
+    // 合并为一个节点, 读屏一次播报并自带 toggled 状态。
+    return InkWell(
+      onTap: () => onChanged(!value),
+      borderRadius: BorderRadius.circular(10),
+      child: MergeSemantics(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: colors.surfaceVariant,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: colors.border),
           ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: value,
+                onChanged: onChanged,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -409,8 +447,11 @@ class _NavTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(Icons.info_outline_rounded,
-                size: 17, color: colors.textSecondary),
+            Icon(
+              Icons.info_outline_rounded,
+              size: 17,
+              color: colors.textSecondary,
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -428,14 +469,16 @@ class _NavTile extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     subtitle,
-                    style: TextStyle(
-                        color: colors.textSecondary, fontSize: 11),
+                    style: TextStyle(color: colors.textSecondary, fontSize: 11),
                   ),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded,
-                size: 20, color: colors.textSecondary),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 20,
+              color: colors.textSecondary,
+            ),
           ],
         ),
       ),

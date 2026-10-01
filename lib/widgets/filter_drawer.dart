@@ -46,12 +46,10 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
   );
 
   /// 笔画数的实际取值范围 (由 core 从字典统计, 字典更新后自动跟随)。
-  static final _strokeDomain =
-      '${kStrokeRange.$1} ~ ${kStrokeRange.$2}';
+  static final _strokeDomain = '${kStrokeRange.$1} ~ ${kStrokeRange.$2}';
 
   /// 使用频率的实际取值范围 (无排名的汉字已由 core 排除)。
-  static final _freqDomain =
-      '${kFrequencyRange.$1} ~ ${kFrequencyRange.$2}';
+  static final _freqDomain = '${kFrequencyRange.$1} ~ ${kFrequencyRange.$2}';
 
   /// 学年选项: 对应的 grade 区间, 标签由当前语言决定。
   ///
@@ -293,8 +291,7 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
         return _Chip(
           label: s.readingLabel(r),
           selected: _filter.reading == r,
-          onTap: () =>
-              setState(() => _filter = _filter.copyWith(reading: r)),
+          onTap: () => setState(() => _filter = _filter.copyWith(reading: r)),
         );
       }).toList(),
     );
@@ -336,8 +333,10 @@ class _RangeFields extends StatelessWidget {
             _field(context, minController, s.min),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Text('~',
-                  style: TextStyle(color: colors.textSecondary, fontSize: 14)),
+              child: Text(
+                '~',
+                style: TextStyle(color: colors.textSecondary, fontSize: 14),
+              ),
             ),
             _field(context, maxController, s.max),
             const SizedBox(width: 10),
@@ -374,9 +373,9 @@ class _RangeFields extends StatelessWidget {
   ) {
     final colors = AppTheme.of(context);
     OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: c, width: w),
-        );
+      borderRadius: BorderRadius.circular(8),
+      borderSide: BorderSide(color: c, width: w),
+    );
 
     return SizedBox(
       width: 76,
@@ -399,8 +398,10 @@ class _RangeFields extends StatelessWidget {
           isDense: true,
           filled: true,
           fillColor: colors.surfaceVariant,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 8, vertical: 11),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 8,
+            vertical: 11,
+          ),
           border: border(colors.border),
           enabledBorder: border(colors.border),
           focusedBorder: border(AppTheme.accent, 1.4),
@@ -425,27 +426,38 @@ class _Chip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: selected
-              ? AppTheme.accent.withValues(alpha: 0.15)
-              : colors.surfaceVariant,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: selected ? AppTheme.accent : colors.border,
-            width: selected ? 1.4 : 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? AppTheme.accent : colors.textSecondary,
-            fontSize: 13,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+    // MergeSemantics + Semantics: 读屏把胶囊播报为单个按钮节点,
+    // 并带选中状态; onTap 注册语义激活动作 (TalkBack 双击可用)。
+    // 不换 InkWell: 涟漪会被胶囊自绘背景遮住, 视觉零收益;
+    // 相邻胶囊仅隔 8px, 物理热区扩到 48dp 会互相重叠反而误触。
+    return MergeSemantics(
+      child: Semantics(
+        button: true,
+        selected: selected,
+        onTap: onTap,
+        child: GestureDetector(
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              color: selected
+                  ? AppTheme.accent.withValues(alpha: 0.15)
+                  : colors.surfaceVariant,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: selected ? AppTheme.accent : colors.border,
+                width: selected ? 1.4 : 1,
+              ),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: selected ? AppTheme.accent : colors.textSecondary,
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
           ),
         ),
       ),

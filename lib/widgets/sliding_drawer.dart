@@ -92,9 +92,7 @@ class _SlidingDrawerState extends State<SlidingDrawer>
   }
 
   void _onStatusChanged(AnimationStatus status) {
-    if (status == AnimationStatus.dismissed &&
-        !widget.open &&
-        _panelMounted) {
+    if (status == AnimationStatus.dismissed && !widget.open && _panelMounted) {
       setState(() => _panelMounted = false);
     }
   }
@@ -138,16 +136,27 @@ class _SlidingDrawerState extends State<SlidingDrawer>
                 //
                 // 必须显式 Positioned.fill, 否则 ColoredBox 在该 Stack 中
                 // 没有约束, 命中区域会退化为零。
+                //
+                // 「点击空白处关闭」对读屏用户不可感知, 因此遮罩在展开时
+                // 以「关闭」按钮的语义暴露; 收起后整体移出语义树。
                 Positioned.fill(
-                  child: IgnorePointer(
-                    ignoring: !widget.open,
-                    child: AnimatedOpacity(
-                      opacity: widget.open ? 1 : 0,
-                      duration: SlidingDrawer.duration,
-                      child: GestureDetector(
-                        onTap: () => SlidingDrawer.close(context),
-                        behavior: HitTestBehavior.opaque,
-                        child: ColoredBox(color: colors.scrim),
+                  child: ExcludeSemantics(
+                    excluding: !widget.open,
+                    child: IgnorePointer(
+                      ignoring: !widget.open,
+                      child: AnimatedOpacity(
+                        opacity: widget.open ? 1 : 0,
+                        duration: SlidingDrawer.duration,
+                        child: GestureDetector(
+                          onTap: () => SlidingDrawer.close(context),
+                          behavior: HitTestBehavior.opaque,
+                          child: Semantics(
+                            button: true,
+                            label: AppStrings.of(context).close,
+                            onTap: () => SlidingDrawer.close(context),
+                            child: ColoredBox(color: colors.scrim),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -316,10 +325,7 @@ class _DrawerPanelState extends State<DrawerPanel> {
                   const SizedBox(height: 3),
                   Text(
                     widget.subtitle!,
-                    style: TextStyle(
-                      color: colors.textSecondary,
-                      fontSize: 11,
-                    ),
+                    style: TextStyle(color: colors.textSecondary, fontSize: 11),
                   ),
                 ],
               ],
@@ -328,8 +334,11 @@ class _DrawerPanelState extends State<DrawerPanel> {
           IconButton(
             tooltip: AppStrings.of(context).close,
             onPressed: () => SlidingDrawer.close(context),
-            icon: Icon(Icons.close_rounded,
-                size: 20, color: colors.textSecondary),
+            icon: Icon(
+              Icons.close_rounded,
+              size: 20,
+              color: colors.textSecondary,
+            ),
           ),
         ],
       ),

@@ -5,6 +5,8 @@
 //
 // 全部重组件用例在深色与浅色主题下各跑一遍: 浅色配色 (对比度、
 // 描边可见性) 之前零回归保障, 布局溢出作为硬错误也会一并暴露。
+import 'dart:ui' show Tristate;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kanji_hiragana/core/kanji_filter.dart';
@@ -222,6 +224,73 @@ void main() {
 
         expect(find.text('没有符合条件的汉字'), findsOneWidget);
         expect(find.text('试试放宽笔画或频率范围'), findsOneWidget);
+      });
+    });
+
+    group('可访问性语义 ($name)', () {
+      testWidgets('展开的抽屉在语义树中暴露遮罩关闭按钮', (tester) async {
+        final semantics = tester.ensureSemantics();
+        await tester.pumpWidget(host(
+          SlidingDrawer(
+            side: DrawerSide.left,
+            open: true,
+            panel: const Text('面板内容'),
+            child: const Text('主内容'),
+          ),
+        ));
+        await tester.pumpAndSettle();
+
+        // 「点击空白处关闭」对读屏不可感知, 遮罩须以「关闭」按钮
+        // 的身份可发现、可激活。
+        final closeNode = tester.getSemantics(find.bySemanticsLabel('关闭'));
+        expect(closeNode.flagsCollection.isButton, isTrue);
+
+        semantics.dispose();
+      });
+
+      testWidgets('筛选胶囊以按钮语义播报选中状态', (tester) async {
+        final semantics = tester.ensureSemantics();
+        await tester.pumpWidget(host(
+          FilterDrawerContent(initial: KanjiFilter.initial, onSubmit: (_) {}),
+        ));
+
+        // 「学年」胶囊 (避开与分区标题同名的「笔画数」/「使用频率」):
+        // 默认排序是使用频率, 此刻未选中。
+        final chip = tester.getSemantics(find.text('学年'));
+        expect(chip.flagsCollection.isButton, isTrue);
+        expect(chip.flagsCollection.isSelected, Tristate.isFalse);
+
+        await tester.tap(find.text('学年'));
+        await tester.pump();
+
+        // 点选后语义树的选中状态实时翻转。
+        final selectedChip = tester.getSemantics(find.text('学年'));
+        expect(selectedChip.flagsCollection.isSelected, Tristate.isTrue);
+
+        semantics.dispose();
+      });
+
+      testWidgets('折叠尾块播报按钮角色与展开状态', (tester) async {
+        final semantics = tester.ensureSemantics();
+        final reading = kanjiReadingDict['生']!;
+        final kunReadings = reading.kunyomi;
+        final hiddenLabel =
+            '等 ${kunReadings.length - SingleKanjiView.maxPerGroup} 项';
+        await tester.pumpWidget(scrollHost(SingleKanjiView(reading: reading)));
+
+        final footer = tester.getSemantics(find.text(hiddenLabel));
+        expect(footer.flagsCollection.isButton, isTrue);
+        // isExpanded 为 null 表示无展开状态, false 表示折叠中。
+        expect(footer.flagsCollection.isExpanded, isNot(Tristate.none));
+        expect(footer.flagsCollection.isExpanded, Tristate.isFalse);
+
+        await tester.tap(find.text(hiddenLabel));
+        await tester.pump();
+
+        final expandedFooter = tester.getSemantics(find.text('收起'));
+        expect(expandedFooter.flagsCollection.isExpanded, Tristate.isTrue);
+
+        semantics.dispose();
       });
     });
   }

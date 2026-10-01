@@ -33,7 +33,6 @@ enum ViewMode {
 /// 出错环节, 决定界面上显示哪一条提示。
 enum _ErrorKind { dictionary, analysis }
 
-
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -157,9 +156,12 @@ class _HomePageState extends State<HomePage>
     }
     final seq = ++_requestSeq;
     try {
-      final r = await _analyzer.analyze(text, isCancelled: () {
-        return (isCancelled?.call() ?? false) || seq != _requestSeq;
-      });
+      final r = await _analyzer.analyze(
+        text,
+        isCancelled: () {
+          return (isCancelled?.call() ?? false) || seq != _requestSeq;
+        },
+      );
       // await 期间输入又变了或被取消: 本次结果已过期, 丢弃。
       if (!mounted || seq != _requestSeq || (isCancelled?.call() ?? false)) {
         return;
@@ -219,10 +221,7 @@ class _HomePageState extends State<HomePage>
     if (text.isEmpty) return;
     final added = _queryStore.toggleFavorite(text);
     final s = AppStrings.of(context);
-    showToast(
-      context,
-      added ? s.favoriteAdded(text) : s.favoriteRemoved(text),
-    );
+    showToast(context, added ? s.favoriteAdded(text) : s.favoriteRemoved(text));
   }
 
   void _toggleDrawer(OpenDrawer which) {
@@ -239,9 +238,8 @@ class _HomePageState extends State<HomePage>
 
   void _openAbout() {
     setState(() => _openDrawer = OpenDrawer.none);
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const AboutPage()),
-    );
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const AboutPage()));
   }
 
   Future<void> _openFilterResult(KanjiFilter filter) async {
@@ -317,12 +315,7 @@ class _HomePageState extends State<HomePage>
                 initial: _filter,
                 onSubmit: _openFilterResult,
               ),
-              child: Stack(
-                children: [
-                  mainBody,
-                  _buildFloatingButtons(),
-                ],
-              ),
+              child: Stack(children: [mainBody, _buildFloatingButtons()]),
             ),
           ),
         ),
@@ -385,18 +378,24 @@ class _HomePageState extends State<HomePage>
         children: [
           const Text('漢字'),
           const SizedBox(width: 6),
-          const Icon(Icons.arrow_forward_rounded,
-              size: 16, color: AppTheme.accent),
+          const Icon(
+            Icons.arrow_forward_rounded,
+            size: 16,
+            color: AppTheme.accent,
+          ),
           const SizedBox(width: 6),
           const Text('かな'),
           const SizedBox(width: 10),
           Text('·', style: TextStyle(color: colors.textSecondary)),
           const SizedBox(width: 10),
-          const Text('ローマ字',
-              style: TextStyle(
-                  color: AppTheme.indigo,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500)),
+          const Text(
+            'ローマ字',
+            style: TextStyle(
+              color: AppTheme.indigo,
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
       actions: [
@@ -408,9 +407,7 @@ class _HomePageState extends State<HomePage>
               tooltip: s.favoritesLabel,
               onPressed: _toggleFavorite,
               icon: Icon(
-                favorite
-                    ? Icons.star_rounded
-                    : Icons.star_border_rounded,
+                favorite ? Icons.star_rounded : Icons.star_border_rounded,
                 color: favorite ? AppTheme.kanjiHighlight : null,
               ),
             );
@@ -439,8 +436,7 @@ class _HomePageState extends State<HomePage>
             // 聚焦态: 让「标题 + 输入框」整体在视觉上居中。
             // 估算该组内容高度(标题约 92 + 输入框约 58 + 间距 24)。
             const focusBlockHeight = 174.0;
-            final centeredTop =
-                (constraints.maxHeight - focusBlockHeight) / 2;
+            final centeredTop = (constraints.maxHeight - focusBlockHeight) / 2;
             final topSpace = _lerp(
               12.0,
               centeredTop.clamp(24.0, constraints.maxHeight * 0.42),
@@ -452,7 +448,8 @@ class _HomePageState extends State<HomePage>
                 top: topSpace,
                 // 存在悬浮按钮时留出空间, 避免内容被遮挡;
                 // 输入后按钮隐藏, 底部留白随之收窄。
-                bottom: MediaQuery.of(context).viewInsets.bottom +
+                bottom:
+                    MediaQuery.of(context).viewInsets.bottom +
                     (_buttonsVisible ? 88 : 24),
               ),
               child: Column(
@@ -465,10 +462,7 @@ class _HomePageState extends State<HomePage>
                     child: _buildInput(t),
                   ),
                   // 聚焦态展示收藏与最近查询, 展开后淡出。
-                  _QueryChips(
-                    t: t,
-                    onUseQuery: _useQuery,
-                  ),
+                  _QueryChips(t: t, onUseQuery: _useQuery),
                   // 其余控件随动画淡入。
                   _buildReveal(t),
                 ],
@@ -500,8 +494,11 @@ class _HomePageState extends State<HomePage>
         hintText: s.inputHint,
         suffixIcon: _hasInput
             ? IconButton(
-                icon: Icon(Icons.close_rounded,
-                    size: 18, color: colors.textSecondary),
+                icon: Icon(
+                  Icons.close_rounded,
+                  size: 18,
+                  color: colors.textSecondary,
+                ),
                 onPressed: _clear,
               )
             : null,
@@ -578,10 +575,7 @@ class _HomePageState extends State<HomePage>
           // 单汉字: 只展示音读/训读详解, 不显示对照表与注音
           // (单个汉字没有上下文, 逐词对照与振假名在这里没有意义)。
           if (result.isSingleKanji)
-            SingleKanjiView(
-              reading: result.singleKanji!,
-              onWordTap: _useQuery,
-            )
+            SingleKanjiView(reading: result.singleKanji!, onWordTap: _useQuery)
           else if (_viewMode == ViewMode.alignment)
             AlignmentTable(result: result, showRomaji: _showRomaji)
           else ...[
@@ -604,9 +598,11 @@ class _HomePageState extends State<HomePage>
           children: [
             Icon(icon, size: 36, color: color ?? colors.textSecondary),
             const SizedBox(height: 12),
-            Text(msg,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: colors.textSecondary, fontSize: 13)),
+            Text(
+              msg,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: colors.textSecondary, fontSize: 13),
+            ),
           ],
         ),
       ),
@@ -628,8 +624,10 @@ class _LoadingView extends StatelessWidget {
         children: [
           const CircularProgressIndicator(color: AppTheme.accent),
           const SizedBox(height: 16),
-          Text(s.loadingDictionary,
-              style: TextStyle(color: colors.textSecondary)),
+          Text(
+            s.loadingDictionary,
+            style: TextStyle(color: colors.textSecondary),
+          ),
         ],
       ),
     );
@@ -771,16 +769,26 @@ class _QueryChips extends StatelessWidget {
               const Spacer(),
               // 只有历史提供清空; 收藏需逐条长按移除, 避免误操作。
               if (!favorite)
-                GestureDetector(
+                Semantics(
+                  button: true,
                   onTap: () {
                     HapticFeedback.lightImpact();
                     store.clearHistory();
                     showToast(context, s.historyCleared);
                   },
-                  child: Text(
-                    s.clearHistory,
-                    style: TextStyle(
-                        color: colors.textSecondary, fontSize: 11),
+                  child: GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      store.clearHistory();
+                      showToast(context, s.historyCleared);
+                    },
+                    child: Text(
+                      s.clearHistory,
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
                   ),
                 ),
             ],
@@ -853,22 +861,31 @@ class _Toolbar extends StatelessWidget {
             ),
             child: Row(
               children: [
-                _segment(context, s.viewAlignment, ViewMode.alignment,
-                    Icons.table_rows_rounded),
-                _segment(context, s.viewFurigana, ViewMode.furigana,
-                    Icons.text_fields_rounded),
+                _segment(
+                  context,
+                  s.viewAlignment,
+                  ViewMode.alignment,
+                  Icons.table_rows_rounded,
+                ),
+                _segment(
+                  context,
+                  s.viewFurigana,
+                  ViewMode.furigana,
+                  Icons.text_fields_rounded,
+                ),
               ],
             ),
           ),
           const Spacer(),
           Row(
             children: [
-              Text(s.romajiToggle,
-                  style: TextStyle(
-                      color: showRomaji
-                          ? colors.textPrimary
-                          : colors.textSecondary,
-                      fontSize: 13)),
+              Text(
+                s.romajiToggle,
+                style: TextStyle(
+                  color: showRomaji ? colors.textPrimary : colors.textSecondary,
+                  fontSize: 13,
+                ),
+              ),
               const SizedBox(width: 4),
               Switch(
                 value: showRomaji,
@@ -890,30 +907,39 @@ class _Toolbar extends StatelessWidget {
   ) {
     final colors = AppTheme.of(context);
     final selected = viewMode == mode;
-    return GestureDetector(
-      onTap: () => onSelectMode(mode),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: selected ? AppTheme.accent : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            Icon(icon,
-                size: 14,
-                color: selected ? Colors.white : colors.textSecondary),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: TextStyle(
-                color: selected ? Colors.white : colors.textSecondary,
-                fontSize: 13,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-              ),
+    return MergeSemantics(
+      child: Semantics(
+        button: true,
+        selected: selected,
+        onTap: () => onSelectMode(mode),
+        child: GestureDetector(
+          onTap: () => onSelectMode(mode),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+            decoration: BoxDecoration(
+              color: selected ? AppTheme.accent : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
             ),
-          ],
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  size: 14,
+                  color: selected ? Colors.white : colors.textSecondary,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: selected ? Colors.white : colors.textSecondary,
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -998,7 +1024,10 @@ class _FooterLine extends StatelessWidget {
           child: SelectableText(
             value,
             style: TextStyle(
-                color: colors.textPrimary, fontSize: 15, height: 1.5),
+              color: colors.textPrimary,
+              fontSize: 15,
+              height: 1.5,
+            ),
           ),
         ),
         IconButton(
@@ -1098,8 +1127,11 @@ class _QueryChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (favorite) ...[
-              Icon(Icons.star_rounded,
-                  size: 13, color: AppTheme.kanjiHighlight),
+              Icon(
+                Icons.star_rounded,
+                size: 13,
+                color: AppTheme.kanjiHighlight,
+              ),
               const SizedBox(width: 4),
             ],
             Text(

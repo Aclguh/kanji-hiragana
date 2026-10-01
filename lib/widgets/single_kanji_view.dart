@@ -20,11 +20,7 @@ class SingleKanjiView extends StatelessWidget {
   /// 每一类读音最多展示多少条, 超出部分折叠为「等 N 项」。
   static const int maxPerGroup = 8;
 
-  const SingleKanjiView({
-    super.key,
-    required this.reading,
-    this.onWordTap,
-  });
+  const SingleKanjiView({super.key, required this.reading, this.onWordTap});
 
   @override
   Widget build(BuildContext context) {
@@ -45,8 +41,7 @@ class SingleKanjiView extends StatelessWidget {
             readings: reading.onyomi,
             maxItems: maxPerGroup,
           ),
-        if (reading.hasOnyomi && reading.hasKunyomi)
-          const SizedBox(height: 12),
+        if (reading.hasOnyomi && reading.hasKunyomi) const SizedBox(height: 12),
         if (reading.hasKunyomi)
           _ReadingGroup(
             label: s.kunyomiHeading,
@@ -60,8 +55,7 @@ class SingleKanjiView extends StatelessWidget {
           const SizedBox(height: 12),
           _CommonWordsGroup(words: words, onWordTap: onWordTap),
         ],
-        if (!reading.hasOnyomi && !reading.hasKunyomi)
-          const _NoReadingNotice(),
+        if (!reading.hasOnyomi && !reading.hasKunyomi) const _NoReadingNotice(),
       ],
     );
   }
@@ -71,7 +65,8 @@ class SingleKanjiView extends StatelessWidget {
     final s = AppStrings.of(context);
     // 释义按当前语言取用: KANJIDIC2 的英文原文比中文回译更准确。
     // 个别字没有英文条目时回落到中文, 避免出现空白。
-    final meanings = s.language == AppLanguage.en && reading.meaningsEn.isNotEmpty
+    final meanings =
+        s.language == AppLanguage.en && reading.meaningsEn.isNotEmpty
         ? reading.meaningsEn
         : reading.meanings;
     return Container(
@@ -120,7 +115,9 @@ class SingleKanjiView extends StatelessWidget {
                         .map(
                           (m) => Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
                               color: colors.surfaceVariant,
                               borderRadius: BorderRadius.circular(6),
@@ -144,9 +141,15 @@ class SingleKanjiView extends StatelessWidget {
                   children: [
                     _metaItem(context, s.labelStrokes, '${reading.strokes}'),
                     _metaItem(
-                        context, s.labelGrade, _gradeLabel(s, reading.grade)),
-                    _metaItem(context, s.labelFrequency,
-                        _frequencyLabel(s, reading.frequencyRank)),
+                      context,
+                      s.labelGrade,
+                      _gradeLabel(s, reading.grade),
+                    ),
+                    _metaItem(
+                      context,
+                      s.labelFrequency,
+                      _frequencyLabel(s, reading.frequencyRank),
+                    ),
                   ],
                 ),
               ],
@@ -162,13 +165,18 @@ class SingleKanjiView extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('$label ',
-            style: TextStyle(color: colors.textSecondary, fontSize: 11)),
-        Text(value,
-            style: TextStyle(
-                color: colors.textPrimary,
-                fontSize: 12,
-                fontWeight: FontWeight.w500)),
+        Text(
+          '$label ',
+          style: TextStyle(color: colors.textSecondary, fontSize: 11),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: colors.textPrimary,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ],
     );
   }
@@ -252,13 +260,11 @@ class _ReadingGroupState extends State<_ReadingGroup> {
               const SizedBox(width: 8),
               Text(
                 widget.sublabel,
-                style:
-                    TextStyle(color: colors.textSecondary, fontSize: 11),
+                style: TextStyle(color: colors.textSecondary, fontSize: 11),
               ),
               const Spacer(),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
                   color: widget.color.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(5),
@@ -404,8 +410,7 @@ class _CommonWordsGroupState extends State<_CommonWordsGroup> {
               ),
               const Spacer(),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(5),
@@ -454,11 +459,7 @@ class _WordRow extends StatelessWidget {
         if (onWordTap != null) {
           onWordTap!(word.word);
         } else {
-          copyWithToast(
-            context,
-            word.word,
-            s.copiedSurface(word.word),
-          );
+          copyWithToast(context, word.word, s.copiedSurface(word.word));
         }
       },
       onLongPress: () {
@@ -481,8 +482,10 @@ class _WordRow extends StatelessWidget {
             if (word.pos.isNotEmpty) ...[
               const SizedBox(width: 8),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 5,
+                  vertical: 1.5,
+                ),
                 decoration: BoxDecoration(
                   color: colors.surfaceVariant,
                   borderRadius: BorderRadius.circular(4),
@@ -497,10 +500,7 @@ class _WordRow extends StatelessWidget {
             Expanded(
               child: Text(
                 word.hiragana,
-                style: TextStyle(
-                  color: colors.textSecondary,
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: colors.textSecondary, fontSize: 13),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -535,8 +535,11 @@ class _NoReadingNotice extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.info_outline_rounded,
-              size: 16, color: colors.textSecondary),
+          Icon(
+            Icons.info_outline_rounded,
+            size: 16,
+            color: colors.textSecondary,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -570,25 +573,42 @@ class _CollapseFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
-    return GestureDetector(
-      onTap: onToggle,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            expanded ? s.collapse : s.collapseHidden(hidden),
-            style: TextStyle(
-                color: color, fontSize: 12, fontWeight: FontWeight.w500),
+    // 语义上是一个带展开/折叠状态的按钮: 读屏播报「已展开/已折叠」,
+    // 而不是只读出一行文本。垂直 padding 顺带把热区从一行小字
+    // 拉高到约 40dp。
+    return MergeSemantics(
+      child: Semantics(
+        button: true,
+        expanded: expanded,
+        onTap: onToggle,
+        child: GestureDetector(
+          onTap: onToggle,
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  expanded ? s.collapse : s.collapseHidden(hidden),
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 3),
+                Icon(
+                  expanded
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                  size: 16,
+                  color: color,
+                ),
+              ],
+            ),
           ),
-          const SizedBox(width: 3),
-          Icon(
-            expanded
-                ? Icons.keyboard_arrow_up_rounded
-                : Icons.keyboard_arrow_down_rounded,
-            size: 16,
-            color: color,
-          ),
-        ],
+        ),
       ),
     );
   }
