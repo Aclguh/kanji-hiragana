@@ -130,8 +130,8 @@ void main() {
   });
 
   group('SingleKanjiView 分组渲染', () {
-    // 「生」: 音读 2 条 / 训读 18 条 / 常见词 8 个, 是字典里读音最多的字,
-    // 训读组超过 maxPerGroup=8, 能覆盖折叠路径。
+    // 「生」是字典里读音最多的字, 训读组超过 maxPerGroup, 能覆盖折叠路径。
+    // 期望条数一律运行时从字典计算, 字典重生成后测试无需改动。
     final reading = kanjiReadingDict['生']!;
 
     testWidgets('音读与训读分组各自渲染', (tester) async {
@@ -139,25 +139,28 @@ void main() {
 
       expect(find.text('音読'), findsOneWidget);
       expect(find.text('訓読'), findsOneWidget);
-      // 音读 2 条未超折叠线, 全部可见。
+      // 音读未超折叠线, 全部可见 (前提: 该字音读数不超过 maxPerGroup)。
+      expect(reading.onyomi.length, lessThanOrEqualTo(SingleKanjiView.maxPerGroup));
       expect(find.text(reading.onyomi.first), findsOneWidget);
       expect(find.text(reading.onyomi.last), findsOneWidget);
     });
 
-    testWidgets('训读超过 8 条时折叠为「等 N 项」, 点击展开', (tester) async {
+    testWidgets('训读超过折叠线时折叠为「等 N 项」, 点击展开', (tester) async {
       await tester.pumpWidget(_scrollHost(SingleKanjiView(reading: reading)));
 
-      // 折叠态: 训读只显示前 8 条, 尾块提示剩余数量。
+      // 折叠态: 训读只显示前 maxPerGroup 条, 尾块提示剩余数量。
       final kunReadings = reading.kunyomi;
-      expect(kunReadings.length, greaterThan(8));
-      expect(find.text('等 10 项'), findsOneWidget);
+      final hiddenLabel =
+          '等 ${kunReadings.length - SingleKanjiView.maxPerGroup} 项';
+      expect(kunReadings.length, greaterThan(SingleKanjiView.maxPerGroup));
+      expect(find.text(hiddenLabel), findsOneWidget);
       expect(find.text(kunReadings.last), findsNothing);
 
       // 点击尾块展开全部。
-      await tester.tap(find.text('等 10 项'));
+      await tester.tap(find.text(hiddenLabel));
       await tester.pump();
 
-      expect(find.text('等 10 项'), findsNothing);
+      expect(find.text(hiddenLabel), findsNothing);
       expect(find.text('收起'), findsOneWidget);
       expect(find.text(kunReadings.last), findsOneWidget);
     });

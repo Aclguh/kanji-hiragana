@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kanji_hiragana/home_page.dart';
 import 'package:kanji_hiragana/core/japanese_analyzer.dart';
+import 'package:kanji_hiragana/core/kanji_filter.dart';
+import 'package:kanji_hiragana/core/kanji_reading_dict.dart';
 import 'package:kanji_hiragana/core/query_store.dart';
 import 'package:kanji_hiragana/core/strings.dart';
 import 'package:kanji_hiragana/theme.dart';
@@ -513,8 +515,17 @@ void main() {
 
     expect(find.byType(FilterResultPage), findsOneWidget);
     expect(find.text('筛选结果'), findsOneWidget);
-    // 笔画 3~5 且频率 1~100 共 30 字, 结果非空。
-    expect(find.text('30 字'), findsOneWidget);
+    // 期望条数按同一条件从字典实时求出再断言界面显示同一数字:
+    // 测的是「界面与模型一致」, 字典重生成后无需改测试。
+    const filter = KanjiFilter(
+      strokesMin: 3,
+      strokesMax: 5,
+      frequencyMin: 1,
+      frequencyMax: 100,
+    );
+    final expectedCount = filter.apply(kanjiReadingDict.values).length;
+    expect(expectedCount, isNonZero, reason: '笔画 3~5 且频率 1~100 应有结果');
+    expect(find.text('$expectedCount 字'), findsOneWidget);
     expect(find.byType(GridView), findsOneWidget);
   });
 
