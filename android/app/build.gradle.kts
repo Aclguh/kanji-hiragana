@@ -51,6 +51,11 @@ android {
 
     buildTypes {
         release {
+            // Flutter 插件 (FlutterPlugin.kt) 默认对 release 强制 minify (R8);
+            // 显式声明以免读者误解, Dart 代码在 libapp.so, R8 只处理 dex 与资源。
+            isMinifyEnabled = true
+            // 资源收缩是插件不默认开的, 显式启用 (依赖 minify)。
+            isShrinkResources = true
             // 有 key.properties 时用正式密钥签名, 否则回落到 debug 签名。
             signingConfig = if (hasReleaseKeystore) {
                 signingConfigs.getByName("release")
