@@ -66,6 +66,12 @@ WORD_BOOST = {
 # 继承字符号 々 (0x3005): 「人々」「各々」等高频词的组成部分。
 KANJI_ITERATION_MARK = 0x3005
 
+# 已验证兼容的 kuromoji 包版本。本脚本直接解码包内嵌 IPADIC 的二进制
+# 格式 (token_id+6 偏移等), 与包版本强耦合 —— 格式变化时必须拒绝运行,
+# 而不是静默产出错误数据。升级 kuromoji 后按 AGENTS.md「升级 kuromoji
+# 的固定检查单」核对抽查输出, 通过后把新版本号加入这里。
+KNOWN_KUROMOJI_VERSIONS = {'1.0.5'}
+
 # IPADIC 特征串的词性白名单 (取特征串第 1~4 段做前缀匹配)。
 # 注意: IPADIC 的地名分类叫「地域」(UniDic 才叫「地名」)。
 # 刻意排除: 非自立词、代词、接尾词、副词、连体词、人名、数词等。
@@ -130,8 +136,12 @@ def pos_allowed(pos_key: str) -> bool:
                for w in POS_WHITELIST)
 
 
-def locate_kuromoji_data_dir() -> Path:
-    """经 .dart_tool/package_config.json 定位 kuromoji 包的内嵌词典目录。"""
+def locate_kuromoji_package() -> tuple[Path, str]:
+    """经 .dart_tool/package_config.json 定位 kuromoji 包, 返回 (包根, 版本)。
+
+    版本不在 KNOWN_KUROMOJI_VERSIONS 内时直接退出: 二进制解码与包版本
+    强耦合, 未经人工核对的版本不允许生成数据。
+    """
     config_path = REPO_ROOT / '.dart_tool' / 'package_config.json'
     if not config_path.exists():
         sys.exit('未找到 .dart_tool/package_config.json, 请先执行 flutter pub get')
@@ -143,9 +153,25 @@ def locate_kuromoji_data_dir() -> Path:
             if re.match(r'^/[A-Za-z]:', raw):
                 raw = raw[1:]
             root = Path(raw)
+
+            pubspec = root / 'pubspec.yaml'
+            version = None
+            if pubspec.exists():
+                match = re.search(r'^version:\s*["\']?([^"\'\s]+)',
+                                  pubspec.read_text(encoding='utf-8'), re.M)
+                version = match.group(1) if match else None
+            if version not in KNOWN_KUROMOJI_VERSIONS:
+                sys.exit(
+                    f'kuromoji 版本 {version} 未经验证 '
+                    f'(已知兼容: {sorted(KNOWN_KUROMOJI_VERSIONS)})。\n'
+                    '本脚本解码包内嵌 IPADIC 的二进制格式, 与包版本强耦合。\n'
+                    '请按 AGENTS.md「升级 kuromoji 的固定检查单」核对抽查输出, '
+                    '通过后把新版本号加入 tool/gen_kanji_words.py 的 '
+                    'KNOWN_KUROMOJI_VERSIONS。')
+
             data_dir = root / 'lib' / 'src' / 'dict' / 'data'
             if data_dir.is_dir():
-                return data_dir
+                return root, data_dir
             sys.exit(f'kuromoji 包内嵌词典目录不存在: {data_dir}')
     sys.exit('未找到 kuromoji 包, 请确认 pubspec.yaml 的依赖配置')
 
@@ -341,9 +367,25 @@ def render(index: dict, kanji_info: dict) -> str:
     return '\n'.join(lines) + '\n'
 
 
+# 抽查断言: 核心词必须进入对应汉字的候选前列。IPADIC 解析出错或
+# 筛选/评分规则回归时在这里直接失败, 而不是把脏数据写进生成文件。
+# 词表来源为 WORD_BOOST 提权名单, 与 core_test.dart 的字典断言互相印证。
+PROBE_REQUIREMENTS = {
+    '日': ['日本'],
+    '学': ['学校'],
+    '食': ['食事'],
+    '会': ['会社'],
+    '行': ['行く'],
+}
+
+
 def main() -> None:
-    data_dir = locate_kuromoji_data_dir()
+    root, data_dir = locate_kuromoji_package()
     print(f'kuromoji 内嵌词典: {data_dir}')
+    version = re.search(r'^version:\s*["\']?([^"\'\s]+)',
+                        (root / 'pubspec.yaml').read_text(encoding='utf-8'),
+                        re.M)
+    print(f'kuromoji 版本: {version.group(1) if version else "?"}')
 
     kanji_info = load_kanjidic2()
     print(f'KANJIDIC2 收录汉字: {len(kanji_info)}')
@@ -355,7 +397,14 @@ def main() -> None:
     total = sum(len(v) for v in index.values())
     print(f'覆盖汉字: {len(index)}, 词条总计: {total}')
 
-    # 抽查高频字与低频字的词条质量, 便于人工确认。
+    # 抽查高频字与低频字的词条质量: 先断言核心词在前列, 再全量打印
+    # 供人工确认。
+    for probe, required in PROBE_REQUIREMENTS.items():
+        surfaces = [s for _s, _l, s, _h, _p in index.get(probe, [])]
+        for word in required:
+            assert word in surfaces, (
+                f'抽查失败: {probe} 的候选词缺少核心词 {word}, '
+                f'实际: {surfaces}')
     for probe in ('日', '学', '食', '東', '人', '行', '見', '時',
                   '会', '先', '電', '飲', '読', '優', '凛'):
         entries = index.get(probe, [])
