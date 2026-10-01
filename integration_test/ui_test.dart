@@ -46,14 +46,15 @@ void main() {
   Future<void> pumpHome(WidgetTester tester) async {
     await JapaneseAnalyzer.instance.warmUp();
     await resetQueryStore();
+    // AppStringsScope 包在 MaterialApp 外层 (与 main.dart 一致):
+    // scope 要覆盖 push 出来的全屏页面 (筛选结果页 / 关于页),
+    // AppStrings.of 在缺失 scope 时 debug 断言会失败。
     await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.dark(),
-        // AppStringsScope 与 main.dart 一致: AppStrings.of 在缺失 scope
-        // 时 debug 下会断言失败 (不再静默回退中文)。
-        home: const AppStringsScope(
-          strings: ZhStrings(),
-          child: HomePage(),
+      AppStringsScope(
+        strings: ZhStrings(),
+        child: MaterialApp(
+          theme: AppTheme.dark(),
+          home: const HomePage(),
         ),
       ),
     );
@@ -701,11 +702,11 @@ void main() {
     await JapaneseAnalyzer.instance.warmUp();
     await resetQueryStore();
     await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.dark(),
-        home: const AppStringsScope(
-          strings: EnStrings(),
-          child: HomePage(),
+      AppStringsScope(
+        strings: EnStrings(),
+        child: MaterialApp(
+          theme: AppTheme.dark(),
+          home: const HomePage(),
         ),
       ),
     );
