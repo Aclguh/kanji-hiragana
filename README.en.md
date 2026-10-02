@@ -85,9 +85,9 @@ Download the APK for your architecture from
 
 | File | Devices | Size |
 | --- | --- | --- |
-| `app-arm64-v8a-release.apk` | Almost all modern phones (**recommended**) | 40.3 MB |
-| `app-armeabi-v7a-release.apk` | Older 32-bit devices | 38.4 MB |
-| `app-x86_64-release.apk` | Emulators / x86 tablets | 41.7 MB |
+| `app-arm64-v8a-release.apk` | Almost all modern phones (**recommended**) | 40.4 MB |
+| `app-armeabi-v7a-release.apk` | Older 32-bit devices | 38.5 MB |
+| `app-x86_64-release.apk` | Emulators / x86 tablets | 41.8 MB |
 
 > If you are unsure, install `arm64-v8a`. The wrong architecture reports
 > "App not installed".

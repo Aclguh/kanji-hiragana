@@ -877,7 +877,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(AboutPage), findsOneWidget);
-    expect(find.text('1.1.0'), findsWidgets);
+    expect(find.text('1.1.1'), findsWidgets);
     expect(
       find.text('https://github.com/Aclguh/kanji-hiragana'),
       findsOneWidget,

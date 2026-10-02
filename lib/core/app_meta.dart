@@ -7,8 +7,8 @@ class AppMeta {
   AppMeta._();
 
   /// 语义化版本 (pubspec 的 `version` 中 `+` 之前的部分)。
-  static const String version = '1.1.0';
+  static const String version = '1.1.1';
 
   /// 构建号 (pubspec 的 `version` 中 `+` 之后的 versionCode 基数)。
-  static const String buildNumber = '5';
+  static const String buildNumber = '6';
 }

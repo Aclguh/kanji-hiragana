@@ -74,9 +74,9 @@
 
 | 文件 | 适用设备 | 大小 |
 | --- | --- | --- |
-| `app-arm64-v8a-release.apk` | 绝大多数现代手机（**推荐**） | 40.3 MB |
-| `app-armeabi-v7a-release.apk` | 较老的 32 位设备 | 38.4 MB |
-| `app-x86_64-release.apk` | 模拟器 / x86 平板 | 41.7 MB |
+| `app-arm64-v8a-release.apk` | 绝大多数现代手机（**推荐**） | 40.4 MB |
+| `app-armeabi-v7a-release.apk` | 较老的 32 位设备 | 38.5 MB |
+| `app-x86_64-release.apk` | 模拟器 / x86 平板 | 41.8 MB |
 
 > 若不确定选哪个，装 `arm64-v8a`；装错了会提示「应用未安装」。
 

@@ -2,7 +2,7 @@ name: kanji_hiragana
 description: "输入日语汉字, 即时显示对应平假名与罗马音。"
 publish_to: 'none'
 
-version: 1.1.0+5
+version: 1.1.1+6
 
 environment:
   sdk: ^3.13.0
