@@ -38,6 +38,10 @@ class Morpheme {
   /// 是否为原词含汉字的词(用于高亮真正的「汉字词」)。
   final bool containsKanji;
 
+  /// 基本形/原形(辞書形), 来自 kuromoji 的 basic_form, 如「食べる」。
+  /// 若无活用或未知词时回退为 [surface]。
+  final String basicForm;
+
   const Morpheme({
     required this.surface,
     required this.partOfSpeech,
@@ -48,6 +52,7 @@ class Morpheme {
     required this.romaji,
     required this.pronunciationHiragana,
     required this.containsKanji,
+    this.basicForm = '',
   });
 
   /// 从 kuromoji 的 token map 构建。
@@ -74,6 +79,10 @@ class Morpheme {
     // 规范平假名与罗马音取自 reading。
     final hiragana = katakanaToHiragana(readRaw);
 
+    final rawBasic = (token['basic_form'] as String?) ?? '';
+    final basicForm =
+        (rawBasic.isNotEmpty && rawBasic != '*') ? rawBasic : surface;
+
     return Morpheme(
       surface: surface,
       partOfSpeech: (token['pos'] as String?) ?? '',
@@ -84,8 +93,12 @@ class Morpheme {
       romaji: hiraganaToRomaji(hiragana),
       pronunciationHiragana: katakanaToHiragana(pronRaw),
       containsKanji: surface.runes.any((r) => isKanji(String.fromCharCode(r))),
+      basicForm: basicForm,
     );
   }
+
+  /// 是否发生活用(原形与原词不一致, 如「食べ」的原形是「食べる」)。
+  bool get isConjugated => basicForm.isNotEmpty && basicForm != surface;
 
   /// 该词的读音是否与原词一致(即无需注音, 如纯假名词)。
   bool get needsAnnotation => surface != hiragana;
@@ -108,8 +121,11 @@ class AnalysisResult {
   /// 原始输入文本。
   final String source;
 
-  /// 逐词分析结果。
+  /// 逐词分析结果 (扁平化全列表)。
   final List<Morpheme> morphemes;
+
+  /// 按段落分组的分词列表。单行输入时包含 1 个段落。
+  final List<List<Morpheme>> paragraphs;
 
   /// 若输入恰好是单个汉字, 这里是该字的音读/训读详情; 否则为 null。
   final KanjiReading? singleKanji;
@@ -117,18 +133,56 @@ class AnalysisResult {
   const AnalysisResult({
     required this.source,
     required this.morphemes,
+    this.paragraphs = const [],
     this.singleKanji,
   });
 
-  /// 全文平假名(规范拼写)。
-  String get fullHiragana => morphemes.map((m) => m.hiragana).join();
+  /// 全文平假名(规范拼写), 多段落时以换行连接。
+  String get fullHiragana => paragraphs.isNotEmpty
+      ? paragraphs.map((p) => p.map((m) => m.hiragana).join()).join('\n')
+      : morphemes.map((m) => m.hiragana).join();
 
-  /// 全文罗马音, 词间以空格分隔便于阅读。
-  String get fullRomaji => morphemes.map((m) => m.romaji).join(' ');
+  /// 全文罗马音, 词间以空格分隔, 多段落时以换行连接。
+  String get fullRomaji => paragraphs.isNotEmpty
+      ? paragraphs.map((p) => p.map((m) => m.romaji).join(' ')).join('\n')
+      : morphemes.map((m) => m.romaji).join(' ');
 
   /// 全文发音平假名。仅在存在发音差异时与 [fullHiragana] 不同。
-  String get fullPronunciation =>
-      morphemes.map((m) => m.pronunciationHiragana).join();
+  String get fullPronunciation => paragraphs.isNotEmpty
+      ? paragraphs
+          .map((p) => p.map((m) => m.pronunciationHiragana).join())
+          .join('\n')
+      : morphemes.map((m) => m.pronunciationHiragana).join();
+
+  /// 导出为 HTML Ruby 标注文本 (如 `<ruby>日本語<rt>にほんご</rt></ruby>`), 多段落时以换行连接。
+  String get toHtmlRuby => paragraphs.isNotEmpty
+      ? paragraphs.map((p) => p.map((m) {
+            if (m.needsAnnotation) {
+              return '<ruby>${m.surface}<rt>${m.hiragana}</rt></ruby>';
+            }
+            return m.surface;
+          }).join()).join('\n')
+      : morphemes.map((m) {
+          if (m.needsAnnotation) {
+            return '<ruby>${m.surface}<rt>${m.hiragana}</rt></ruby>';
+          }
+          return m.surface;
+        }).join();
+
+  /// 导出为括号注音文本 (如 `日本語(にほんご)`), 多段落时以换行连接。
+  String get toBracketAnnotation => paragraphs.isNotEmpty
+      ? paragraphs.map((p) => p.map((m) {
+            if (m.needsAnnotation) {
+              return '${m.surface}(${m.hiragana})';
+            }
+            return m.surface;
+          }).join()).join('\n')
+      : morphemes.map((m) {
+          if (m.needsAnnotation) {
+            return '${m.surface}(${m.hiragana})';
+          }
+          return m.surface;
+        }).join();
 
   /// 是否存在任何发音差异。
   bool get hasAnyPronunciationShift =>

@@ -27,6 +27,7 @@ class SingleKanjiView extends StatelessWidget {
     final s = AppStrings.of(context);
     // 常见搭配词来自构建期生成的 IPADIC 数据; 查不到的字整段省略。
     final words = kanjiWordsDict[reading.kanji] ?? const <KanjiWord>[];
+    final homophones = _findHomophones(reading);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -54,6 +55,10 @@ class SingleKanjiView extends StatelessWidget {
         if (words.isNotEmpty) ...[
           const SizedBox(height: 12),
           _CommonWordsGroup(words: words, onWordTap: onWordTap),
+        ],
+        if (homophones.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _HomophonesGroup(homophones: homophones, onWordTap: onWordTap),
         ],
         if (!reading.hasOnyomi && !reading.hasKunyomi) const _NoReadingNotice(),
       ],
@@ -150,6 +155,14 @@ class SingleKanjiView extends StatelessWidget {
                       s.labelFrequency,
                       _frequencyLabel(s, reading.frequencyRank),
                     ),
+                    if (reading.radical > 0)
+                      _metaItem(
+                        context,
+                        s.labelRadical,
+                        reading.radicalChar.isNotEmpty
+                            ? '${reading.radicalChar} (${reading.radical})'
+                            : '${reading.radical}',
+                      ),
                   ],
                 ),
               ],
@@ -191,6 +204,23 @@ class SingleKanjiView extends StatelessWidget {
   static String _frequencyLabel(AppStrings s, int rank) {
     if (rank >= kNoFrequencyRank) return s.frequencyUnranked;
     return 'No.$rank';
+  }
+
+  static List<KanjiReading> _findHomophones(KanjiReading target) {
+    if (target.onyomi.isEmpty) return const [];
+    final targetOnSet = target.onyomi.toSet();
+    final matches = <KanjiReading>[];
+    for (final r in kanjiReadingDict.values) {
+      if (r.kanji == target.kanji) continue;
+      for (final o in r.onyomi) {
+        if (targetOnSet.contains(o)) {
+          matches.add(r);
+          break;
+        }
+      }
+    }
+    matches.sort((a, b) => a.frequencyRank.compareTo(b.frequencyRank));
+    return matches.take(8).toList();
   }
 }
 
@@ -611,6 +641,126 @@ class _CollapseFooter extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// 同音汉字推荐分组。
+class _HomophonesGroup extends StatelessWidget {
+  final List<KanjiReading> homophones;
+  final ValueChanged<String>? onWordTap;
+
+  const _HomophonesGroup({
+    required this.homophones,
+    this.onWordTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
+    const color = Color(0xFF369B78);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: colors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 3,
+                height: 16,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                s.homophoneHeading,
+                style: const TextStyle(
+                  color: color,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  s.homophoneHint,
+                  style: TextStyle(
+                    color: colors.textSecondary.withValues(alpha: 0.8),
+                    fontSize: 11,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: Text(
+                  s.homophoneBadge(homophones.length),
+                  style: const TextStyle(color: color, fontSize: 10),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: homophones.map((k) {
+              final meaning = s.language == AppLanguage.en && k.meaningsEn.isNotEmpty
+                  ? k.meaningsEn.first
+                  : (k.meanings.isNotEmpty ? k.meanings.first : '');
+              return InkWell(
+                onTap: onWordTap != null ? () => onWordTap!(k.kanji) : null,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: colors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: colors.border),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        k.kanji,
+                        style: TextStyle(
+                          color: colors.textPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (meaning.isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          meaning,
+                          style: TextStyle(
+                            color: colors.textSecondary,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }

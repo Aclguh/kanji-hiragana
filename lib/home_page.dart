@@ -255,6 +255,48 @@ class _HomePageState extends State<HomePage>
     }
   }
 
+  void _showExportSheet(AnalysisResult result) {
+    final s = AppStrings.of(context);
+    final colors = AppTheme.of(context);
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: colors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.code_rounded, color: AppTheme.accent),
+                title: Text(s.exportRuby),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  copyWithToast(context, result.toHtmlRuby, s.copiedRuby);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.notes_rounded, color: AppTheme.indigo),
+                title: Text(s.exportBrackets),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  copyWithToast(
+                    context,
+                    result.toBracketAnnotation,
+                    s.copiedBrackets,
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _debounce.dispose();
@@ -528,13 +570,14 @@ class _HomePageState extends State<HomePage>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SizedBox(height: isSingleKanji ? 4 : 12),
-              if (!isSingleKanji)
+              if (!isSingleKanji && _result != null)
                 _Toolbar(
                   viewMode: _viewMode,
                   showRomaji: _showRomaji,
                   onSelectMode: (mode) => setState(() => _viewMode = mode),
                   onRomajiChanged: (value) =>
                       setState(() => _showRomaji = value),
+                  onExport: () => _showExportSheet(_result!),
                 ),
               _buildContent(),
             ],
@@ -835,12 +878,14 @@ class _Toolbar extends StatelessWidget {
   final bool showRomaji;
   final ValueChanged<ViewMode> onSelectMode;
   final ValueChanged<bool> onRomajiChanged;
+  final VoidCallback onExport;
 
   const _Toolbar({
     required this.viewMode,
     required this.showRomaji,
     required this.onSelectMode,
     required this.onRomajiChanged,
+    required this.onExport,
   });
 
   @override
@@ -876,6 +921,18 @@ class _Toolbar extends StatelessWidget {
             ),
           ),
           const Spacer(),
+          IconButton(
+            tooltip: s.export,
+            iconSize: 20,
+            visualDensity: VisualDensity.compact,
+            onPressed: onExport,
+            icon: Icon(
+              Icons.share_outlined,
+              size: 20,
+              color: colors.textSecondary,
+            ),
+          ),
+          const SizedBox(width: 8),
           Row(
             children: [
               Text(

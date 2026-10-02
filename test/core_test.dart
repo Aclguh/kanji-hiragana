@@ -121,12 +121,19 @@ void main() {
       expect(r.fullRomaji, 'nippon no bunka');
     });
 
-    test('动词按活用形给出读音', () async {
+    test('动词按活用形给出读音并提取原形', () async {
       final r = await analyzer.analyze('東京に行きます');
       expect(r.fullHiragana, 'とうきょうにいきます');
       expect(r.morphemes[2].surface, '行き');
       expect(r.morphemes[2].hiragana, 'いき');
       expect(r.morphemes[2].romaji, 'iki');
+      expect(r.morphemes[2].basicForm, '行く');
+      expect(r.morphemes[2].isConjugated, isTrue);
+
+      final rTabe = await analyzer.analyze('食べました');
+      expect(rTabe.morphemes[0].surface, '食べ');
+      expect(rTabe.morphemes[0].basicForm, '食べる');
+      expect(rTabe.morphemes[0].isConjugated, isTrue);
     });
 
     test('空输入返回空结果', () async {
@@ -319,6 +326,7 @@ void main() {
       grade: 1,
       strokes: 1,
       frequencyRank: 2,
+      radical: 1,
     );
     const k2 = KanjiReading(
       kanji: '音',
@@ -329,6 +337,7 @@ void main() {
       grade: 1,
       strokes: 9,
       frequencyRank: 50,
+      radical: 180,
     );
     const k3 = KanjiReading(
       kanji: '訓',
@@ -339,6 +348,7 @@ void main() {
       grade: 4,
       strokes: 10,
       frequencyRank: 800,
+      radical: 149,
     );
     const kUnranked = KanjiReading(
       kanji: '佚',
@@ -349,6 +359,7 @@ void main() {
       grade: 9,
       strokes: 7,
       frequencyRank: kNoFrequencyRank,
+      radical: 9,
     );
     final samples = [k1, k2, k3, kUnranked];
 
@@ -429,6 +440,91 @@ void main() {
       final c3 = f.copyWith(clearFrequency: true);
       expect(c3.frequencyMin, isNull);
       expect(c3.frequencyMax, isNull);
+
+      final c4 = f.copyWith(clearReadingQuery: true);
+      expect(c4.readingQuery, isEmpty);
+      expect(c4.gradeMin, 1);
+    });
+
+    test('按读音反查筛选', () {
+      const kGaku = KanjiReading(
+        kanji: '学',
+        onyomi: ['がく'],
+        kunyomi: ['まな(ぶ)'],
+        meanings: ['学'],
+        meaningsEn: ['learn'],
+        grade: 1,
+        strokes: 8,
+        frequencyRank: 50,
+      );
+
+      // 音读匹配
+      const fOn = KanjiFilter(readingQuery: 'いち');
+      expect(fOn.matches(k1), isTrue);
+      expect(fOn.matches(k2), isFalse);
+
+      // 训读匹配
+      const fKun = KanjiFilter(readingQuery: 'よむ');
+      expect(fKun.matches(k3), isTrue);
+      expect(fKun.matches(k1), isFalse);
+
+      // 训读送假名括号剥离比对 (「まな」匹配「まな(ぶ)」)
+      const fOkurigana = KanjiFilter(readingQuery: 'まな');
+      expect(fOkurigana.matches(kGaku), isTrue);
+
+      // 片假名输入自动折叠为平假名
+      const fKatakana = KanjiFilter(readingQuery: 'ガク');
+      expect(fKatakana.matches(kGaku), isTrue);
+
+      // 子串匹配
+      const fSub = KanjiFilter(readingQuery: 'な');
+      expect(fSub.matches(kGaku), isTrue);
+
+      // 未命中
+      const fMiss = KanjiFilter(readingQuery: 'みず');
+      expect(fMiss.matches(kGaku), isFalse);
+
+      // 生效条件计数
+      expect(fOn.activeCount, 1);
+      expect(fOn.isUnfiltered, isFalse);
+    });
+
+    test('按含义搜索筛选', () {
+      // 中文释义匹配
+      const fOneZh = KanjiFilter(meaningQuery: '一');
+      expect(fOneZh.matches(k1), isTrue);
+      expect(fOneZh.matches(k2), isFalse);
+
+      // 英文释义匹配 (不区分大小写)
+      const fOneEn = KanjiFilter(meaningQuery: 'ONE');
+      expect(fOneEn.matches(k1), isTrue);
+      expect(fOneEn.matches(k2), isFalse);
+
+      // 未命中
+      const fMiss = KanjiFilter(meaningQuery: 'galaxy');
+      expect(fMiss.matches(k1), isFalse);
+
+      // copyWith 清空
+      final cleared = fOneEn.copyWith(clearMeaningQuery: true);
+      expect(cleared.meaningQuery, isEmpty);
+      expect(cleared.isUnfiltered, isTrue);
+
+      // 生效条件计数
+      expect(fOneEn.activeCount, 1);
+    });
+
+    test('按部首筛选', () {
+      const fRadical1 = KanjiFilter(radical: 1);
+      expect(fRadical1.matches(k1), isTrue);
+      expect(fRadical1.matches(k2), isFalse);
+
+      // copyWith 清空
+      final cleared = fRadical1.copyWith(clearRadical: true);
+      expect(cleared.radical, isNull);
+      expect(cleared.isUnfiltered, isTrue);
+
+      // 生效条件计数
+      expect(fRadical1.activeCount, 1);
     });
 
     test('反转区间与边界无匹配', () {
@@ -565,6 +661,63 @@ void main() {
       expect(mNoDetail.partOfSpeechDetail, isEmpty);
     });
 
+    test('动词与形容词活用形原形识别', () {
+      final tokenTabeta = {
+        'surface_form': '食べた',
+        'basic_form': '食べる',
+        'pos': '動詞',
+      };
+      final mTabeta = Morpheme.fromToken(tokenTabeta);
+      expect(mTabeta.basicForm, '食べる');
+      expect(mTabeta.isConjugated, isTrue);
+
+      final tokenTaberu = {
+        'surface_form': '食べる',
+        'basic_form': '食べる',
+        'pos': '動詞',
+      };
+      final mTaberu = Morpheme.fromToken(tokenTaberu);
+      expect(mTaberu.basicForm, '食べる');
+      expect(mTaberu.isConjugated, isFalse);
+    });
+
+    test('注音文本导出与段落划分', () {
+      final m1 = Morpheme.fromToken({
+        'surface_form': '私',
+        'reading': 'ワタシ',
+        'pos': '名詞',
+      });
+      final m2 = Morpheme.fromToken({
+        'surface_form': 'は',
+        'reading': 'ハ',
+        'pos': '助詞',
+      });
+      final m3 = Morpheme.fromToken({
+        'surface_form': '猫',
+        'reading': 'ネコ',
+        'pos': '名詞',
+      });
+
+      final res = AnalysisResult(
+        source: '私は\n猫',
+        morphemes: [m1, m2, m3],
+        paragraphs: [
+          [m1, m2],
+          [m3],
+        ],
+      );
+
+      expect(res.paragraphs.length, 2);
+      expect(res.paragraphs[0].length, 2);
+      expect(res.paragraphs[1].length, 1);
+
+      expect(
+        res.toHtmlRuby,
+        '<ruby>私<rt>わたし</rt></ruby>は\n<ruby>猫<rt>ねこ</rt></ruby>',
+      );
+      expect(res.toBracketAnnotation, '私(わたし)は\n猫(ねこ)');
+    });
+
     test('空 token 与缺省字段安全回退', () {
       final mEmpty = Morpheme.fromToken({});
       expect(mEmpty.surface, isEmpty);
@@ -572,6 +725,8 @@ void main() {
       expect(mEmpty.romaji, isEmpty);
       expect(mEmpty.partOfSpeech, isEmpty);
       expect(mEmpty.partOfSpeechDetail, isEmpty);
+      expect(mEmpty.basicForm, isEmpty);
+      expect(mEmpty.isConjugated, isFalse);
     });
   });
 
@@ -709,8 +864,32 @@ void main() {
       expect(en.filterCount(42), contains('42'));
       expect(zh.noRankExcluded(5), contains('5'));
       expect(en.noRankExcluded(5), contains('5'));
+      expect(zh.filterChipReading('こう'), contains('こう'));
+      expect(en.filterChipReading('こう'), contains('こう'));
+      expect(zh.filterChipMeaning('太阳'), contains('太阳'));
+      expect(en.filterChipMeaning('sun'), contains('sun'));
+      expect(zh.sectionReadingSearch.isNotEmpty, isTrue);
+      expect(en.sectionReadingSearch.isNotEmpty, isTrue);
+      expect(zh.readingSearchHint.isNotEmpty, isTrue);
+      expect(en.readingSearchHint.isNotEmpty, isTrue);
+      expect(zh.sectionMeaningSearch.isNotEmpty, isTrue);
+      expect(en.sectionMeaningSearch.isNotEmpty, isTrue);
+      expect(zh.meaningSearchHint.isNotEmpty, isTrue);
+      expect(en.meaningSearchHint.isNotEmpty, isTrue);
       expect(zh.frequencyUnranked.isNotEmpty, isTrue);
       expect(en.frequencyUnranked.isNotEmpty, isTrue);
+      expect(zh.labelRadical.isNotEmpty, isTrue);
+      expect(en.labelRadical.isNotEmpty, isTrue);
+      expect(zh.sectionRadical.isNotEmpty, isTrue);
+      expect(en.sectionRadical.isNotEmpty, isTrue);
+      expect(zh.filterChipRadical('水'), contains('水'));
+      expect(en.filterChipRadical('水'), contains('水'));
+      expect(zh.homophoneHeading.isNotEmpty, isTrue);
+      expect(en.homophoneHeading.isNotEmpty, isTrue);
+      expect(zh.homophoneHint.isNotEmpty, isTrue);
+      expect(en.homophoneHint.isNotEmpty, isTrue);
+      expect(zh.homophoneBadge(3), contains('3'));
+      expect(en.homophoneBadge(3), contains('3'));
     });
   });
 }

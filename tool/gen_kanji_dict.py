@@ -9,6 +9,7 @@
 """
 import gzip
 import sys
+import unicodedata
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -128,6 +129,14 @@ def parse():
             if c not in kun_list:
                 kun_list.append(c)
 
+        rad = character.find('radical')
+        radical = 0
+        if rad is not None:
+            for rv in rad.findall('rad_value'):
+                if rv.get('rad_type') == 'classical':
+                    radical = int(rv.text)
+                    break
+
         result[kanji] = {
             'on': on_hira,
             'kun': kun_list,
@@ -135,6 +144,7 @@ def parse():
             'grade': grade,
             'freq': freq,
             'strokes': strokes,
+            'radical': radical,
         }
 
     return sorted(result.items(), key=lambda kv: kv[1]['freq'])
@@ -285,6 +295,10 @@ def main():
     lines.append('// 重新生成: python tool/gen_kanji_dict.py')
     lines.append('//')
     lines.append("// 覆盖范围: 教育汉字(grade 1-6) + 常用汉字(grade 8) + 人名用汉字(grade 9-10)")
+    lines.append('/// 康熙部首 214 字表 (标准 CJK 统一汉字形态)。')
+    rads = [unicodedata.normalize('NFKD', chr(0x2F00 + i)) for i in range(214)]
+    rad_items = ', '.join("'" + r + "'" for r in rads)
+    lines.append(f'const List<String> kKangxiRadicals = [{rad_items}];')
     lines.append('')
     lines.append('/// 一个汉字的读音信息。')
     lines.append('class KanjiReading {')
@@ -312,6 +326,9 @@ def main():
     lines.append('  /// 报纸使用频率排名(越小越常用)。')
     lines.append('  final int frequencyRank;')
     lines.append('')
+    lines.append('  /// 康熙部首序号 (1-214)。')
+    lines.append('  final int radical;')
+    lines.append('')
     lines.append('  const KanjiReading({')
     lines.append('    required this.kanji,')
     lines.append('    required this.onyomi,')
@@ -321,6 +338,7 @@ def main():
     lines.append('    required this.grade,')
     lines.append('    required this.strokes,')
     lines.append('    required this.frequencyRank,')
+    lines.append('    this.radical = 0,')
     lines.append('  });')
     lines.append('')
     lines.append('  /// 是否有音读。')
@@ -328,6 +346,12 @@ def main():
     lines.append('')
     lines.append('  /// 是否有训读。')
     lines.append('  bool get hasKunyomi => kunyomi.isNotEmpty;')
+    lines.append('')
+    lines.append('  /// 康熙部首字形。')
+    lines.append('  String get radicalChar =>')
+    lines.append('      radical >= 1 && radical <= kKangxiRadicals.length')
+    lines.append('          ? kKangxiRadicals[radical - 1]')
+    lines.append('          : \'\';')
     lines.append('}')
     lines.append('')
     lines.append('/// 汉字读音字典。key 为单个汉字。')
@@ -339,7 +363,7 @@ def main():
         lines.append(
             "  '%s': KanjiReading(kanji: '%s', onyomi: [%s], kunyomi: [%s], "
             "meanings: [%s], meaningsEn: [%s], grade: %d, strokes: %d, "
-            "frequencyRank: %d)," % (
+            "frequencyRank: %d, radical: %d)," % (
                 kanji,
                 kanji,
                 dart_str_list(info['on']),
@@ -349,6 +373,7 @@ def main():
                 info['grade'],
                 info['strokes'],
                 info['freq'],
+                info['radical'],
             )
         )
 

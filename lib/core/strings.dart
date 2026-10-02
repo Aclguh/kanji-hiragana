@@ -78,6 +78,13 @@ sealed class AppStrings {
   String get viewFurigana;
   String get romajiToggle;
 
+  /// 导出注音。
+  String get export;
+  String get exportRuby;
+  String get exportBrackets;
+  String get copiedRuby;
+  String get copiedBrackets;
+
   /// 结果区底部。
   String get labelHiragana;
   String get labelPronunciation;
@@ -130,6 +137,9 @@ sealed class AppStrings {
   /// 词性细分标签。
   String posDetailLabel(String detail);
 
+  /// 动词活用形原形提示。
+  String baseForm(String form);
+
   // ------------------------------------------------------------- 单汉字
 
   String get onyomiHeading;
@@ -141,6 +151,7 @@ sealed class AppStrings {
   String get labelStrokes;
   String get labelGrade;
   String get labelFrequency;
+  String get labelRadical;
   String get frequencyUnranked;
   String get gradeCommon;
   String get gradeNameUse;
@@ -156,6 +167,15 @@ sealed class AppStrings {
   /// 常见词汇区徽标 (词数)。
   String commonWordsBadge(int count);
 
+  /// 同音汉字推荐标题。
+  String get homophoneHeading;
+
+  /// 同音汉字推荐提示。
+  String get homophoneHint;
+
+  /// 同音汉字推荐徽标 (字数)。
+  String homophoneBadge(int count);
+
   // --------------------------------------------------------------- 筛选
 
   String get filterTitle;
@@ -164,7 +184,12 @@ sealed class AppStrings {
   String get sectionSort;
   String get sectionStrokes;
   String get sectionFrequency;
+  String get sectionRadical;
   String get sectionReadings;
+  String get sectionReadingSearch;
+  String get readingSearchHint;
+  String get sectionMeaningSearch;
+  String get meaningSearchHint;
   String get sectionOther;
   String get any;
   String get min;
@@ -226,6 +251,9 @@ sealed class AppStrings {
   /// [min] / [max] 至少有一个非 null（两端都空时不调用）。
   String filterChipStrokes(int? min, int? max);
   String filterChipFrequency(int? min, int? max);
+  String filterChipReading(String query);
+  String filterChipMeaning(String query);
+  String filterChipRadical(String radicalChar);
 
   // --------------------------------------------------------------- 筛选结果
 
@@ -322,6 +350,21 @@ class ZhStrings extends AppStrings {
   String get romajiToggle => '罗马音';
 
   @override
+  String get export => '导出注音';
+
+  @override
+  String get exportRuby => 'HTML Ruby 格式 (<ruby>漢字<rt>かな</rt></ruby>)';
+
+  @override
+  String get exportBrackets => '括号注音格式 (漢字(かな))';
+
+  @override
+  String get copiedRuby => '已复制 HTML Ruby 注音文本';
+
+  @override
+  String get copiedBrackets => '已复制括号注音文本';
+
+  @override
   String get labelHiragana => '平假名';
 
   @override
@@ -392,6 +435,9 @@ class ZhStrings extends AppStrings {
   @override
   String posDetailLabel(String detail) => detail;
 
+  @override
+  String baseForm(String form) => '→ $form';
+
   // ------------------------------------------------------------- 单汉字
 
   @override
@@ -420,6 +466,9 @@ class ZhStrings extends AppStrings {
 
   @override
   String get labelFrequency => '频率';
+
+  @override
+  String get labelRadical => '部首';
 
   @override
   String get frequencyUnranked => '无排名';
@@ -451,6 +500,15 @@ class ZhStrings extends AppStrings {
   @override
   String commonWordsBadge(int count) => '$count 词';
 
+  @override
+  String get homophoneHeading => '同音汉字';
+
+  @override
+  String get homophoneHint => '共享相同音读的常用汉字';
+
+  @override
+  String homophoneBadge(int count) => '$count 字';
+
   // --------------------------------------------------------------- 筛选
 
   @override
@@ -472,7 +530,22 @@ class ZhStrings extends AppStrings {
   String get sectionFrequency => '使用频率';
 
   @override
+  String get sectionRadical => '部首';
+
+  @override
   String get sectionReadings => '读音构成';
+
+  @override
+  String get sectionReadingSearch => '按读音查';
+
+  @override
+  String get readingSearchHint => '输入平假名';
+
+  @override
+  String get sectionMeaningSearch => '按含义查';
+
+  @override
+  String get meaningSearchHint => '输入中文或英文释义';
 
   @override
   String get sectionOther => '其他';
@@ -548,6 +621,15 @@ class ZhStrings extends AppStrings {
     if (min != null) return '频率 ≥$min';
     return '频率 ≤${max!}';
   }
+
+  @override
+  String filterChipReading(String query) => '读音 $query';
+
+  @override
+  String filterChipMeaning(String query) => '含义 $query';
+
+  @override
+  String filterChipRadical(String radicalChar) => '部首 $radicalChar';
 
   // --------------------------------------------------------------- 筛选结果
 
@@ -711,6 +793,21 @@ class EnStrings extends AppStrings {
   String get romajiToggle => 'Romaji';
 
   @override
+  String get export => 'Export';
+
+  @override
+  String get exportRuby => 'HTML Ruby format (<ruby>kanji<rt>kana</rt></ruby>)';
+
+  @override
+  String get exportBrackets => 'Bracket format (kanji(kana))';
+
+  @override
+  String get copiedRuby => 'HTML Ruby text copied';
+
+  @override
+  String get copiedBrackets => 'Bracketed text copied';
+
+  @override
   String get labelHiragana => 'Hiragana';
 
   @override
@@ -820,6 +917,9 @@ class EnStrings extends AppStrings {
         _ => detail,
       };
 
+  @override
+  String baseForm(String form) => '→ $form';
+
   // ------------------------------------------------------------- 单汉字
 
   @override
@@ -848,6 +948,9 @@ class EnStrings extends AppStrings {
 
   @override
   String get labelFrequency => 'Frequency';
+
+  @override
+  String get labelRadical => 'Radical';
 
   @override
   String get frequencyUnranked => 'Unranked';
@@ -884,6 +987,15 @@ class EnStrings extends AppStrings {
   @override
   String commonWordsBadge(int count) => '$count words';
 
+  @override
+  String get homophoneHeading => 'Homophones';
+
+  @override
+  String get homophoneHint => 'Kanji sharing on\'yomi';
+
+  @override
+  String homophoneBadge(int count) => '$count kanji';
+
   // --------------------------------------------------------------- 筛选
 
   @override
@@ -905,7 +1017,22 @@ class EnStrings extends AppStrings {
   String get sectionFrequency => 'Frequency';
 
   @override
+  String get sectionRadical => 'Radical';
+
+  @override
   String get sectionReadings => 'Readings';
+
+  @override
+  String get sectionReadingSearch => 'By reading';
+
+  @override
+  String get readingSearchHint => 'Enter hiragana';
+
+  @override
+  String get sectionMeaningSearch => 'By meaning';
+
+  @override
+  String get meaningSearchHint => 'Enter meaning';
 
   @override
   String get sectionOther => 'Other';
@@ -981,6 +1108,15 @@ class EnStrings extends AppStrings {
     if (min != null) return 'Freq. ≥$min';
     return 'Freq. ≤${max!}';
   }
+
+  @override
+  String filterChipReading(String query) => 'Reading $query';
+
+  @override
+  String filterChipMeaning(String query) => 'Meaning $query';
+
+  @override
+  String filterChipRadical(String radicalChar) => 'Radical $radicalChar';
 
   // --------------------------------------------------------------- 筛选结果
 

@@ -178,6 +178,35 @@ class JapaneseAnalyzer {
       return AnalysisResult(source: trimmed, morphemes: const []);
     }
 
+    final lines = trimmed.split(RegExp(r'\r?\n'));
+    if (lines.length > 1) {
+      final paragraphs = <List<Morpheme>>[];
+      for (final line in lines) {
+        final lineTrimmed = line.trim();
+        if (lineTrimmed.isEmpty) continue;
+        final lineTokens =
+            await _send((id) => [_tokenizeTag, id, lineTrimmed]);
+        if (isCancelled?.call() ?? false) {
+          return AnalysisResult(source: trimmed, morphemes: const []);
+        }
+        final ms = lineTokens
+            .map(Morpheme.fromToken)
+            .where((m) => m.surface.trim().isNotEmpty)
+            .toList(growable: false);
+        if (ms.isNotEmpty) {
+          paragraphs.add(ms);
+        }
+      }
+      final allMorphemes =
+          paragraphs.expand((p) => p).toList(growable: false);
+      return AnalysisResult(
+        source: trimmed,
+        morphemes: allMorphemes,
+        paragraphs: paragraphs,
+        singleKanji: _lookupSingleKanji(trimmed),
+      );
+    }
+
     final tokens = await _send((id) => [_tokenizeTag, id, trimmed]);
     if (isCancelled?.call() ?? false) {
       return AnalysisResult(source: trimmed, morphemes: const []);
@@ -192,6 +221,7 @@ class JapaneseAnalyzer {
     return AnalysisResult(
       source: trimmed,
       morphemes: morphemes,
+      paragraphs: morphemes.isNotEmpty ? [morphemes] : const [],
       singleKanji: _lookupSingleKanji(trimmed),
     );
   }

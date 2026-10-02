@@ -523,20 +523,20 @@ void main() {
 
     // 分组标题各出现一次; 「使用频率」与「笔画数」因排序 chip 同名
     // (排序 chips 全量渲染, 默认选中「使用频率」) 各出现两次。
-    for (final label in ['排序', '读音构成', '其他']) {
+    for (final label in ['排序', '读音构成', '按读音查', '按含义查', '部首', '其他']) {
       expect(drawerText(label), findsOneWidget, reason: '缺少分组: $label');
     }
     expect(drawerText('使用频率'), findsNWidgets(2));
     expect(drawerText('笔画数'), findsNWidgets(2));
 
-    // 「其他」应排在「读音构成」之后。
-    final readingDy = tester.getTopLeft(drawerText('读音构成')).dy;
+    // 「其他」应排在「按含义查」之后。
+    final meaningDy = tester.getTopLeft(drawerText('按含义查')).dy;
     final otherDy = tester.getTopLeft(drawerText('其他')).dy;
-    expect(otherDy > readingDy, isTrue,
-        reason: '「其他」应排在「读音构成」之后');
+    expect(otherDy > meaningDy, isTrue,
+        reason: '「其他」应排在「按含义查」之后');
 
-    // 笔画与频率各是「下限 ~ 上限」两个输入框, 共 4 个。
-    expect(rangeFields(), findsNWidgets(4));
+    // 笔画与频率各是「下限 ~ 上限」两个输入框, 加上读音反查与含义搜索输入框, 共 6 个。
+    expect(rangeFields(), findsNWidgets(6));
 
     // 「人名」对应 grade 9 与 10 两档, 应合并为一个选项而非重复出现。
     expect(drawerText('人名'), findsOneWidget);
@@ -613,7 +613,7 @@ void main() {
     await tester.tap(find.text('重置'));
     await tester.pumpAndSettle();
 
-    for (var i = 0; i < 4; i++) {
+    for (var i = 0; i < 6; i++) {
       final field = tester.widget<TextField>(rangeFields().at(i));
       expect(field.controller?.text, isEmpty, reason: '第 $i 个输入框未清空');
     }
@@ -848,6 +848,12 @@ void main() {
         find.descendant(of: filterScope, matching: find.text('Readings')),
         // 「Readings」同时是 sectionReadings 标题与「读音数量」排序 chip。
         findsNWidgets(2));
+    expect(
+        find.descendant(of: filterScope, matching: find.text('By reading')),
+        findsOneWidget);
+    expect(
+        find.descendant(of: filterScope, matching: find.text('By meaning')),
+        findsOneWidget);
     expect(
         find.descendant(of: filterScope, matching: find.text('Other')),
         findsOneWidget);

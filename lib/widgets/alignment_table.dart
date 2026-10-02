@@ -19,14 +19,29 @@ class AlignmentTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.of(context);
+    final paragraphs = result.paragraphs.isNotEmpty
+        ? result.paragraphs
+        : [result.morphemes];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildHeader(context),
         const SizedBox(height: 8),
-        ...result.morphemes.map(
-          (m) => _MorphemeRow(morpheme: m, showRomaji: showRomaji),
-        ),
+        for (var p = 0; p < paragraphs.length; p++) ...[
+          if (p > 0)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Divider(
+                height: 1,
+                thickness: 1,
+                color: colors.border.withValues(alpha: 0.6),
+              ),
+            ),
+          for (final m in paragraphs[p])
+            _MorphemeRow(morpheme: m, showRomaji: showRomaji),
+        ],
         const SizedBox(height: 16),
         _buildSummary(context),
       ],
@@ -189,6 +204,19 @@ class _MorphemeRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   _posChip(context, m),
+                  if (m.isConjugated) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      AppStrings.of(context).baseForm(m.basicForm),
+                      style: TextStyle(
+                        color: colors.textSecondary.withValues(alpha: 0.85),
+                        fontSize: 10,
+                        fontStyle: FontStyle.italic,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ],
               ),
             ),

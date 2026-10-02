@@ -44,6 +44,12 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
   late final _freqMax = TextEditingController(
     text: _filter.frequencyMax?.toString() ?? '',
   );
+  late final _readingQuery = TextEditingController(
+    text: _filter.readingQuery,
+  );
+  late final _meaningQuery = TextEditingController(
+    text: _filter.meaningQuery,
+  );
 
   /// 笔画数的实际取值范围 (由 core 从字典统计, 字典更新后自动跟随)。
   static final _strokeDomain = '${kStrokeRange.$1} ~ ${kStrokeRange.$2}';
@@ -66,12 +72,30 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
     (9, 10),
   ];
 
+  /// 常用部首列表 (覆盖率最高的主流部首序号)。
+  static const _commonRadicals = <int>[
+    85, // 水
+    75, // 木
+    9,  // 人
+    64, // 手
+    140, // 艸
+    61, // 心
+    30, // 口
+    120, // 糸
+    149, // 言
+    72, // 日
+    167, // 金
+    32, // 土
+  ];
+
   @override
   void dispose() {
     _strokeMin.dispose();
     _strokeMax.dispose();
     _freqMin.dispose();
     _freqMax.dispose();
+    _readingQuery.dispose();
+    _meaningQuery.dispose();
     super.dispose();
   }
 
@@ -139,6 +163,21 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
         _buildReadingChips(s),
         const SizedBox(height: 22),
 
+        // 按读音查
+        DrawerSectionLabel(s.sectionReadingSearch),
+        _buildReadingSearchField(s),
+        const SizedBox(height: 22),
+
+        // 按含义查
+        DrawerSectionLabel(s.sectionMeaningSearch),
+        _buildMeaningSearchField(s),
+        const SizedBox(height: 22),
+
+        // 部首
+        DrawerSectionLabel(s.sectionRadical),
+        _buildRadicalChips(s),
+        const SizedBox(height: 22),
+
         // 其他 (学年等次要维度)
         DrawerSectionLabel(s.sectionOther),
         _buildGradeChips(s),
@@ -177,6 +216,8 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
       _strokeMax.clear();
       _freqMin.clear();
       _freqMax.clear();
+      _readingQuery.clear();
+      _meaningQuery.clear();
     });
   }
 
@@ -286,6 +327,132 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
           onTap: () => setState(() => _filter = _filter.copyWith(reading: r)),
         );
       }).toList(),
+    );
+  }
+
+  Widget _buildRadicalChips(AppStrings s) {
+    return _chipWrap([
+      ..._commonRadicals.map((r) {
+        final char = kKangxiRadicals[r - 1];
+        final selected = _filter.radical == r;
+        return _Chip(
+          label: char,
+          selected: selected,
+          onTap: () => setState(() {
+            _filter = selected
+                ? _filter.copyWith(clearRadical: true)
+                : _filter.copyWith(radical: r);
+          }),
+        );
+      }),
+      _Chip(
+        label: s.any,
+        selected: _filter.radical == null,
+        onTap: () =>
+            setState(() => _filter = _filter.copyWith(clearRadical: true)),
+      ),
+    ]);
+  }
+
+  Widget _buildReadingSearchField(AppStrings s) {
+    final colors = AppTheme.of(context);
+    OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: BorderSide(color: c, width: w),
+    );
+
+    return TextField(
+      controller: _readingQuery,
+      inputFormatters: [
+        LengthLimitingTextInputFormatter(20),
+      ],
+      onChanged: (text) {
+        setState(() {
+          _filter = _filter.copyWith(readingQuery: text.trim());
+        });
+      },
+      style: TextStyle(color: colors.textPrimary, fontSize: 14),
+      decoration: InputDecoration(
+        hintText: s.readingSearchHint,
+        hintStyle: TextStyle(
+          color: colors.textSecondary.withValues(alpha: 0.55),
+          fontSize: 12,
+        ),
+        isDense: true,
+        filled: true,
+        fillColor: colors.surfaceVariant,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 10,
+          vertical: 11,
+        ),
+        suffixIcon: _readingQuery.text.isNotEmpty
+            ? IconButton(
+                icon: Icon(Icons.clear, size: 16, color: colors.textSecondary),
+                onPressed: () {
+                  _readingQuery.clear();
+                  setState(() {
+                    _filter = _filter.copyWith(clearReadingQuery: true);
+                  });
+                },
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              )
+            : null,
+        border: border(colors.border),
+        enabledBorder: border(colors.border),
+        focusedBorder: border(AppTheme.accent, 1.4),
+      ),
+    );
+  }
+
+  Widget _buildMeaningSearchField(AppStrings s) {
+    final colors = AppTheme.of(context);
+    OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(
+      borderRadius: BorderRadius.circular(8),
+      borderSide: BorderSide(color: c, width: w),
+    );
+
+    return TextField(
+      controller: _meaningQuery,
+      inputFormatters: [
+        LengthLimitingTextInputFormatter(30),
+      ],
+      onChanged: (text) {
+        setState(() {
+          _filter = _filter.copyWith(meaningQuery: text.trim());
+        });
+      },
+      style: TextStyle(color: colors.textPrimary, fontSize: 14),
+      decoration: InputDecoration(
+        hintText: s.meaningSearchHint,
+        hintStyle: TextStyle(
+          color: colors.textSecondary.withValues(alpha: 0.55),
+          fontSize: 12,
+        ),
+        isDense: true,
+        filled: true,
+        fillColor: colors.surfaceVariant,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 10,
+          vertical: 11,
+        ),
+        suffixIcon: _meaningQuery.text.isNotEmpty
+            ? IconButton(
+                icon: Icon(Icons.clear, size: 16, color: colors.textSecondary),
+                onPressed: () {
+                  _meaningQuery.clear();
+                  setState(() {
+                    _filter = _filter.copyWith(clearMeaningQuery: true);
+                  });
+                },
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              )
+            : null,
+        border: border(colors.border),
+        enabledBorder: border(colors.border),
+        focusedBorder: border(AppTheme.accent, 1.4),
+      ),
     );
   }
 

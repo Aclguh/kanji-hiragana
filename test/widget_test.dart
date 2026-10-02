@@ -55,9 +55,9 @@ void main() {
           FilterDrawerContent(initial: KanjiFilter.initial, onSubmit: (_) {}),
         ));
 
-        // 四个输入框: 笔画 min/max + 频率 min/max。
+        // 输入框: 笔画 min/max + 频率 min/max + 读音反查 + 含义搜索。
         final fields = find.byType(TextField);
-        expect(fields, findsNWidgets(4));
+        expect(fields, findsNWidgets(6));
         expect(find.text('下限大于上限, 将没有结果'), findsNothing);
 
         await tester.enterText(fields.at(0), '10');
@@ -67,7 +67,7 @@ void main() {
         expect(find.text('下限大于上限, 将没有结果'), findsOneWidget);
       });
 
-      testWidgets('点「查看结果」回传当前条件', (tester) async {
+      testWidgets('点「查看结果」回传当前条件 (含读音反查与含义搜索)', (tester) async {
         KanjiFilter? submitted;
         await tester.pumpWidget(host(FilterDrawerContent(
           initial: KanjiFilter.initial,
@@ -77,6 +77,10 @@ void main() {
         final fields = find.byType(TextField);
         await tester.enterText(fields.at(0), '3');
         await tester.enterText(fields.at(1), '5');
+        await tester.enterText(fields.at(4), 'こう');
+        await tester.enterText(fields.at(5), 'sun');
+        await tester.ensureVisible(find.text('水'));
+        await tester.tap(find.text('水'));
         await tester.pump();
 
         await tester.tap(find.text('查看结果'));
@@ -85,6 +89,9 @@ void main() {
         expect(submitted, isNotNull);
         expect(submitted!.strokesMin, 3);
         expect(submitted!.strokesMax, 5);
+        expect(submitted!.readingQuery, 'こう');
+        expect(submitted!.meaningQuery, 'sun');
+        expect(submitted!.radical, 85);
       });
     });
 
@@ -197,6 +204,14 @@ void main() {
         // 词面来自构建期生成的字典数据, 取真实首词断言。
         expect(kanjiWordsDict['生'], isNotNull);
         expect(find.text(kanjiWordsDict['生']!.first.word), findsOneWidget);
+      });
+
+      testWidgets('同音汉字推荐分组与部首展示', (tester) async {
+        await tester
+            .pumpWidget(scrollHost(SingleKanjiView(reading: reading)));
+
+        expect(find.text('同音汉字'), findsOneWidget);
+        expect(find.text('部首 '), findsOneWidget);
       });
     });
 

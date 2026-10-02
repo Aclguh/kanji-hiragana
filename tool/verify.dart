@@ -82,6 +82,17 @@ Future<void> main() async {
 
   final r3 = await a.analyze('東京に行きます');
   expectEq(r3.fullHiragana, 'とうきょうにいきます', '动词句平假名');
+  expectEq(r3.morphemes[2].basicForm, '行く', '动词活用形提取原形');
+  expectEq(r3.morphemes[2].isConjugated, true, '标记动词活用');
+
+  final rMulti = await a.analyze('猫\n犬');
+  expectEq(rMulti.paragraphs.length, 2, '多行输入正确拆分段落');
+  expectEq(
+    rMulti.toHtmlRuby,
+    '<ruby>猫<rt>ねこ</rt></ruby>\n<ruby>犬<rt>いぬ</rt></ruby>',
+    'HTML ruby 导出',
+  );
+  expectEq(rMulti.toBracketAnnotation, '猫(ねこ)\n犬(いぬ)', '括号注音导出');
 
   final r4 = await a.analyze('   ');
   expectEq(r4.isEmpty, true, '空输入返回空');
@@ -182,9 +193,53 @@ Future<void> main() async {
         gradeMin: 1,
         gradeMax: 1,
         reading: ReadingRequirement.both,
+        readingQuery: 'こう',
+        meaningQuery: 'sun',
+        radical: 72,
       ).activeCount,
-      4,
-      '四类条件各计一次');
+      7,
+      '七类条件各计一次');
+
+  print('--- 筛选: 读音反查 ---');
+  final rKou = const KanjiFilter(readingQuery: 'こう').apply(all);
+  expectEq(rKou.isNotEmpty, true, '读音「こう」反查有结果 (${rKou.length} 字)');
+  expectEq(rKou.any((r) => r.kanji == '校'), true, '读音「こう」包含「校」');
+  final rMana = const KanjiFilter(readingQuery: 'まな').apply(all);
+  expectEq(rMana.any((r) => r.kanji == '学'), true, '训读「まな(ぶ)」可由「まな」查到「学」');
+  final rKata = const KanjiFilter(readingQuery: 'ガク').apply(all);
+  expectEq(rKata.any((r) => r.kanji == '学'), true, '片假名「ガク」折叠反查包含「学」');
+  final rCleared =
+      const KanjiFilter(readingQuery: 'こう').copyWith(clearReadingQuery: true);
+  expectEq(rCleared.readingQuery, '', 'clearReadingQuery 清空读音反查');
+  expectEq(rCleared.isUnfiltered, true, '清空读音后回到不限');
+
+  print('--- 筛选: 含义搜索 ---');
+  final rSun = const KanjiFilter(meaningQuery: 'sun').apply(all);
+  expectEq(rSun.isNotEmpty, true, '含义「sun」搜索有结果 (${rSun.length} 字)');
+  expectEq(rSun.any((r) => r.kanji == '日'), true, '含义「sun」包含「日」');
+  final rTaiyang = const KanjiFilter(meaningQuery: '太阳').apply(all);
+  expectEq(rTaiyang.any((r) => r.kanji == '日'), true, '中文释义「太阳」包含「日」');
+  final rMeaningCleared =
+      const KanjiFilter(meaningQuery: 'sun').copyWith(clearMeaningQuery: true);
+  expectEq(rMeaningCleared.meaningQuery, '', 'clearMeaningQuery 清空含义搜索');
+  expectEq(rMeaningCleared.isUnfiltered, true, '清空含义后回到不限');
+
+  print('--- 筛选: 部首筛选与展示 ---');
+  expectEq(kanjiReadingDict['日']!.radical, 72, '日 部首为 72');
+  expectEq(kanjiReadingDict['日']!.radicalChar, '日', '日 部首字形为 日');
+  expectEq(kanjiReadingDict['木']!.radical, 75, '木 部首为 75');
+  expectEq(kanjiReadingDict['木']!.radicalChar, '木', '木 部首字形为 木');
+  expectEq(kanjiReadingDict['海']!.radical, 85, '海 部首为 85 (水)');
+  expectEq(kanjiReadingDict['海']!.radicalChar, '水', '海 部首字形为 水');
+
+  final rWater = const KanjiFilter(radical: 85).apply(all);
+  expectEq(rWater.isNotEmpty, true, '部首 85 (水) 有结果 (${rWater.length} 字)');
+  expectEq(rWater.every((r) => r.radical == 85), true, '部首 85 筛选全部满足');
+  expectEq(rWater.any((r) => r.kanji == '海'), true, '部首 85 包含「海」');
+  final rRadCleared =
+      const KanjiFilter(radical: 85).copyWith(clearRadical: true);
+  expectEq(rRadCleared.radical, null, 'clearRadical 清空部首');
+  expectEq(rRadCleared.isUnfiltered, true, '清空部首后回到不限');
 
   // 排序: 笔画升序
   final sorted = const KanjiFilter(sort: KanjiSort.strokes).apply(all);

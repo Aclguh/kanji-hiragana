@@ -26,9 +26,12 @@ on'yomi and kun'yomi.
 
 - **Kanji → hiragana → romaji** in a three-column, word-by-word table, powered by
   morphological analysis (kuromoji + IPADIC)
+- **Conjugation base form hints**: identifies verb and adjective inflected forms and displays their dictionary base form (e.g., 食べた notes base form 食べる)
+- **Multi-line paragraph preservation**: multi-line text input preserves paragraph breaks and formatting in both Table and Furigana views
+- **Export annotated text**: one-tap export as HTML `<ruby>` tags or bracket notation (e.g. `日本語(にほんご)`)
 - **Single-kanji detail**: type one kanji and get its **on'yomi** and **kun'yomi**
-  together with romaji, stroke count, school grade, meanings and **common words**
-  (with part-of-speech tags) containing the kanji; tap any common word to query it directly or long-press to copy
+  together with Kangxi radical, romaji, stroke count, school grade, meanings, **homophone recommendations** (kanji sharing on'yomi) and **common words**
+  (with part-of-speech tags) containing the kanji; tap any common word or homophone to query it directly or long-press to copy
 - **History & favorites**: queries are remembered automatically and can be starred;
   the empty state lists them as tappable chips (long-press with haptic feedback to remove,
   history can be cleared at once). The star works in the app bar and in the filter detail page
@@ -40,9 +43,12 @@ on'yomi and kun'yomi.
   - 東京 is annotated `とうきょう` with a pronunciation note of `とーきょー`
   - The particle は is annotated `は` with a note that it reads `わ`
     (highlighted in vermilion — exactly the grammar point worth learning)
-- **Kanji filter**: strokes and frequency both accept an arbitrary range
-  (lower ~ upper, leave blank for no bound), plus reading composition and school grade.
-  Sortable, with active criteria summary chips on the results page, and tap into any cell for details & favorites
+- **Multi-dimensional kanji filter**:
+  - Strokes and frequency both accept an arbitrary range (lower ~ upper, leave blank for no bound)
+  - **Reverse reading lookup**: enter hiragana or katakana to find matching kanji
+  - **Meaning search**: search by English or Chinese keyword
+  - **Radical filter**: filter by common radicals (water, wood, person, hand, heart, speech, etc.)
+  - Reading composition and school grade conditions, sortable, with active criteria summary chips on the results page, and tap into any cell for details & favorites
 - **Interface language**: switch between 简体中文 and English (Settings → Language).
   Every UI string *and* the kanji meanings follow the switch. The four characters
   漢字仮名 stay in traditional form as the app's mark
@@ -204,7 +210,7 @@ test/
 integration_test/
   ui_test.dart               On-device UI tests
 tool/
-  verify.dart                Standalone verification (96 assertions, runs with dart run)
+  verify.dart                Standalone verification (123 assertions, runs with dart run)
   gen_kanji_dict.py          KANJIDIC2 → Dart data generator
   gen_kanji_words.py         kuromoji-embedded IPADIC → common-word data generator
   gen_icon.py                App icon generator (needs Pillow, see requirements.txt)
@@ -220,10 +226,10 @@ flutter pub get
 # Static analysis
 flutter analyze
 
-# Logic verification (no flutter_test needed, runs anywhere, 96 assertions)
+# Logic verification (no flutter_test needed, runs anywhere, 123 assertions)
 dart run tool/verify.dart
 
-# Unit + widget tests (76 tests, no device needed)
+# Unit + widget tests (83 tests, no device needed)
 flutter test
 
 # On-device UI tests (requires a connected device, 30 tests, final gate)

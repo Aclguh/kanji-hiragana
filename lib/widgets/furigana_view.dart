@@ -18,6 +18,10 @@ class FuriganaView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
+    final paragraphs = result.paragraphs.isNotEmpty
+        ? result.paragraphs
+        : [result.morphemes];
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
@@ -26,14 +30,23 @@ class FuriganaView extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: colors.border),
       ),
-      child: Wrap(
-        // 逐词换行, 保证「汉字-读音」始终成组不被拆散。
-        spacing: 2,
-        runSpacing: 18,
-        crossAxisAlignment: WrapCrossAlignment.end,
-        children: result.morphemes
-            .map((m) => _FuriganaToken(morpheme: m, showRomaji: showRomaji))
-            .toList(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var p = 0; p < paragraphs.length; p++) ...[
+            if (p > 0) const SizedBox(height: 18),
+            Wrap(
+              // 逐词换行, 保证「汉字-读音」始终成组不被拆散。
+              spacing: 2,
+              runSpacing: 18,
+              crossAxisAlignment: WrapCrossAlignment.end,
+              children: paragraphs[p]
+                  .map((m) =>
+                      _FuriganaToken(morpheme: m, showRomaji: showRomaji))
+                  .toList(),
+            ),
+          ],
+        ],
       ),
     );
   }

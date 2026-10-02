@@ -1,3 +1,4 @@
+import 'kana_romaji.dart';
 import 'kanji_reading_dict.dart';
 
 /// 字典中表示「无使用频率排名」的哨兵值。
@@ -77,6 +78,21 @@ class KanjiFilter {
   /// 读音要求。
   final ReadingRequirement reading;
 
+  /// 按读音反查: 输入平假名片段, 匹配音读或训读中含有该片段的汉字。
+  ///
+  /// 空字符串表示不限。匹配时训读的送假名括号 (如「まな(ぶ)」中的
+  /// 括号与括号内容) 会被剥离, 只比对假名主体; 输入若为片假名会
+  /// 先折叠为平假名, 再做子串匹配。
+  final String readingQuery;
+
+  /// 按含义搜索: 输入中文或英文含义关键词, 匹配释义中含有该关键词的汉字。
+  ///
+  /// 空字符串表示不限, 大小写不敏感。
+  final String meaningQuery;
+
+  /// 部首筛选 (康熙部首序号 1-214)。null 表示不限。
+  final int? radical;
+
   /// 排序方式。
   final KanjiSort sort;
 
@@ -88,6 +104,9 @@ class KanjiFilter {
     this.frequencyMin,
     this.frequencyMax,
     this.reading = ReadingRequirement.any,
+    this.readingQuery = '',
+    this.meaningQuery = '',
+    this.radical,
     this.sort = KanjiSort.frequency,
   });
 
@@ -102,7 +121,10 @@ class KanjiFilter {
       strokesMax == null &&
       frequencyMin == null &&
       frequencyMax == null &&
-      reading == ReadingRequirement.any;
+      reading == ReadingRequirement.any &&
+      readingQuery.isEmpty &&
+      meaningQuery.isEmpty &&
+      radical == null;
 
   /// 生效的条件数量 (用于在界面上提示)。
   int get activeCount {
@@ -111,6 +133,9 @@ class KanjiFilter {
     if (strokesMin != null || strokesMax != null) n++;
     if (frequencyMin != null || frequencyMax != null) n++;
     if (reading != ReadingRequirement.any) n++;
+    if (readingQuery.isNotEmpty) n++;
+    if (meaningQuery.isNotEmpty) n++;
+    if (radical != null) n++;
     return n;
   }
 
@@ -122,10 +147,16 @@ class KanjiFilter {
     int? frequencyMin,
     int? frequencyMax,
     ReadingRequirement? reading,
+    String? readingQuery,
+    String? meaningQuery,
+    int? radical,
     KanjiSort? sort,
     bool clearGrade = false,
     bool clearStrokes = false,
     bool clearFrequency = false,
+    bool clearReadingQuery = false,
+    bool clearMeaningQuery = false,
+    bool clearRadical = false,
   }) {
     return KanjiFilter(
       gradeMin: clearGrade ? null : (gradeMin ?? this.gradeMin),
@@ -137,12 +168,18 @@ class KanjiFilter {
       frequencyMax:
           clearFrequency ? null : (frequencyMax ?? this.frequencyMax),
       reading: reading ?? this.reading,
+      readingQuery:
+          clearReadingQuery ? '' : (readingQuery ?? this.readingQuery),
+      meaningQuery:
+          clearMeaningQuery ? '' : (meaningQuery ?? this.meaningQuery),
+      radical: clearRadical ? null : (radical ?? this.radical),
       sort: sort ?? this.sort,
     );
   }
 
   /// 判断某个汉字是否满足条件。
   bool matches(KanjiReading r) {
+    if (radical != null && r.radical != radical) return false;
     if (gradeMin != null && r.grade < gradeMin!) return false;
     // 学年 7 不存在, 但 9/10 是人名用; 用 min/max 区间表达即可。
     if (gradeMax != null && r.grade > gradeMax!) return false;
@@ -168,6 +205,15 @@ class KanjiFilter {
       case ReadingRequirement.both:
         if (!r.hasOnyomi || !r.hasKunyomi) return false;
     }
+
+    if (readingQuery.isNotEmpty) {
+      if (!_matchesReadingQuery(r, readingQuery)) return false;
+    }
+
+    if (meaningQuery.isNotEmpty) {
+      if (!_matchesMeaningQuery(r, meaningQuery)) return false;
+    }
+
     return true;
   }
 
@@ -232,6 +278,38 @@ class KanjiFilter {
     out.sort(comparator(sort));
     return out;
   }
+}
+
+/// 判断 [r] 的音读或训读中是否有包含 [query] 子串的条目。
+///
+/// - [query] 若含片假名会先折叠为平假名。
+/// - 训读中的送假名括号 (如「まな(ぶ)」) 在比对前剥离,
+///   只留假名主体参与匹配; 这样输入「まな」即可命中「学」。
+bool _matchesReadingQuery(KanjiReading r, String query) {
+  final q = katakanaToHiragana(query);
+  for (final on in r.onyomi) {
+    if (on.contains(q)) return true;
+  }
+  for (final kun in r.kunyomi) {
+    if (_stripOkurigana(kun).contains(q)) return true;
+  }
+  return false;
+}
+
+/// 去掉训读里的送假名括号, 如 「まな(ぶ)」→「まなぶ」。
+String _stripOkurigana(String kun) => kun.replaceAll(RegExp(r'[()]'), '');
+
+/// 判断 [r] 的中文或英文释义是否包含 [query] 子串 (不区分大小写)。
+bool _matchesMeaningQuery(KanjiReading r, String query) {
+  final q = query.trim().toLowerCase();
+  if (q.isEmpty) return true;
+  for (final m in r.meanings) {
+    if (m.toLowerCase().contains(q)) return true;
+  }
+  for (final m in r.meaningsEn) {
+    if (m.toLowerCase().contains(q)) return true;
+  }
+  return false;
 }
 
 /// 对读音构成的要求。

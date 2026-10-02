@@ -160,10 +160,27 @@ class _FilterResultPageState extends State<FilterResultPage> {
       chips.add(s.filterChipFrequency(filter.frequencyMin, filter.frequencyMax));
     }
 
-  // 读音构成
-  if (filter.reading != ReadingRequirement.any) {
-    chips.add(s.readingLabel(filter.reading));
-  }
+    // 读音构成
+    if (filter.reading != ReadingRequirement.any) {
+      chips.add(s.readingLabel(filter.reading));
+    }
+
+    // 读音反查
+    if (filter.readingQuery.isNotEmpty) {
+      chips.add(s.filterChipReading(filter.readingQuery));
+    }
+
+    // 含义搜索
+    if (filter.meaningQuery.isNotEmpty) {
+      chips.add(s.filterChipMeaning(filter.meaningQuery));
+    }
+
+    // 部首
+    if (filter.radical != null &&
+        filter.radical! >= 1 &&
+        filter.radical! <= kKangxiRadicals.length) {
+      chips.add(s.filterChipRadical(kKangxiRadicals[filter.radical! - 1]));
+    }
 
     if (chips.isEmpty) return const SizedBox.shrink();
 
