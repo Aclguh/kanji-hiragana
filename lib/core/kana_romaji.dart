@@ -85,7 +85,10 @@ bool isKanji(String char) {
   return (code >= 0x4E00 && code <= 0x9FFF) || // CJK 统一表意文字
       (code >= 0x3400 && code <= 0x4DBF) || // 扩展 A
       (code >= 0xF900 && code <= 0xFAFF) || // 兼容表意文字
-      (code >= 0x20000 && code <= 0x2FA1F); // 扩展 B~F
+      (code >= 0x20000 && code <= 0x2FA1F) || // 扩展 B~F
+      (code >= 0x30000 && code <= 0x3134A) || // 扩展 G
+      (code >= 0x31350 && code <= 0x323AF) || // 扩展 H
+      (code >= 0x2EBF0 && code <= 0x2F7FF); // 扩展 I
 }
 
 /// 将片假名转换为平假名, 非片假名字符原样保留。

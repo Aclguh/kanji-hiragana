@@ -39,3 +39,9 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze --fatal-warnings
       - run: flutter test
+      # 提醒: Golden 视觉回归测试依赖本地环境, 默认在 CI 跳过。
+      - name: Golden test notice
+        run: echo "::notice::Golden tests are skipped on CI. Run locally with GOLDEN=1 flutter test test/golden_test.dart"
+      # 编译验证: 确保 Android Gradle/Kotlin 及编译配置无误 (debug 无需签名)。
+      - name: Build APK (debug)
+        run: flutter build apk --debug

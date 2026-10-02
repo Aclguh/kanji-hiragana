@@ -305,7 +305,7 @@ class _LinkTile extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     value,
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: AppTheme.indigo,
                       fontSize: 11.5,
                     ),

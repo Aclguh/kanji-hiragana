@@ -223,7 +223,7 @@ Future<void> _tokenizerMain(SendPort mainPort) async {
       switch (request[0]) {
         case _buildTag:
           tokenizer ??= await TokenizerBuilder().build();
-          mainPort.send([_resultTag, id, const []]);
+          mainPort.send([_resultTag, id, const <Map<String, dynamic>>[]]);
         case _tokenizeTag:
           tokenizer ??= await TokenizerBuilder().build();
           mainPort.send(

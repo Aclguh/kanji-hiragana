@@ -44,6 +44,11 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# 签名文件纵深防御 (android/.gitignore 已有, 此处兜底)
+**/key.properties
+**/*.jks
+**/*.keystore
+
 # Widget Preview related
 .widget_preview/
 

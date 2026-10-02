@@ -51,7 +51,7 @@ class _FilterResultPageState extends State<FilterResultPage> {
     super.dispose();
   }
 
-  void _openDetail(KanjiReading reading) async {
+  Future<void> _openDetail(KanjiReading reading) async {
     final word = await Navigator.of(context).push<String>(
       MaterialPageRoute(
         builder: (_) => _KanjiDetailPage(reading: reading),

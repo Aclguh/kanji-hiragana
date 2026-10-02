@@ -204,7 +204,7 @@ test/
 integration_test/
   ui_test.dart               On-device UI tests
 tool/
-  verify.dart                Standalone verification (90 assertions, runs with dart run)
+  verify.dart                Standalone verification (96 assertions, runs with dart run)
   gen_kanji_dict.py          KANJIDIC2 → Dart data generator
   gen_kanji_words.py         kuromoji-embedded IPADIC → common-word data generator
   gen_icon.py                App icon generator (needs Pillow, see requirements.txt)
@@ -220,13 +220,13 @@ flutter pub get
 # Static analysis
 flutter analyze
 
-# Logic verification (no flutter_test needed, runs anywhere, 90 assertions)
+# Logic verification (no flutter_test needed, runs anywhere, 96 assertions)
 dart run tool/verify.dart
 
-# Unit + widget tests (49 tests, no device needed)
+# Unit + widget tests (76 tests, no device needed)
 flutter test
 
-# On-device UI tests (requires a connected device, 29 tests, final gate)
+# On-device UI tests (requires a connected device, 30 tests, final gate)
 flutter test integration_test/ui_test.dart -d <device-id>
 
 # Run over USB

@@ -7,6 +7,7 @@ import 'package:kanji_hiragana/core/japanese_analyzer.dart';
 import 'package:kanji_hiragana/core/kana_romaji.dart';
 import 'package:kanji_hiragana/core/kanji_filter.dart';
 import 'package:kanji_hiragana/core/kanji_reading_dict.dart';
+import 'package:kanji_hiragana/core/kanji_words_dict.dart';
 
 int _pass = 0;
 int _fail = 0;
@@ -228,6 +229,26 @@ Future<void> main() async {
       .where((r) => r.meaningsEn.length > 3 || r.meanings.length > 3)
       .length;
   expectEq(tooMany, 0, '释义条目均不超过 3 条');
+
+  print('--- 词汇字典 (IPADIC) 结构与覆盖率 ---');
+  expectEq(kanjiWordsDict.length > 2000, true,
+      '词汇字典条目收录 ${kanjiWordsDict.length} 字(>2000)');
+  expectEq(kanjiWordsDict.containsKey('日'), true, '含核心字 日');
+  final nichiWords = kanjiWordsDict['日']!;
+  expectEq(nichiWords.isNotEmpty, true, '日 包含常见词');
+  expectEq(nichiWords.any((w) => w.word == '日本'), true, '日 包含词条 日本');
+
+  // 抽查前 100 个词条的字段结构健全性
+  var wordsValid = true;
+  for (final entries in kanjiWordsDict.values.take(100)) {
+    for (final w in entries) {
+      if (w.word.isEmpty || w.hiragana.isEmpty || w.pos.isEmpty) {
+        wordsValid = false;
+        break;
+      }
+    }
+  }
+  expectEq(wordsValid, true, '词条表面形式、读音、词性均非空');
 
   // 常驻分词 isolate 会阻止裸 dart 进程在 main 返回后退出, 用完即关。
   JapaneseAnalyzer.instance.close();

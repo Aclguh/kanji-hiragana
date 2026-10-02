@@ -84,6 +84,12 @@ void main() {
       expect(isKanji('漢'), isTrue);
       expect(isKanji('あ'), isFalse);
       expect(isKanji('A'), isFalse);
+      // 扩展区汉字: Ext-A, Ext-B, Ext-G, Ext-H, Ext-I
+      expect(isKanji(String.fromCharCode(0x3400)), isTrue); // Ext-A
+      expect(isKanji(String.fromCharCode(0x20000)), isTrue); // Ext-B
+      expect(isKanji(String.fromCharCode(0x30000)), isTrue); // Ext-G
+      expect(isKanji(String.fromCharCode(0x31350)), isTrue); // Ext-H
+      expect(isKanji(String.fromCharCode(0x2EBF0)), isTrue); // Ext-I
     });
 
     test('平假名 / 片假名', () {
@@ -132,6 +138,29 @@ void main() {
       final r = await analyzer.analyze('日本の文化', isCancelled: () => true);
       expect(r.morphemes, isEmpty);
     });
+
+    test('并发调用 analyze() 各自正确解析互不串扰', () async {
+      final inputs = ['桜', '富士山', '日本語', '勉強', 'ありがとう'];
+      final futures = inputs.map((text) => analyzer.analyze(text)).toList();
+      final results = await Future.wait(futures);
+
+      for (var i = 0; i < inputs.length; i++) {
+        expect(results[i].source, inputs[i]);
+        expect(results[i].morphemes.isNotEmpty, isTrue);
+      }
+    });
+
+    test('close() 终止 isolate 后再次调用能自愈重建', () async {
+      final r1 = await analyzer.analyze('猫');
+      expect(r1.fullHiragana, 'ねこ');
+
+      analyzer.close();
+      expect(analyzer.isReady, isFalse);
+
+      // close 之后调用 analyze 应当自动触发 warmUp 重建并成功返回
+      final r2 = await analyzer.analyze('犬');
+      expect(r2.fullHiragana, 'いぬ');
+    });
   });
 
   group('查询历史与收藏 (QueryStore)', () {
@@ -177,6 +206,21 @@ void main() {
       expect(store.history.length, QueryStore.maxHistory);
       expect(store.history.first, '查询24');
       expect(store.history.contains('查询0'), isFalse);
+    });
+
+    test('load() 读到超出上限的历史记录时自动截断并持久化', () async {
+      final overflown = List.generate(30, (i) => '超长查询$i');
+      SharedPreferences.setMockInitialValues({
+        'query.history': overflown,
+      });
+      final store = QueryStore.instance;
+      await store.load();
+      expect(store.history.length, QueryStore.maxHistory);
+      expect(store.history.first, '超长查询0');
+      expect(store.history.last, '超长查询19');
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getStringList('query.history')?.length, QueryStore.maxHistory);
     });
 
     test('收藏切换与往返持久化', () async {

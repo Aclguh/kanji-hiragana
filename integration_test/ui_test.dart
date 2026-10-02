@@ -51,7 +51,7 @@ void main() {
     // AppStrings.of 在缺失 scope 时 debug 断言会失败。
     await tester.pumpWidget(
       AppStringsScope(
-        strings: ZhStrings(),
+        strings: const ZhStrings(),
         child: MaterialApp(
           theme: AppTheme.dark(),
           home: const HomePage(),
@@ -475,6 +475,32 @@ void main() {
     expect(find.byType(SettingsDrawerContent), findsNothing);
   });
 
+  testWidgets('设置抽屉: 切换「旋转屏幕」开关并持久化', (tester) async {
+    await pumpHome(tester);
+
+    await tester.tap(find.byTooltip('设置'));
+    await tester.pumpAndSettle();
+
+    // 默认关闭: 副标题显示「固定为当前方向」
+    expect(find.text('固定为当前方向'), findsOneWidget);
+
+    // 点按切换开关
+    final rotateTile = find.ancestor(
+      of: find.text('旋转屏幕'),
+      matching: find.byType(InkWell),
+    );
+    await tester.tap(rotateTile);
+    await tester.pumpAndSettle();
+
+    // 状态更新为开启
+    expect(find.text('跟随设备重力方向自动旋转'), findsOneWidget);
+
+    // 再次点按复位
+    await tester.tap(rotateTile);
+    await tester.pumpAndSettle();
+    expect(find.text('固定为当前方向'), findsOneWidget);
+  });
+
   /// 抽屉内「下限 / 上限」四个输入框 (笔画 min/max, 频率 min/max)。
   Finder rangeFields() => find.descendant(
         of: find.byType(FilterDrawerContent),
@@ -703,7 +729,7 @@ void main() {
     await resetQueryStore();
     await tester.pumpWidget(
       AppStringsScope(
-        strings: EnStrings(),
+        strings: const EnStrings(),
         child: MaterialApp(
           theme: AppTheme.dark(),
           home: const HomePage(),

@@ -135,11 +135,11 @@ void main() {
         // 切换为关闭态后动画进行中: 内容必须还在树里,
         // 否则滑出的只是空框 (关闭动画形同虚设)。
         await tester.pumpWidget(host(
-          SlidingDrawer(
+          const SlidingDrawer(
             side: DrawerSide.left,
             open: false,
-            panel: const Text('面板内容'),
-            child: const Text('主内容'),
+            panel: Text('面板内容'),
+            child: Text('主内容'),
           ),
         ));
         await tester.pump(const Duration(milliseconds: 100));
@@ -227,7 +227,7 @@ void main() {
         const filter = KanjiFilter(strokesMin: 99);
         expect(filter.apply(kanjiReadingDict.values), isEmpty);
 
-        await tester.pumpWidget(host(FilterResultPage(filter: filter)));
+        await tester.pumpWidget(host(const FilterResultPage(filter: filter)));
 
         expect(find.text('没有符合条件的汉字'), findsOneWidget);
         expect(find.text('试试放宽笔画或频率范围'), findsOneWidget);
@@ -238,11 +238,11 @@ void main() {
       testWidgets('展开的抽屉在语义树中暴露遮罩关闭按钮', (tester) async {
         final semantics = tester.ensureSemantics();
         await tester.pumpWidget(host(
-          SlidingDrawer(
+          const SlidingDrawer(
             side: DrawerSide.left,
             open: true,
-            panel: const Text('面板内容'),
-            child: const Text('主内容'),
+            panel: Text('面板内容'),
+            child: Text('主内容'),
           ),
         ));
         await tester.pumpAndSettle();

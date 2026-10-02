@@ -239,7 +239,7 @@ class _HomePageState extends State<HomePage>
   void _openAbout() {
     setState(() => _openDrawer = OpenDrawer.none);
     Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => const AboutPage()));
+        .push(MaterialPageRoute<void>(builder: (_) => const AboutPage()));
   }
 
   Future<void> _openFilterResult(KanjiFilter filter) async {
@@ -768,20 +768,18 @@ class _QueryChips extends StatelessWidget {
               ),
               const Spacer(),
               // 只有历史提供清空; 收藏需逐条长按移除, 避免误操作。
-              if (!favorite)
-                Semantics(
+              if (!favorite) () {
+                void onClear() {
+                  HapticFeedback.lightImpact();
+                  store.clearHistory();
+                  showToast(context, s.historyCleared);
+                }
+
+                return Semantics(
                   button: true,
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    store.clearHistory();
-                    showToast(context, s.historyCleared);
-                  },
+                  onTap: onClear,
                   child: GestureDetector(
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      store.clearHistory();
-                      showToast(context, s.historyCleared);
-                    },
+                    onTap: onClear,
                     child: Text(
                       s.clearHistory,
                       style: TextStyle(
@@ -790,7 +788,8 @@ class _QueryChips extends StatelessWidget {
                       ),
                     ),
                   ),
-                ),
+                );
+              }(),
             ],
           ),
           const SizedBox(height: 8),
@@ -1127,7 +1126,7 @@ class _QueryChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (favorite) ...[
-              Icon(
+              const Icon(
                 Icons.star_rounded,
                 size: 13,
                 color: AppTheme.kanjiHighlight,

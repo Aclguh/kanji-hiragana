@@ -1,3 +1,4 @@
+import 'dart:async' show unawaited;
 import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/material.dart';
@@ -20,7 +21,7 @@ Future<void> main() async {
   _applySystemUi(SettingsController.instance);
 
   // 后台预热词典, 与首帧渲染并行, 减少等待感。
-  JapaneseAnalyzer.instance.warmUp();
+  unawaited(JapaneseAnalyzer.instance.warmUp());
 
   runApp(const KanjiApp());
 }

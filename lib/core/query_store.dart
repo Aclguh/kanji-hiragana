@@ -54,6 +54,10 @@ class QueryStore extends ChangeNotifier {
       _prefs = await SharedPreferences.getInstance();
       _history = _prefs!.getStringList(_kHistory) ?? const [];
       _favorites = _prefs!.getStringList(_kFavorites) ?? const [];
+      if (_history.length > maxHistory) {
+        _history = _history.sublist(0, maxHistory);
+        _persistHistory();
+      }
       _loadError = null;
     } catch (e) {
       _loadError = e;

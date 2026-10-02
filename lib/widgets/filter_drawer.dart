@@ -351,7 +351,7 @@ class _RangeFields extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             s.rangeInverted,
-            style: TextStyle(color: AppTheme.accent, fontSize: 11),
+            style: const TextStyle(color: AppTheme.accent, fontSize: 11),
           ),
         ],
       ],

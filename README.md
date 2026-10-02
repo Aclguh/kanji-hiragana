@@ -195,13 +195,13 @@ flutter pub get
 # 静态检查
 flutter analyze
 
-# 逻辑验证（不依赖 flutter_test，任何环境都能跑，90 项断言）
+# 逻辑验证（不依赖 flutter_test，任何环境都能跑，96 项断言）
 dart run tool/verify.dart
 
-# 单元测试 + 组件测试（49 项测试，无需设备）
+# 单元测试 + 组件测试（76 项测试，无需设备）
 flutter test
 
-# 真机 UI 测试（需连接设备，29 项测试，最终门槛）
+# 真机 UI 测试（需连接设备，30 项测试，最终门槛）
 flutter test integration_test/ui_test.dart -d <device-id>
 
 # USB 调试直连运行
