@@ -38,11 +38,12 @@ class _AboutPageState extends State<AboutPage> {
         thumbVisibility: true,
         thickness: 6,
         radius: const Radius.circular(3),
-        child: ListView(
+        child: SingleChildScrollView(
           controller: _scrollController,
-          primary: false,
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
-          children: [
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             _buildHeader(context),
             const SizedBox(height: 26),
 
@@ -104,7 +105,8 @@ class _AboutPageState extends State<AboutPage> {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 
   static void _copy(BuildContext context, String text, String tip) {

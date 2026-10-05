@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,12 +7,15 @@ import 'package:flutter/services.dart';
 import 'core/japanese_analyzer.dart';
 import 'core/kanji_filter.dart';
 import 'core/morpheme.dart';
+import 'core/platform_service.dart';
 import 'core/query_store.dart';
 import 'core/settings.dart';
 import 'core/strings.dart';
+import 'core/tts_service.dart';
 import 'theme.dart';
 import 'widgets/about_page.dart';
 import 'widgets/alignment_table.dart';
+import 'widgets/anki_export_sheet.dart';
 import 'widgets/feedback.dart';
 import 'widgets/filter_drawer.dart';
 import 'widgets/filter_result_page.dart';
@@ -20,6 +24,7 @@ import 'widgets/settings_drawer.dart';
 import 'widgets/single_kanji_view.dart';
 import 'widgets/sliding_drawer.dart';
 import 'widgets/vector_icon.dart';
+import 'widgets/vertical_view.dart';
 
 /// 视图模式。
 enum ViewMode {
@@ -28,6 +33,9 @@ enum ViewMode {
 
   /// 振假名注音排版。
   furigana,
+
+  /// 和风传统竖排排版。
+  vertical,
 }
 
 /// 出错环节, 决定界面上显示哪一条提示。
@@ -64,6 +72,9 @@ class _HomePageState extends State<HomePage>
 
   bool _loading = true;
 
+  /// 系统级外部划词监听。
+  StreamSubscription<String>? _processTextSub;
+
   /// 只记录出错环节与原始异常, 文案在 build 时按当前语言生成 ——
   /// 否则切换语言后这条提示会停留在旧语言。
   _ErrorKind? _errorKind;
@@ -87,9 +98,12 @@ class _HomePageState extends State<HomePage>
   bool get _drawerOpen => _openDrawer != OpenDrawer.none;
 
   /// 当前视图, 持久化在设置里, 重启后保持。
-  ViewMode get _viewMode => _settings.viewModeName == ViewMode.furigana.name
-      ? ViewMode.furigana
-      : ViewMode.alignment;
+  ViewMode get _viewMode {
+    final name = _settings.viewModeName;
+    if (name == ViewMode.vertical.name) return ViewMode.vertical;
+    if (name == ViewMode.furigana.name) return ViewMode.furigana;
+    return ViewMode.alignment;
+  }
 
   set _viewMode(ViewMode mode) => _settings.setViewModeName(mode.name);
 
@@ -108,6 +122,18 @@ class _HomePageState extends State<HomePage>
     // 输入框内容变化时同步动画状态(含粘贴、清空等非键盘输入)。
     _controller.addListener(_syncAnim);
     _init();
+
+    // 检查 Android 系统外部划词传入的文本
+    PlatformService.instance.getInitialProcessedText().then((text) {
+      if (text != null && text.isNotEmpty && mounted) {
+        _useQuery(text);
+      }
+    });
+    _processTextSub = PlatformService.instance.onProcessedText.listen((text) {
+      if (text.isNotEmpty && mounted) {
+        _useQuery(text);
+      }
+    });
   }
 
   Future<void> _init() async {
@@ -290,6 +316,14 @@ class _HomePageState extends State<HomePage>
                   );
                 },
               ),
+              ListTile(
+                leading: const Icon(Icons.style_outlined, color: AppTheme.kanjiHighlight),
+                title: Text(s.exportAnki),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  copyWithToast(context, result.toAnkiTsv, s.copiedAnki);
+                },
+              ),
             ],
           ),
         ),
@@ -299,6 +333,7 @@ class _HomePageState extends State<HomePage>
 
   @override
   void dispose() {
+    _processTextSub?.cancel();
     _debounce.dispose();
     _controller.removeListener(_syncAnim);
     _controller.dispose();
@@ -479,9 +514,13 @@ class _HomePageState extends State<HomePage>
             // 估算该组内容高度(标题约 92 + 输入框约 58 + 间距 24)。
             const focusBlockHeight = 174.0;
             final centeredTop = (constraints.maxHeight - focusBlockHeight) / 2;
+            final maxLimit = constraints.maxHeight * 0.42;
+            final clampedTop = maxLimit < 24.0
+                ? math.max(0.0, centeredTop)
+                : centeredTop.clamp(24.0, maxLimit);
             final topSpace = _lerp(
               12.0,
-              centeredTop.clamp(24.0, constraints.maxHeight * 0.42),
+              clampedTop,
               1 - t,
             );
 
@@ -543,7 +582,21 @@ class _HomePageState extends State<HomePage>
                 ),
                 onPressed: _clear,
               )
-            : null,
+            : IconButton(
+                tooltip: s.paste,
+                icon: Icon(
+                  Icons.content_paste_rounded,
+                  size: 18,
+                  color: colors.textSecondary.withValues(alpha: 0.6),
+                ),
+                onPressed: () async {
+                  final data = await Clipboard.getData(Clipboard.kTextPlain);
+                  final text = data?.text?.trim();
+                  if (text != null && text.isNotEmpty) {
+                    _useQuery(text);
+                  }
+                },
+              ),
         contentPadding: EdgeInsets.symmetric(
           horizontal: 16,
           vertical: _lerp(14.0, 18.0, 1 - t),
@@ -621,11 +674,12 @@ class _HomePageState extends State<HomePage>
             SingleKanjiView(reading: result.singleKanji!, onWordTap: _useQuery)
           else if (_viewMode == ViewMode.alignment)
             AlignmentTable(result: result, showRomaji: _showRomaji)
-          else ...[
+          else if (_viewMode == ViewMode.furigana) ...[
             FuriganaView(result: result, showRomaji: _showRomaji),
             const SizedBox(height: 16),
             _FuriganaFooter(result: result),
-          ],
+          ] else
+            VerticalView(result: result, showRomaji: _showRomaji),
         ],
       ),
     );
@@ -810,8 +864,24 @@ class _QueryChips extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              // 只有历史提供清空; 收藏需逐条长按移除, 避免误操作。
-              if (!favorite) () {
+              // 收藏提供导出为 Anki / TSV; 历史提供清空。
+              if (favorite)
+                Semantics(
+                  button: true,
+                  child: GestureDetector(
+                    onTap: () =>
+                        AnkiExportSheet.show(context, favorites: items),
+                    child: Text(
+                      s.export,
+                      style: const TextStyle(
+                        color: AppTheme.accent,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                )
+              else () {
                 void onClear() {
                   HapticFeedback.lightImpact();
                   store.clearHistory();
@@ -894,7 +964,11 @@ class _Toolbar extends StatelessWidget {
     final s = AppStrings.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-      child: Row(
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
+        runSpacing: 8,
         children: [
           Container(
             padding: const EdgeInsets.all(3),
@@ -904,6 +978,7 @@ class _Toolbar extends StatelessWidget {
               border: Border.all(color: colors.border),
             ),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 _segment(
                   context,
@@ -917,36 +992,47 @@ class _Toolbar extends StatelessWidget {
                   ViewMode.furigana,
                   Icons.text_fields_rounded,
                 ),
+                _segment(
+                  context,
+                  s.viewVertical,
+                  ViewMode.vertical,
+                  Icons.view_week_outlined,
+                ),
               ],
             ),
           ),
-          const Spacer(),
-          IconButton(
-            tooltip: s.export,
-            iconSize: 20,
-            visualDensity: VisualDensity.compact,
-            onPressed: onExport,
-            icon: Icon(
-              Icons.share_outlined,
-              size: 20,
-              color: colors.textSecondary,
-            ),
-          ),
-          const SizedBox(width: 8),
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                s.romajiToggle,
-                style: TextStyle(
-                  color: showRomaji ? colors.textPrimary : colors.textSecondary,
-                  fontSize: 13,
+              IconButton(
+                tooltip: s.export,
+                iconSize: 20,
+                visualDensity: VisualDensity.compact,
+                onPressed: onExport,
+                icon: Icon(
+                  Icons.share_outlined,
+                  size: 20,
+                  color: colors.textSecondary,
                 ),
               ),
               const SizedBox(width: 4),
-              Switch(
-                value: showRomaji,
-                onChanged: onRomajiChanged,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    s.romajiToggle,
+                    style: TextStyle(
+                      color: showRomaji ? colors.textPrimary : colors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Switch(
+                    value: showRomaji,
+                    onChanged: onRomajiChanged,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ],
               ),
             ],
           ),
@@ -972,7 +1058,7 @@ class _Toolbar extends StatelessWidget {
           onTap: () => onSelectMode(mode),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
             decoration: BoxDecoration(
               color: selected ? AppTheme.accent : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
@@ -1085,6 +1171,12 @@ class _FooterLine extends StatelessWidget {
               height: 1.5,
             ),
           ),
+        ),
+        IconButton(
+          tooltip: s.speak,
+          iconSize: 18,
+          onPressed: () => TtsService.instance.speak(value),
+          icon: const Icon(Icons.volume_up_rounded, color: AppTheme.accent),
         ),
         IconButton(
           tooltip: s.copy,

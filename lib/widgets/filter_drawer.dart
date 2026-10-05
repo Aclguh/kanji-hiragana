@@ -5,6 +5,7 @@ import '../core/kanji_filter.dart';
 import '../core/kanji_reading_dict.dart';
 import '../core/strings.dart';
 import '../theme.dart';
+import 'radical_picker_sheet.dart';
 import 'sliding_drawer.dart';
 
 /// 筛选抽屉内容: 按笔画 / 频率 / 读音构成 / 其他筛选。
@@ -331,6 +332,10 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
   }
 
   Widget _buildRadicalChips(AppStrings s) {
+    final curRadical = _filter.radical;
+    final isCustom =
+        curRadical != null && !_commonRadicals.contains(curRadical);
+
     return _chipWrap([
       ..._commonRadicals.map((r) {
         final char = kKangxiRadicals[r - 1];
@@ -345,6 +350,29 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
           }),
         );
       }),
+      if (isCustom)
+        _Chip(
+          label: kKangxiRadicals[curRadical - 1],
+          selected: true,
+          onTap: () => setState(() {
+            _filter = _filter.copyWith(clearRadical: true);
+          }),
+        ),
+      _Chip(
+        label: s.allRadicals,
+        selected: false,
+        onTap: () async {
+          final picked = await RadicalPickerSheet.show(
+            context,
+            selectedRadical: _filter.radical,
+          );
+          if (picked != null && mounted) {
+            setState(() {
+              _filter = _filter.copyWith(radical: picked);
+            });
+          }
+        },
+      ),
       _Chip(
         label: s.any,
         selected: _filter.radical == null,

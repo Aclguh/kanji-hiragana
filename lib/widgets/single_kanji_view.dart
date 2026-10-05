@@ -6,6 +6,8 @@ import '../core/kanji_filter.dart';
 import '../core/kanji_reading_dict.dart';
 import '../core/kanji_words_dict.dart';
 import '../core/strings.dart';
+import '../core/tts_service.dart';
+import '../core/yojijukugo_dict.dart';
 import '../theme.dart';
 import 'feedback.dart';
 
@@ -28,6 +30,7 @@ class SingleKanjiView extends StatelessWidget {
     // 常见搭配词来自构建期生成的 IPADIC 数据; 查不到的字整段省略。
     final words = kanjiWordsDict[reading.kanji] ?? const <KanjiWord>[];
     final homophones = _findHomophones(reading);
+    final yojijukugo = getYojijukugoForKanji(reading.kanji);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -59,6 +62,10 @@ class SingleKanjiView extends StatelessWidget {
         if (homophones.isNotEmpty) ...[
           const SizedBox(height: 12),
           _HomophonesGroup(homophones: homophones, onWordTap: onWordTap),
+        ],
+        if (yojijukugo.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _YojijukugoGroup(entries: yojijukugo, onWordTap: onWordTap),
         ],
         if (!reading.hasOnyomi && !reading.hasKunyomi) const _NoReadingNotice(),
       ],
@@ -252,6 +259,7 @@ class _ReadingGroupState extends State<_ReadingGroup> {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
     final overflows = widget.readings.length > widget.maxItems;
     final visible = (_expanded || !overflows)
         ? widget.readings
@@ -293,6 +301,20 @@ class _ReadingGroupState extends State<_ReadingGroup> {
                 style: TextStyle(color: colors.textSecondary, fontSize: 11),
               ),
               const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.volume_up_rounded, size: 16),
+                color: widget.color,
+                tooltip: s.speak,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                onPressed: () {
+                  final list = widget.readings
+                      .map((r) => r.replaceAll(RegExp(r'[()]'), ''))
+                      .join('、');
+                  TtsService.instance.speak(list);
+                },
+              ),
+              const SizedBox(width: 4),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
@@ -342,40 +364,48 @@ class _ReadingChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
     // 训读可能带送假名标记, 如 まな(ぶ) / (び), 需清理后再转罗马音。
     final pure = reading.replaceAll(_parenPattern, '');
     final romaji = hiraganaToRomaji(pure);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-      decoration: BoxDecoration(
-        color: colors.surfaceVariant,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colors.border),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            reading,
-            style: TextStyle(
-              color: color,
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-              height: 1.15,
+    return InkWell(
+      onTap: () {
+        TtsService.instance.speak(pure);
+        copyWithToast(context, reading, s.copiedSurface(reading));
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+        decoration: BoxDecoration(
+          color: colors.surfaceVariant,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: colors.border),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              reading,
+              style: TextStyle(
+                color: color,
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+                height: 1.15,
+              ),
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            romaji,
-            style: TextStyle(
-              color: colors.textSecondary,
-              fontSize: 11,
-              fontStyle: FontStyle.italic,
-              height: 1.1,
+            const SizedBox(height: 2),
+            Text(
+              romaji,
+              style: TextStyle(
+                color: colors.textSecondary,
+                fontSize: 11,
+                fontStyle: FontStyle.italic,
+                height: 1.1,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -765,3 +795,132 @@ class _HomophonesGroup extends StatelessWidget {
     );
   }
 }
+
+/// 四字熟语推荐分组。
+class _YojijukugoGroup extends StatelessWidget {
+  final List<YojijukugoEntry> entries;
+  final ValueChanged<String>? onWordTap;
+
+  const _YojijukugoGroup({
+    required this.entries,
+    this.onWordTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.of(context);
+    final s = AppStrings.of(context);
+    const color = Color(0xFFC05621); // 暖赭色 / 和风柿色
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: colors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 3,
+                height: 16,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                s.yojijukugoHeading,
+                style: const TextStyle(
+                  color: color,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  s.yojijukugoHint,
+                  style: TextStyle(
+                    color: colors.textSecondary.withValues(alpha: 0.8),
+                    fontSize: 11,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: Text(
+                  s.yojijukugoBadge(entries.length),
+                  style: const TextStyle(color: color, fontSize: 10),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          for (final entry in entries)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: InkWell(
+                onTap: onWordTap != null ? () => onWordTap!(entry.kanji) : null,
+                onLongPress: () =>
+                    copyWithToast(context, entry.kanji, s.copiedSurface(entry.kanji)),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: colors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: colors.border),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        entry.kanji,
+                        style: TextStyle(
+                          color: colors.textPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        entry.reading,
+                        style: const TextStyle(
+                          color: AppTheme.accent,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          s.language == AppLanguage.en
+                              ? entry.meaningEn
+                              : entry.meaningZh,
+                          style: TextStyle(
+                            color: colors.textSecondary,
+                            fontSize: 11,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+

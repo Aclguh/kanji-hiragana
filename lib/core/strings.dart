@@ -76,14 +76,28 @@ sealed class AppStrings {
   /// 视图切换。
   String get viewAlignment;
   String get viewFurigana;
+  String get viewVertical;
   String get romajiToggle;
+
+  /// 朗读与发音。
+  String get speak;
+  String get speaking;
+
+  /// 剪贴板快速粘贴。
+  String get paste;
 
   /// 导出注音。
   String get export;
   String get exportRuby;
   String get exportBrackets;
+  String get exportAnki;
+  String get exportFavorites;
+  String get favoritesExportTitle;
+  String favoritesExportHint(int count);
+  String get exportPlainText;
   String get copiedRuby;
   String get copiedBrackets;
+  String get copiedAnki;
 
   /// 结果区底部。
   String get labelHiragana;
@@ -140,6 +154,10 @@ sealed class AppStrings {
   /// 动词活用形原形提示。
   String baseForm(String form);
 
+  /// 外来语词源。
+  String get loanwordLabel;
+  String loanwordOrigin(String source);
+
   // ------------------------------------------------------------- 单汉字
 
   String get onyomiHeading;
@@ -176,6 +194,15 @@ sealed class AppStrings {
   /// 同音汉字推荐徽标 (字数)。
   String homophoneBadge(int count);
 
+  /// 四字熟语区标题。
+  String get yojijukugoHeading;
+
+  /// 四字熟语区提示。
+  String get yojijukugoHint;
+
+  /// 四字熟语区徽标。
+  String yojijukugoBadge(int count);
+
   // --------------------------------------------------------------- 筛选
 
   String get filterTitle;
@@ -185,6 +212,10 @@ sealed class AppStrings {
   String get sectionStrokes;
   String get sectionFrequency;
   String get sectionRadical;
+  String get allRadicals;
+  String get radicalPickerTitle;
+  String get radicalPickerSubtitle;
+  String radicalStrokesGroup(int strokes);
   String get sectionReadings;
   String get sectionReadingSearch;
   String get readingSearchHint;
@@ -347,7 +378,19 @@ class ZhStrings extends AppStrings {
   String get viewFurigana => '注音';
 
   @override
+  String get viewVertical => '纵书';
+
+  @override
   String get romajiToggle => '罗马音';
+
+  @override
+  String get speak => '朗读发音';
+
+  @override
+  String get speaking => '正在发音…';
+
+  @override
+  String get paste => '粘贴';
 
   @override
   String get export => '导出注音';
@@ -359,10 +402,29 @@ class ZhStrings extends AppStrings {
   String get exportBrackets => '括号注音格式 (漢字(かな))';
 
   @override
+  String get exportAnki => 'Anki 牌组格式 (TSV 制表符分隔)';
+
+  @override
+  String get exportFavorites => '导出收藏 (Anki / TSV)';
+
+  @override
+  String get favoritesExportTitle => '收藏词条导出';
+
+  @override
+  String favoritesExportHint(int count) =>
+      '包含 $count 条已收藏的汉字与词句，可一键复制并导入 Anki 或作为词表备份。';
+
+  @override
+  String get exportPlainText => '纯文本列表';
+
+  @override
   String get copiedRuby => '已复制 HTML Ruby 注音文本';
 
   @override
   String get copiedBrackets => '已复制括号注音文本';
+
+  @override
+  String get copiedAnki => '已复制 Anki 牌组格式文本';
 
   @override
   String get labelHiragana => '平假名';
@@ -438,6 +500,12 @@ class ZhStrings extends AppStrings {
   @override
   String baseForm(String form) => '→ $form';
 
+  @override
+  String get loanwordLabel => '外来语';
+
+  @override
+  String loanwordOrigin(String source) => '外来语: $source';
+
   // ------------------------------------------------------------- 单汉字
 
   @override
@@ -509,6 +577,15 @@ class ZhStrings extends AppStrings {
   @override
   String homophoneBadge(int count) => '$count 字';
 
+  @override
+  String get yojijukugoHeading => '四字熟語';
+
+  @override
+  String get yojijukugoHint => '四字熟语 · 常见成语搭配';
+
+  @override
+  String yojijukugoBadge(int count) => '$count 语';
+
   // --------------------------------------------------------------- 筛选
 
   @override
@@ -531,6 +608,18 @@ class ZhStrings extends AppStrings {
 
   @override
   String get sectionRadical => '部首';
+
+  @override
+  String get allRadicals => '部首检字表…';
+
+  @override
+  String get radicalPickerTitle => '康熙 214 部首检字';
+
+  @override
+  String get radicalPickerSubtitle => '按部首笔画分类查字';
+
+  @override
+  String radicalStrokesGroup(int strokes) => '$strokes 画';
 
   @override
   String get sectionReadings => '读音构成';
@@ -790,7 +879,19 @@ class EnStrings extends AppStrings {
   String get viewFurigana => 'Furigana';
 
   @override
+  String get viewVertical => 'Vertical';
+
+  @override
   String get romajiToggle => 'Romaji';
+
+  @override
+  String get speak => 'Listen';
+
+  @override
+  String get speaking => 'Speaking…';
+
+  @override
+  String get paste => 'Paste';
 
   @override
   String get export => 'Export';
@@ -802,10 +903,29 @@ class EnStrings extends AppStrings {
   String get exportBrackets => 'Bracket format (kanji(kana))';
 
   @override
+  String get exportAnki => 'Anki Deck Format (TSV)';
+
+  @override
+  String get exportFavorites => 'Export Favorites (Anki / TSV)';
+
+  @override
+  String get favoritesExportTitle => 'Export Favorites';
+
+  @override
+  String favoritesExportHint(int count) =>
+      'Contains $count saved kanji and phrases. Copy to import directly into Anki or backup as a list.';
+
+  @override
+  String get exportPlainText => 'Plain text list';
+
+  @override
   String get copiedRuby => 'HTML Ruby text copied';
 
   @override
   String get copiedBrackets => 'Bracketed text copied';
+
+  @override
+  String get copiedAnki => 'Anki deck text copied';
 
   @override
   String get labelHiragana => 'Hiragana';
@@ -920,6 +1040,12 @@ class EnStrings extends AppStrings {
   @override
   String baseForm(String form) => '→ $form';
 
+  @override
+  String get loanwordLabel => 'Loanword';
+
+  @override
+  String loanwordOrigin(String source) => 'Origin: $source';
+
   // ------------------------------------------------------------- 单汉字
 
   @override
@@ -996,6 +1122,15 @@ class EnStrings extends AppStrings {
   @override
   String homophoneBadge(int count) => '$count kanji';
 
+  @override
+  String get yojijukugoHeading => 'Four-character Idioms';
+
+  @override
+  String get yojijukugoHint => 'Yojijukugo · Idioms with this kanji';
+
+  @override
+  String yojijukugoBadge(int count) => '$count idioms';
+
   // --------------------------------------------------------------- 筛选
 
   @override
@@ -1018,6 +1153,18 @@ class EnStrings extends AppStrings {
 
   @override
   String get sectionRadical => 'Radical';
+
+  @override
+  String get allRadicals => '214 Radicals Table…';
+
+  @override
+  String get radicalPickerTitle => '214 Kangxi Radicals';
+
+  @override
+  String get radicalPickerSubtitle => 'Browse kanji by radical strokes';
+
+  @override
+  String radicalStrokesGroup(int strokes) => '$strokes strokes';
 
   @override
   String get sectionReadings => 'Readings';

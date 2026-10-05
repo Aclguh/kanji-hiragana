@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/morpheme.dart';
 import '../core/strings.dart';
+import '../core/tts_service.dart';
 import '../theme.dart';
 import 'feedback.dart';
 
@@ -93,6 +94,7 @@ class AlignmentTable extends StatelessWidget {
             s.fullHiragana,
             result.fullHiragana,
             s.copiedFullHiragana,
+            onSpeak: () => TtsService.instance.speak(result.fullPronunciation),
           ),
           const SizedBox(height: 6),
           _summaryLine(
@@ -112,8 +114,9 @@ class AlignmentTable extends StatelessWidget {
     IconData icon,
     String label,
     String value,
-    String copyTip,
-  ) {
+    String copyTip, {
+    VoidCallback? onSpeak,
+  }) {
     final colors = AppTheme.of(context);
     final s = AppStrings.of(context);
     return Row(
@@ -136,6 +139,13 @@ class AlignmentTable extends StatelessWidget {
             ),
           ),
         ),
+        if (onSpeak != null)
+          IconButton(
+            tooltip: s.speak,
+            iconSize: 18,
+            onPressed: onSpeak,
+            icon: const Icon(Icons.volume_up_rounded, color: AppTheme.accent),
+          ),
         IconButton(
           tooltip: s.copy,
           iconSize: 18,
@@ -161,11 +171,14 @@ class _MorphemeRow extends StatelessWidget {
     final highlight = m.containsKanji;
 
     return InkWell(
-      onTap: () => copyWithToast(
-        context,
-        m.surface,
-        AppStrings.of(context).copiedSurface(m.surface),
-      ),
+      onTap: () {
+        TtsService.instance.speak(m.pronunciationHiragana);
+        copyWithToast(
+          context,
+          m.surface,
+          AppStrings.of(context).copiedSurface(m.surface),
+        );
+      },
       borderRadius: BorderRadius.circular(10),
       child: Container(
         margin: const EdgeInsets.only(bottom: 6),
@@ -204,6 +217,27 @@ class _MorphemeRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   _posChip(context, m),
+                  if (m.loanword != null) ...[
+                    const SizedBox(height: 2),
+                    Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: AppTheme.accent.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        AppStrings.of(context).loanwordOrigin(m.loanword!.source),
+                        style: const TextStyle(
+                          color: AppTheme.accent,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                   if (m.isConjugated) ...[
                     const SizedBox(height: 2),
                     Text(

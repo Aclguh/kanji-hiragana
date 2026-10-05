@@ -1,5 +1,6 @@
 import 'kana_romaji.dart';
 import 'kanji_reading_dict.dart';
+import 'loanwords_dict.dart';
 
 /// 一个分词结果, 承载「汉字 / 平假名 / 罗马音」的对应关系。
 ///
@@ -114,6 +115,9 @@ class Morpheme {
   bool get isParticleShift =>
       hasPronunciationShift &&
       (surface == 'は' || surface == 'へ' || surface == 'を');
+
+  /// 片假名外来语词源信息 (若为词典收录的外来词)。
+  LoanwordInfo? get loanword => lookupLoanword(surface);
 }
 
 /// 一次完整解析的结果。
@@ -183,6 +187,37 @@ class AnalysisResult {
           }
           return m.surface;
         }).join();
+
+  /// 导出为 Anki 牌组格式 (制表符分隔 TSV: 正面 \t 背面/假名 \t 罗马音 \t 词性/释义 \t 备注)。
+  String get toAnkiTsv {
+    if (isSingleKanji) {
+      final k = singleKanji!;
+      final readings = [
+        if (k.onyomi.isNotEmpty) '音: ${k.onyomi.join("、")}',
+        if (k.kunyomi.isNotEmpty) '训: ${k.kunyomi.join("、")}',
+      ].join(' / ');
+      final meanings = k.meanings.join('；');
+      final note = '笔画: ${k.strokes} | 频率: ${k.frequencyRank}';
+      return '${k.kanji}\t$readings\t\t$meanings\t$note';
+    }
+
+    final buffer = StringBuffer();
+    // 首先输出整句为一张卡片
+    buffer.writeln('$source\t$fullHiragana\t$fullRomaji\t完整句\t');
+
+    // 随后输出句子中含汉字或有注音的词汇卡片 (去重)
+    final seen = <String>{};
+    for (final m in morphemes) {
+      if ((m.containsKanji || m.needsAnnotation) && seen.add(m.surface)) {
+        final pos = m.partOfSpeechDetail.isNotEmpty
+            ? '${m.partOfSpeech}/${m.partOfSpeechDetail}'
+            : m.partOfSpeech;
+        final note = m.isConjugated ? '原形: ${m.basicForm}' : '';
+        buffer.writeln('${m.surface}\t${m.hiragana}\t${m.romaji}\t$pos\t$note');
+      }
+    }
+    return buffer.toString().trimRight();
+  }
 
   /// 是否存在任何发音差异。
   bool get hasAnyPronunciationShift =>

@@ -279,36 +279,63 @@ class _DrawerPanelState extends State<DrawerPanel> {
           ),
         ),
         child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildHeader(context),
-              const Divider(height: 1),
-              Expanded(
-                child: Scrollbar(
+          bottom: false,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isVeryCompact = constraints.maxHeight < 160;
+              if (isVeryCompact) {
+                return SingleChildScrollView(
                   controller: _scrollController,
-                  thumbVisibility: true,
-                  thickness: 5,
-                  // SingleChildScrollView 全量构建: 抽屉是短表单,
-                  // 懒加载会让折叠线以下的输入框时有时无 (随屏幕高度变化)。
-                  child: SingleChildScrollView(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: widget.children,
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildHeader(context),
+                      const Divider(height: 1),
+                      const SizedBox(height: 12),
+                      ...widget.children,
+                      if (widget.footer != null) ...[
+                        const SizedBox(height: 12),
+                        const Divider(height: 1),
+                        const SizedBox(height: 12),
+                        widget.footer!,
+                      ],
+                    ],
+                  ),
+                );
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildHeader(context),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: Scrollbar(
+                      controller: _scrollController,
+                      thumbVisibility: true,
+                      thickness: 5,
+                      // SingleChildScrollView 全量构建: 抽屉是短表单,
+                      // 懒加载会让折叠线以下的输入框时有时无 (随屏幕高度变化)。
+                      child: SingleChildScrollView(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: widget.children,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-              if (widget.footer != null) ...[
-                const Divider(height: 1),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                  child: widget.footer,
-                ),
-              ],
-            ],
+                  if (widget.footer != null) ...[
+                    const Divider(height: 1),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                      child: widget.footer,
+                    ),
+                  ],
+                ],
+              );
+            },
           ),
         ),
       ),

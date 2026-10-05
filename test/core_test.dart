@@ -4,10 +4,13 @@ import 'package:kanji_hiragana/core/kana_romaji.dart';
 import 'package:kanji_hiragana/core/kanji_filter.dart';
 import 'package:kanji_hiragana/core/kanji_reading_dict.dart';
 import 'package:kanji_hiragana/core/kanji_words_dict.dart';
+import 'package:kanji_hiragana/core/loanwords_dict.dart';
 import 'package:kanji_hiragana/core/morpheme.dart';
 import 'package:kanji_hiragana/core/query_store.dart';
+import 'package:kanji_hiragana/core/radical_dict.dart';
 import 'package:kanji_hiragana/core/settings.dart';
 import 'package:kanji_hiragana/core/strings.dart';
+import 'package:kanji_hiragana/core/yojijukugo_dict.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -890,6 +893,152 @@ void main() {
       expect(en.homophoneHint.isNotEmpty, isTrue);
       expect(zh.homophoneBadge(3), contains('3'));
       expect(en.homophoneBadge(3), contains('3'));
+
+      // 视图模式与新功能文案
+      expect(zh.viewAlignment.isNotEmpty, isTrue);
+      expect(en.viewAlignment.isNotEmpty, isTrue);
+      expect(zh.viewFurigana.isNotEmpty, isTrue);
+      expect(en.viewFurigana.isNotEmpty, isTrue);
+      expect(zh.viewVertical.isNotEmpty, isTrue);
+      expect(en.viewVertical.isNotEmpty, isTrue);
+      expect(zh.exportAnki.isNotEmpty, isTrue);
+      expect(en.exportAnki.isNotEmpty, isTrue);
+      expect(zh.exportFavorites.isNotEmpty, isTrue);
+      expect(en.exportFavorites.isNotEmpty, isTrue);
+      expect(zh.favoritesExportTitle.isNotEmpty, isTrue);
+      expect(en.favoritesExportTitle.isNotEmpty, isTrue);
+      expect(zh.favoritesExportHint(10), contains('10'));
+      expect(en.favoritesExportHint(10), contains('10'));
+      expect(zh.radicalPickerTitle.isNotEmpty, isTrue);
+      expect(en.radicalPickerTitle.isNotEmpty, isTrue);
+      expect(zh.radicalStrokesGroup(3), contains('3'));
+      expect(en.radicalStrokesGroup(3), contains('3'));
+      expect(zh.yojijukugoHeading.isNotEmpty, isTrue);
+      expect(en.yojijukugoHeading.isNotEmpty, isTrue);
+      expect(zh.yojijukugoBadge(5), contains('5'));
+      expect(en.yojijukugoBadge(5), contains('5'));
+      expect(zh.speak.isNotEmpty, isTrue);
+      expect(en.speak.isNotEmpty, isTrue);
+      expect(zh.paste.isNotEmpty, isTrue);
+      expect(en.paste.isNotEmpty, isTrue);
+      expect(zh.loanwordLabel.isNotEmpty, isTrue);
+      expect(en.loanwordLabel.isNotEmpty, isTrue);
+      expect(zh.loanwordOrigin('Dutch'), contains('Dutch'));
+      expect(en.loanwordOrigin('Dutch'), contains('Dutch'));
+    });
+  });
+
+  group('康熙部首字典 (radical_dict)', () {
+    test('214 个康熙部首完整性', () {
+      expect(kKangxiRadicals.length, 214);
+      expect(kRadicalStrokes.length, 214);
+      expect(getRadicalChar(1), '一');
+      expect(getRadicalChar(214), '龠');
+      expect(getRadicalStroke(1), 1);
+      expect(getRadicalStroke(214), 17);
+    });
+
+    test('按画数分组聚合', () {
+      final grouped = kRadicalsGroupedByStrokes;
+      var total = 0;
+      for (var s = 1; s <= 17; s++) {
+        if (grouped.containsKey(s)) {
+          total += grouped[s]!.length;
+        }
+      }
+      expect(total, 214);
+      expect(grouped[1]!.contains(1), isTrue); // 一
+      expect(grouped[4]!.contains(85), isTrue); // 水
+    });
+
+    test('部首汉字数量统计', () {
+      final waterCount = kRadicalKanjiCounts[85];
+      expect(waterCount, 164);
+    });
+  });
+
+  group('片假名外来语字典 (loanwords_dict)', () {
+    test('收录外来语及其词源语言', () {
+      final coffee = lookupLoanword('コーヒー');
+      expect(coffee, isNotNull);
+      expect(coffee!.language, 'nl');
+      expect(coffee.source, contains('koffie'));
+
+      final arubaito = lookupLoanword('アルバイト');
+      expect(arubaito, isNotNull);
+      expect(arubaito!.language, 'de');
+      expect(arubaito.source, contains('Arbeit'));
+
+      final pan = lookupLoanword('パン');
+      expect(pan, isNotNull);
+      expect(pan!.language, 'pt');
+      expect(pan.source, contains('pão'));
+
+      expect(lookupLoanword('日本'), isNull);
+      expect(lookupLoanword('あ'), isNull);
+    });
+  });
+
+  group('四字熟语字典 (yojijukugo_dict)', () {
+    test('熟语反查与读音释义', () {
+      expect(kYojijukugoList.length >= 40, isTrue);
+      final item = kYojijukugoList.firstWhere((y) => y.kanji == '一期一会');
+      expect(item.reading, 'いちごいちえ');
+      expect(item.meaningZh.isNotEmpty, isTrue);
+      expect(item.meaningEn.isNotEmpty, isTrue);
+
+      final nichishin = kYojijukugoList.firstWhere((y) => y.kanji == '日進月歩');
+      expect(nichishin.reading, 'にっしんげっぽ');
+    });
+
+    test('单汉字反向索引关联四字熟语', () {
+      final forHi = getYojijukugoForKanji('日');
+      expect(forHi.any((y) => y.kanji == '日進月歩'), isTrue);
+
+      final forIchi = getYojijukugoForKanji('一');
+      expect(forIchi.any((y) => y.kanji == '一期一会'), isTrue);
+
+      expect(getYojijukugoForKanji('𠮷'), isEmpty);
+    });
+  });
+
+  group('Anki TSV 导出', () {
+    test('单汉字与多词句子导出为 Anki TSV 格式', () {
+      const singleRes = AnalysisResult(
+        source: '日',
+        morphemes: [],
+        singleKanji: KanjiReading(
+          kanji: '日',
+          onyomi: ['ニチ'],
+          kunyomi: ['ひ'],
+          meanings: ['太阳'],
+          meaningsEn: ['sun'],
+          grade: 1,
+          strokes: 4,
+          frequencyRank: 42,
+        ),
+      );
+      expect(singleRes.toAnkiTsv, contains('日\t音: ニチ / 训: ひ\t\t太阳\t笔画: 4 | 频率: 42'));
+
+      final m1 = Morpheme.fromToken({
+        'surface_form': '東京',
+        'reading': 'トウキョウ',
+        'pos': '名詞',
+        'pos_detail_1': '固有名詞',
+      });
+      final m2 = Morpheme.fromToken({
+        'surface_form': 'に',
+        'reading': 'ニ',
+        'pos': '助詞',
+      });
+      final res = AnalysisResult(
+        source: '東京に',
+        morphemes: [m1, m2],
+      );
+      final tsv = res.toAnkiTsv;
+      expect(tsv, contains('東京に\tとうきょうに\ttoukyou ni\t完整句'));
+      expect(tsv, contains('東京\tとうきょう\ttoukyou\t名詞/固有名詞'));
+      expect(tsv.contains('\nに\t'), isFalse);
     });
   });
 }

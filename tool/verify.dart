@@ -8,6 +8,9 @@ import 'package:kanji_hiragana/core/kana_romaji.dart';
 import 'package:kanji_hiragana/core/kanji_filter.dart';
 import 'package:kanji_hiragana/core/kanji_reading_dict.dart';
 import 'package:kanji_hiragana/core/kanji_words_dict.dart';
+import 'package:kanji_hiragana/core/loanwords_dict.dart';
+import 'package:kanji_hiragana/core/radical_dict.dart';
+import 'package:kanji_hiragana/core/yojijukugo_dict.dart';
 
 int _pass = 0;
 int _fail = 0;
@@ -93,6 +96,11 @@ Future<void> main() async {
     'HTML ruby 导出',
   );
   expectEq(rMulti.toBracketAnnotation, '猫(ねこ)\n犬(いぬ)', '括号注音导出');
+  expectEq(
+    r1.toAnkiTsv.contains('日本\tにっぽん\tnippon'),
+    true,
+    'Anki TSV 导出句子词汇',
+  );
 
   final r4 = await a.analyze('   ');
   expectEq(r4.isEmpty, true, '空输入返回空');
@@ -304,6 +312,38 @@ Future<void> main() async {
     }
   }
   expectEq(wordsValid, true, '词条表面形式、读音、词性均非空');
+
+  print('--- 214 康熙部首与笔画表 ---');
+  expectEq(kKangxiRadicals.length, 214, '214 部首字表总数');
+  expectEq(kRadicalStrokes.length, 214, '214 部首笔画映射总数');
+  expectEq(getRadicalChar(1), '一', '部首 1 为 一');
+  expectEq(getRadicalChar(214), '龠', '部首 214 为 龠');
+  expectEq(getRadicalStroke(1), 1, '部首 1 笔画为 1');
+  expectEq(getRadicalStroke(214), 17, '部首 214 笔画为 17');
+  final groupedTotal = kRadicalsGroupedByStrokes.values.fold(0, (a, b) => a + b.length);
+  expectEq(groupedTotal, 214, '分组部首总数恰为 214');
+  expectEq(kRadicalKanjiCounts[85], 164, '水部首 (85) 收录 164 字');
+
+  print('--- 片假名外来语词源 ---');
+  expectEq(lookupLoanword('コーヒー') != null, true, '外来语收录 コーヒー');
+  expectEq(lookupLoanword('コーヒー')!.source.contains('coffee'), true, 'コーヒー 包含 coffee');
+  expectEq(lookupLoanword('アルバイト')!.language, 'de', 'アルバイト 源自德语');
+  expectEq(lookupLoanword('パン')!.language, 'pt', 'パン 源自葡萄牙语');
+  final coffeeResult = await a.analyze('コーヒー');
+  expectEq(coffeeResult.morphemes[0].loanword != null, true, '分词关联外来语信息');
+
+  print('--- 四字熟语与反向索引 ---');
+  expectEq(kYojijukugoList.length >= 40, true, '四字熟语词典收录充足');
+  expectEq(
+    getYojijukugoForKanji('日').any((e) => e.kanji == '日進月歩'),
+    true,
+    '日 反向索引包含 日進月歩',
+  );
+  expectEq(
+    getYojijukugoForKanji('一').any((e) => e.kanji == '一期一会'),
+    true,
+    '一 反向索引包含 一期一会',
+  );
 
   // 常驻分词 isolate 会阻止裸 dart 进程在 main 返回后退出, 用完即关。
   JapaneseAnalyzer.instance.close();

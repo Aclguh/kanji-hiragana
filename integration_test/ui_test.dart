@@ -6,7 +6,9 @@ import 'package:kanji_hiragana/core/japanese_analyzer.dart';
 import 'package:kanji_hiragana/core/kanji_filter.dart';
 import 'package:kanji_hiragana/core/kanji_reading_dict.dart';
 import 'package:kanji_hiragana/core/query_store.dart';
+import 'package:kanji_hiragana/core/settings.dart';
 import 'package:kanji_hiragana/core/strings.dart';
+import 'package:kanji_hiragana/main.dart';
 import 'package:kanji_hiragana/theme.dart';
 import 'package:kanji_hiragana/widgets/about_page.dart';
 import 'package:kanji_hiragana/widgets/alignment_table.dart';
@@ -40,21 +42,36 @@ void main() {
     }
   }
 
+  /// 复位设置单例并强制锁竖屏。
+  Future<void> resetSettings() async {
+    SharedPreferences.setMockInitialValues({});
+    await SettingsController.instance.load();
+    await SettingsController.instance.setAutoRotate(false);
+    await SettingsController.instance.setLanguage(AppLanguage.zh);
+    await SettingsController.instance.setShowRomaji(true);
+    await SettingsController.instance.setViewModeName('alignment');
+    await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  }
+
   /// 悬停式搭建主界面 (等待词典就绪, 避免停在 loading)。
   ///
-  /// 同时复位查询历史 / 收藏, 保证用例互不影响。
+  /// 同时复位查询历史 / 收藏 / 设置, 保证用例互不影响。
   Future<void> pumpHome(WidgetTester tester) async {
     await JapaneseAnalyzer.instance.warmUp();
     await resetQueryStore();
+    await resetSettings();
     // AppStringsScope 包在 MaterialApp 外层 (与 main.dart 一致):
     // scope 要覆盖 push 出来的全屏页面 (筛选结果页 / 关于页),
     // AppStrings.of 在缺失 scope 时 debug 断言会失败。
     await tester.pumpWidget(
       AppStringsScope(
         strings: const ZhStrings(),
-        child: MaterialApp(
-          theme: AppTheme.dark(),
-          home: const HomePage(),
+        child: RotationGuard(
+          enabled: SettingsController.instance.autoRotate,
+          child: MaterialApp(
+            theme: AppTheme.dark(),
+            home: const HomePage(),
+          ),
         ),
       ),
     );
@@ -499,6 +516,10 @@ void main() {
     await tester.tap(rotateTile);
     await tester.pumpAndSettle();
     expect(find.text('固定为当前方向'), findsOneWidget);
+
+    // 关闭抽屉
+    await tester.tap(find.byTooltip('关闭'));
+    await tester.pumpAndSettle();
   });
 
   /// 抽屉内「下限 / 上限」四个输入框 (笔画 min/max, 频率 min/max)。
@@ -718,15 +739,21 @@ void main() {
     expect(find.text('English'), findsNothing);
 
     // 点击后展开两个选项: 当前语言「中文」同时出现在标题与选中项, 共两处。
+    await tester.ensureVisible(settingsText('语言').at(1));
     await tester.tap(settingsText('语言').at(1));
     await tester.pumpAndSettle();
     expect(find.text('中文'), findsNWidgets(2));
     expect(find.text('English'), findsOneWidget);
+
+    // 关闭抽屉
+    await tester.tap(find.byTooltip('关闭'));
+    await tester.pumpAndSettle();
   });
 
   testWidgets('英文界面: 文案切换为英文, 漢字仮名 四字保持不变', (tester) async {
     await JapaneseAnalyzer.instance.warmUp();
     await resetQueryStore();
+    await resetSettings();
     await tester.pumpWidget(
       AppStringsScope(
         strings: const EnStrings(),
@@ -801,6 +828,7 @@ void main() {
   testWidgets('英文界面: 设置与筛选抽屉全部为英文', (tester) async {
     await JapaneseAnalyzer.instance.warmUp();
     await resetQueryStore();
+    await resetSettings();
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.dark(),
@@ -873,6 +901,7 @@ void main() {
 
     await tester.tap(find.byTooltip('设置'));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('关于'));
     await tester.tap(find.text('关于'));
     await tester.pumpAndSettle();
 

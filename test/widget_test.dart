@@ -12,14 +12,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kanji_hiragana/core/kanji_filter.dart';
 import 'package:kanji_hiragana/core/kanji_reading_dict.dart';
 import 'package:kanji_hiragana/core/kanji_words_dict.dart';
+import 'package:kanji_hiragana/core/morpheme.dart';
 import 'package:kanji_hiragana/core/settings.dart';
 import 'package:kanji_hiragana/core/strings.dart';
 import 'package:kanji_hiragana/theme.dart';
+import 'package:kanji_hiragana/widgets/anki_export_sheet.dart';
 import 'package:kanji_hiragana/widgets/filter_drawer.dart';
 import 'package:kanji_hiragana/widgets/filter_result_page.dart';
+import 'package:kanji_hiragana/widgets/radical_picker_sheet.dart';
 import 'package:kanji_hiragana/widgets/settings_drawer.dart';
 import 'package:kanji_hiragana/widgets/single_kanji_view.dart';
 import 'package:kanji_hiragana/widgets/sliding_drawer.dart';
+import 'package:kanji_hiragana/widgets/vertical_view.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -213,6 +217,15 @@ void main() {
         expect(find.text('同音汉字'), findsOneWidget);
         expect(find.text('部首 '), findsOneWidget);
       });
+
+      testWidgets('四字熟语分组渲染', (tester) async {
+        final readingHi = kanjiReadingDict['日']!;
+        await tester
+            .pumpWidget(scrollHost(SingleKanjiView(reading: readingHi)));
+
+        expect(find.text('四字熟語'), findsOneWidget);
+        expect(find.text('日進月歩'), findsOneWidget);
+      });
     });
 
     group('错误与空态路径 ($name)', () {
@@ -313,6 +326,66 @@ void main() {
         expect(expandedFooter.flagsCollection.isExpanded, Tristate.isTrue);
 
         semantics.dispose();
+      });
+    });
+
+    group('VerticalView 竖排视图 ($name)', () {
+      testWidgets('和风纵书渲染汉字与假名', (tester) async {
+        final m1 = Morpheme.fromToken({
+          'surface_form': '日本',
+          'reading': 'ニッポン',
+          'pos': '名詞',
+        });
+        final m2 = Morpheme.fromToken({
+          'surface_form': 'の',
+          'reading': 'ノ',
+          'pos': '助詞',
+        });
+        final res = AnalysisResult(
+          source: '日本の',
+          morphemes: [m1, m2],
+          paragraphs: [
+            [m1, m2],
+          ],
+        );
+        await tester.pumpWidget(scrollHost(VerticalView(
+          result: res,
+          showRomaji: true,
+        )));
+
+        expect(find.text('日'), findsOneWidget);
+        expect(find.text('本'), findsOneWidget);
+        expect(find.text('の'), findsOneWidget);
+        expect(find.text('に'), findsOneWidget);
+      });
+    });
+
+    group('RadicalPickerSheet 部首检字表 ($name)', () {
+      testWidgets('展示部首并响应选择', (tester) async {
+        int? picked;
+        await tester.pumpWidget(host(RadicalPickerSheet(
+          selectedRadical: null,
+          onSelect: (r) => picked = r,
+        )));
+
+        expect(find.text('康熙 214 部首检字'), findsOneWidget);
+        expect(find.text('一'), findsWidgets);
+        await tester.tap(find.text('一').first);
+        await tester.pump();
+
+        expect(picked, 1);
+      });
+    });
+
+    group('AnkiExportSheet 导出弹窗 ($name)', () {
+      testWidgets('渲染收藏列表与导出入口', (tester) async {
+        await tester.pumpWidget(host(const AnkiExportSheet(
+          favorites: ['日', '東京'],
+        )));
+
+        expect(find.textContaining('收藏词条导出 (2)'), findsOneWidget);
+        expect(find.text('Anki 牌组格式 (TSV 制表符分隔)'), findsOneWidget);
+        expect(find.textContaining('纯文本列表'), findsOneWidget);
       });
     });
   }
