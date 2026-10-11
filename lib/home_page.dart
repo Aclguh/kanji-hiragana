@@ -22,21 +22,17 @@ import 'widgets/filter_result_page.dart';
 import 'widgets/furigana_view.dart';
 import 'widgets/settings_drawer.dart';
 import 'widgets/single_kanji_view.dart';
+import 'widgets/home/debouncer.dart';
+import 'widgets/home/floating_button.dart';
+import 'widgets/home/furigana_footer.dart';
+import 'widgets/home/hero_title.dart';
+import 'widgets/home/home_toolbar.dart';
+import 'widgets/home/query_chips.dart';
 import 'widgets/sliding_drawer.dart';
 import 'widgets/vector_icon.dart';
 import 'widgets/vertical_view.dart';
 
-/// 视图模式。
-enum ViewMode {
-  /// 逐词三列对照表。
-  alignment,
-
-  /// 振假名注音排版。
-  furigana,
-
-  /// 和风传统竖排排版。
-  vertical,
-}
+export 'widgets/home/home_toolbar.dart' show ViewMode;
 
 /// 出错环节, 决定界面上显示哪一条提示。
 enum _ErrorKind { dictionary, analysis }
@@ -56,7 +52,7 @@ class _HomePageState extends State<HomePage>
   final _focusNode = FocusNode();
   final _analyzer = JapaneseAnalyzer.instance;
   final _queryStore = QueryStore.instance;
-  final _debounce = _Debouncer(const Duration(milliseconds: 220));
+  final _debounce = Debouncer(const Duration(milliseconds: 220));
 
   /// 驱动「聚焦态 ↔ 展开态」过渡的动画。
   late final AnimationController _anim;
@@ -430,7 +426,7 @@ class _HomePageState extends State<HomePage>
                 Positioned(
                   left: 16,
                   bottom: 16,
-                  child: _FloatingButton(
+                  child: FloatingDrawerButton(
                     type: DrawerIconType.search,
                     tooltip: s.filterKanji,
                     onTap: () => _toggleDrawer(OpenDrawer.filter),
@@ -440,7 +436,7 @@ class _HomePageState extends State<HomePage>
                 Positioned(
                   right: 16,
                   bottom: 16,
-                  child: _FloatingButton(
+                  child: FloatingDrawerButton(
                     type: DrawerIconType.settings,
                     tooltip: s.settings,
                     onTap: () => _toggleDrawer(OpenDrawer.settings),
@@ -545,13 +541,13 @@ class _HomePageState extends State<HomePage>
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // 聚焦态在输入框上方显示标题。
-                  _HeroTitle(t: t),
+                  HeroTitle(t: t),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: _buildInput(t),
                   ),
                   // 聚焦态展示收藏与最近查询, 展开后淡出。
-                  _QueryChips(t: t, onUseQuery: _useQuery),
+                  QueryChips(t: t, onUseQuery: _useQuery),
                   // 其余控件随动画淡入。
                   _buildReveal(t),
                 ],
@@ -632,7 +628,7 @@ class _HomePageState extends State<HomePage>
             children: [
               SizedBox(height: isSingleKanji ? 4 : 12),
               if (!isSingleKanji && _result != null)
-                _Toolbar(
+                HomeToolbar(
                   viewMode: _viewMode,
                   showRomaji: _showRomaji,
                   onSelectMode: (mode) => setState(() => _viewMode = mode),
@@ -685,7 +681,7 @@ class _HomePageState extends State<HomePage>
           else if (_viewMode == ViewMode.furigana) ...[
             FuriganaView(result: result, showRomaji: _showRomaji),
             const SizedBox(height: 16),
-            _FuriganaFooter(result: result),
+            FuriganaFooter(result: result),
           ] else
             VerticalView(result: result, showRomaji: _showRomaji),
         ],
@@ -739,594 +735,4 @@ class _LoadingView extends StatelessWidget {
   }
 }
 
-/// 聚焦态显示的品牌标题, 展开后淡出。
-///
-/// 「漢字仮名」四字任何语言下都保持繁体原样, 作为应用标识。
-class _HeroTitle extends StatelessWidget {
-  final double t;
-
-  const _HeroTitle({required this.t});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
-    final opacity = (1 - t).clamp(0.0, 1.0);
-    if (opacity <= 0.001) return const SizedBox(height: 4);
-
-    return Opacity(
-      opacity: opacity,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 24),
-        child: Column(
-          children: [
-            Text(
-              '漢字仮名',
-              style: TextStyle(
-                color: colors.textPrimary,
-                fontSize: 30,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 4,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              s.tagline,
-              style: TextStyle(
-                color: colors.textSecondary.withValues(alpha: 0.9),
-                fontSize: 13,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// 聚焦态显示的收藏与最近查询词条, 展开后随动画淡出。
-class _QueryChips extends StatelessWidget {
-  /// 展开动画值, 决定透明度与可交互性。
-  final double t;
-
-  final ValueChanged<String> onUseQuery;
-
-  const _QueryChips({required this.t, required this.onUseQuery});
-
-  @override
-  Widget build(BuildContext context) {
-    final opacity = (1 - t).clamp(0.0, 1.0);
-    if (opacity <= 0.001) return const SizedBox.shrink();
-
-    final store = QueryStore.instance;
-    return AnimatedBuilder(
-      animation: store,
-      builder: (context, _) {
-        final favorites = store.favorites;
-        final history = store.history;
-        if (favorites.isEmpty && history.isEmpty) {
-          return const SizedBox.shrink();
-        }
-
-        return Opacity(
-          opacity: opacity,
-          child: IgnorePointer(
-            ignoring: opacity < 0.5,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 14),
-                if (favorites.isNotEmpty)
-                  _buildChipSection(
-                    context,
-                    icon: Icons.star_rounded,
-                    label: AppStrings.of(context).favoritesLabel,
-                    items: favorites,
-                    favorite: true,
-                  ),
-                if (favorites.isNotEmpty && history.isNotEmpty)
-                  const SizedBox(height: 12),
-                if (history.isNotEmpty)
-                  _buildChipSection(
-                    context,
-                    icon: Icons.history_rounded,
-                    label: AppStrings.of(context).historyLabel,
-                    items: history,
-                    favorite: false,
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  /// 一组查询词条: 小标签行 + 横向滑动的 chip。
-  Widget _buildChipSection(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required List<String> items,
-    required bool favorite,
-  }) {
-    final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
-    final store = QueryStore.instance;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 13, color: colors.textSecondary),
-              const SizedBox(width: 5),
-              Text(
-                label,
-                style: TextStyle(
-                  color: colors.textSecondary,
-                  fontSize: 11,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const Spacer(),
-              // 收藏提供导出为 Anki / TSV; 历史提供清空。
-              if (favorite)
-                Semantics(
-                  button: true,
-                  child: GestureDetector(
-                    onTap: () =>
-                        AnkiExportSheet.show(context, favorites: items),
-                    child: Text(
-                      s.export,
-                      style: const TextStyle(
-                        color: AppTheme.accent,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                )
-              else () {
-                void onClear() {
-                  HapticFeedback.lightImpact();
-                  store.clearHistory();
-                  showToast(context, s.historyCleared);
-                }
-
-                return Semantics(
-                  button: true,
-                  onTap: onClear,
-                  child: GestureDetector(
-                    onTap: onClear,
-                    child: Text(
-                      s.clearHistory,
-                      style: TextStyle(
-                        color: colors.textSecondary,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                );
-              }(),
-            ],
-          ),
-          const SizedBox(height: 8),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            clipBehavior: Clip.none,
-            child: Row(
-              children: [
-                for (var i = 0; i < items.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 8),
-                  _QueryChip(
-                    text: items[i],
-                    favorite: favorite,
-                    onTap: () => onUseQuery(items[i]),
-                    onLongPress: () {
-                      HapticFeedback.lightImpact();
-                      final item = items[i];
-                      if (favorite) {
-                        store.toggleFavorite(item);
-                        showToast(context, s.favoriteRemoved(item));
-                      } else {
-                        store.removeHistory(item);
-                        showToast(context, s.historyRemoved(item));
-                      }
-                    },
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// 展开态工具栏: 对照 / 振假名视图切换 + 罗马音开关。
-///
-/// 无状态: 状态持久化在 SettingsController, 由宿主 [HomePage] setState
-/// 驱动重建 (切换必须同时刷新下方结果区, 不能只重绘工具栏自身)。
-class _Toolbar extends StatelessWidget {
-  final ViewMode viewMode;
-  final bool showRomaji;
-  final ValueChanged<ViewMode> onSelectMode;
-  final ValueChanged<bool> onRomajiChanged;
-  final VoidCallback onExport;
-
-  const _Toolbar({
-    required this.viewMode,
-    required this.showRomaji,
-    required this.onSelectMode,
-    required this.onRomajiChanged,
-    required this.onExport,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              color: colors.surface,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: colors.border),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _segment(
-                  context,
-                  s.viewAlignment,
-                  ViewMode.alignment,
-                  Icons.table_rows_rounded,
-                ),
-                _segment(
-                  context,
-                  s.viewFurigana,
-                  ViewMode.furigana,
-                  Icons.text_fields_rounded,
-                ),
-                _segment(
-                  context,
-                  s.viewVertical,
-                  ViewMode.vertical,
-                  Icons.view_week_outlined,
-                ),
-              ],
-            ),
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                tooltip: s.export,
-                iconSize: 20,
-                visualDensity: VisualDensity.compact,
-                onPressed: onExport,
-                icon: Icon(
-                  Icons.share_outlined,
-                  size: 20,
-                  color: colors.textSecondary,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    s.romajiToggle,
-                    style: TextStyle(
-                      color: showRomaji ? colors.textPrimary : colors.textSecondary,
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Switch(
-                    value: showRomaji,
-                    onChanged: onRomajiChanged,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _segment(
-    BuildContext context,
-    String label,
-    ViewMode mode,
-    IconData icon,
-  ) {
-    final colors = AppTheme.of(context);
-    final selected = viewMode == mode;
-    return MergeSemantics(
-      child: Semantics(
-        button: true,
-        selected: selected,
-        onTap: () => onSelectMode(mode),
-        child: GestureDetector(
-          onTap: () => onSelectMode(mode),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-            decoration: BoxDecoration(
-              color: selected ? AppTheme.accent : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  icon,
-                  size: 14,
-                  color: selected ? Colors.white : colors.textSecondary,
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: selected ? Colors.white : colors.textSecondary,
-                    fontSize: 13,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 振假名视图页脚: 全文平假名与实际发音, 支持复制。
-class _FuriganaFooter extends StatelessWidget {
-  final AnalysisResult result;
-
-  const _FuriganaFooter({required this.result});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.border),
-      ),
-      child: Column(
-        children: [
-          _FooterLine(
-            icon: Icons.volume_up_rounded,
-            label: s.labelHiragana,
-            value: result.fullHiragana,
-            color: AppTheme.accent,
-            copyTip: s.copiedFullHiragana,
-          ),
-          // 存在发音差异时补充一行实际发音。
-          if (result.hasAnyPronunciationShift) ...[
-            const SizedBox(height: 10),
-            _FooterLine(
-              icon: Icons.record_voice_over_rounded,
-              label: s.labelPronunciation,
-              value: result.fullPronunciation,
-              color: colors.textSecondary,
-              copyTip: s.copiedPronunciation,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// 页脚中的一行: 图标 + 标签 + 可选中内容 + 复制按钮。
-class _FooterLine extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-  final String copyTip;
-
-  const _FooterLine({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-    required this.copyTip,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: color),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 58,
-          child: Text(
-            label,
-            style: TextStyle(color: colors.textSecondary, fontSize: 11),
-          ),
-        ),
-        Expanded(
-          child: SelectableText(
-            value,
-            style: TextStyle(
-              color: colors.textPrimary,
-              fontSize: 15,
-              height: 1.5,
-            ),
-          ),
-        ),
-        IconButton(
-          tooltip: s.speak,
-          iconSize: 18,
-          onPressed: () => TtsService.instance.speak(value),
-          icon: const Icon(Icons.volume_up_rounded, color: AppTheme.accent),
-        ),
-        IconButton(
-          tooltip: s.copy,
-          iconSize: 18,
-          onPressed: () => copyWithToast(context, value, copyTip),
-          icon: Icon(Icons.copy_rounded, color: colors.textSecondary),
-        ),
-      ],
-    );
-  }
-}
-
-/// 圆形悬浮按钮, 内含矢量图标。
-class _FloatingButton extends StatelessWidget {
-  final DrawerIconType type;
-  final String tooltip;
-  final VoidCallback onTap;
-
-  const _FloatingButton({
-    required this.type,
-    required this.tooltip,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppTheme.of(context);
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: colors.surface,
-        shape: CircleBorder(side: BorderSide(color: colors.border)),
-        elevation: 3,
-        shadowColor: Colors.black.withValues(alpha: 0.25),
-        child: InkWell(
-          onTap: onTap,
-          customBorder: const CircleBorder(),
-          child: SizedBox(
-            width: 48,
-            height: 48,
-            child: Center(
-              child: VectorIcon(
-                type: type,
-                size: 21,
-                color: colors.textPrimary,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 空态下的一条查询记录 / 收藏词条。
-class _QueryChip extends StatelessWidget {
-  final String text;
-  final bool favorite;
-  final VoidCallback onTap;
-  final VoidCallback onLongPress;
-
-  const _QueryChip({
-    required this.text,
-    required this.favorite,
-    required this.onTap,
-    required this.onLongPress,
-  });
-
-  /// chip 上最多显示的字符数 (按 rune 计), 超出省略。
-  static const _maxDisplay = 12;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppTheme.of(context);
-    final runes = text.runes.toList();
-    final display = runes.length > _maxDisplay
-        ? '${String.fromCharCodes(runes.take(_maxDisplay))}…'
-        : text;
-
-    return InkWell(
-      onTap: onTap,
-      onLongPress: onLongPress,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: colors.surface,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: favorite
-                ? AppTheme.kanjiHighlight.withValues(alpha: 0.4)
-                : colors.border,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (favorite) ...[
-              const Icon(
-                Icons.star_rounded,
-                size: 13,
-                color: AppTheme.kanjiHighlight,
-              ),
-              const SizedBox(width: 4),
-            ],
-            Text(
-              display,
-              style: TextStyle(color: colors.textPrimary, fontSize: 13),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 double _lerp(double a, double b, double t) => a + (b - a) * t;
-
-/// 简易防抖器, 避免每次按键都触发形态素分析, 同时支持取消已飞行的异步任务。
-class _Debouncer {
-  final Duration delay;
-  Timer? _timer;
-  int _activeId = 0;
-
-  _Debouncer(this.delay);
-
-  /// 安排执行 [action]。如果在等待期或异步执行期间安排了新任务，旧任务的
-  /// [isCancelled] 会返回 true，从而提早中止分词与状态更新。
-  void run(Future<void> Function(bool Function() isCancelled) action) {
-    _timer?.cancel();
-    final id = ++_activeId;
-    _timer = Timer(delay, () {
-      if (id != _activeId) return;
-      action(() => id != _activeId);
-    });
-  }
-
-  /// 取消当前等待中与飞行中的任务。
-  void cancel() {
-    _timer?.cancel();
-    _activeId++;
-  }
-
-  void dispose() => cancel();
-}
