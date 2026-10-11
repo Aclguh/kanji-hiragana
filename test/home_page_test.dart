@@ -50,7 +50,7 @@ void main() {
     );
     // 给 HomePage._init() 留出就绪时间
     await tester.runAsync(() async {
-      await Future.delayed(const Duration(milliseconds: 60));
+      await Future<void>.delayed(const Duration(milliseconds: 60));
     });
     await tester.pumpAndSettle();
   }
@@ -66,7 +66,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
       // 释放事件循环让跨 isolate 通信回执进入主 isolate
       await tester.runAsync(() async {
-        await Future.delayed(const Duration(milliseconds: 40));
+        await Future<void>.delayed(const Duration(milliseconds: 40));
       });
       await tester.pump();
       if (finder.evaluate().isNotEmpty) return;
