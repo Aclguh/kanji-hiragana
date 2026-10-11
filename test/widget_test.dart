@@ -16,9 +16,11 @@ import 'package:kanji_hiragana/core/morpheme.dart';
 import 'package:kanji_hiragana/core/settings.dart';
 import 'package:kanji_hiragana/core/strings.dart';
 import 'package:kanji_hiragana/theme.dart';
+import 'package:kanji_hiragana/widgets/alignment_table.dart';
 import 'package:kanji_hiragana/widgets/anki_export_sheet.dart';
 import 'package:kanji_hiragana/widgets/filter_drawer.dart';
 import 'package:kanji_hiragana/widgets/filter_result_page.dart';
+import 'package:kanji_hiragana/widgets/furigana_view.dart';
 import 'package:kanji_hiragana/widgets/radical_picker_sheet.dart';
 import 'package:kanji_hiragana/widgets/settings_drawer.dart';
 import 'package:kanji_hiragana/widgets/single_kanji_view.dart';
@@ -326,6 +328,132 @@ void main() {
         expect(expandedFooter.flagsCollection.isExpanded, Tristate.isTrue);
 
         semantics.dispose();
+      });
+    });
+
+    group('AlignmentTable 对照表 ($name)', () {
+      testWidgets('渲染词素各列与摘要信息', (tester) async {
+        final m1 = Morpheme.fromToken({
+          'surface_form': '日本語',
+          'reading': 'ニホンゴ',
+          'pos': '名詞',
+        });
+        final m2 = Morpheme.fromToken({
+          'surface_form': 'を',
+          'reading': 'ヲ',
+          'pos': '助詞',
+        });
+        final m3 = Morpheme.fromToken({
+          'surface_form': '勉強',
+          'reading': 'ベンキョウ',
+          'pos': '名詞',
+        });
+        final m4 = Morpheme.fromToken({
+          'surface_form': 'する',
+          'reading': 'スル',
+          'pos': '動詞',
+        });
+        final res = AnalysisResult(
+          source: '日本語を勉強する',
+          morphemes: [m1, m2, m3, m4],
+          paragraphs: [
+            [m1, m2, m3, m4],
+          ],
+        );
+        await tester.pumpWidget(scrollHost(AlignmentTable(
+          result: res,
+          showRomaji: true,
+        )));
+
+        expect(find.text('日本語'), findsOneWidget);
+        expect(find.text('にほんご'), findsOneWidget);
+        expect(find.text('nihongo'), findsOneWidget);
+        expect(find.text('を'), findsNWidgets(2));
+        expect(find.text('勉強'), findsOneWidget);
+        expect(find.text('する'), findsNWidgets(2));
+      });
+
+      testWidgets('多段落分界线渲染与隐藏罗马音', (tester) async {
+        final m1 = Morpheme.fromToken({
+          'surface_form': '猫',
+          'reading': 'ネコ',
+          'pos': '名詞',
+        });
+        final m2 = Morpheme.fromToken({
+          'surface_form': '犬',
+          'reading': 'イヌ',
+          'pos': '名詞',
+        });
+        final res = AnalysisResult(
+          source: '猫\n犬',
+          morphemes: [m1, m2],
+          paragraphs: [
+            [m1],
+            [m2],
+          ],
+        );
+        await tester.pumpWidget(scrollHost(AlignmentTable(
+          result: res,
+          showRomaji: false,
+        )));
+
+        expect(find.text('猫'), findsOneWidget);
+        expect(find.text('犬'), findsOneWidget);
+        expect(find.byType(Divider), findsOneWidget);
+        expect(find.text('neko'), findsNothing);
+      });
+    });
+
+    group('FuriganaView 振假名 ($name)', () {
+      testWidgets('教材式注音排版渲染', (tester) async {
+        final m1 = Morpheme.fromToken({
+          'surface_form': '日本語',
+          'reading': 'ニホンゴ',
+          'pos': '名詞',
+        });
+        final m2 = Morpheme.fromToken({
+          'surface_form': 'の',
+          'reading': 'ノ',
+          'pos': '助詞',
+        });
+        final res = AnalysisResult(
+          source: '日本の',
+          morphemes: [m1, m2],
+          paragraphs: [
+            [m1, m2],
+          ],
+        );
+        await tester.pumpWidget(scrollHost(FuriganaView(
+          result: res,
+          showRomaji: true,
+        )));
+
+        expect(find.text('日本語'), findsOneWidget);
+        expect(find.text('にほんご'), findsOneWidget);
+        expect(find.text('nihongo'), findsOneWidget);
+        expect(find.text('の'), findsOneWidget);
+      });
+
+      testWidgets('隐藏罗马音与纯假名不显示 ruby 上标', (tester) async {
+        final m1 = Morpheme.fromToken({
+          'surface_form': 'わたし',
+          'reading': 'ワタシ',
+          'pos': '名詞',
+        });
+        final res = AnalysisResult(
+          source: 'わたし',
+          morphemes: [m1],
+          paragraphs: [
+            [m1],
+          ],
+        );
+        await tester.pumpWidget(scrollHost(FuriganaView(
+          result: res,
+          showRomaji: false,
+        )));
+
+        expect(find.text('わたし'), findsOneWidget);
+        expect(find.text('watashi'), findsNothing);
       });
     });
 
