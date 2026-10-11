@@ -213,21 +213,35 @@ class SingleKanjiView extends StatelessWidget {
     return 'No.$rank';
   }
 
+  static final Map<String, List<KanjiReading>> _onyomiHomophoneIndex = () {
+    final map = <String, List<KanjiReading>>{};
+    for (final r in kanjiReadingDict.values) {
+      for (final on in r.onyomi) {
+        (map[on] ??= []).add(r);
+      }
+    }
+    for (final list in map.values) {
+      list.sort((a, b) => a.frequencyRank.compareTo(b.frequencyRank));
+    }
+    return map;
+  }();
+
   static List<KanjiReading> _findHomophones(KanjiReading target) {
     if (target.onyomi.isEmpty) return const [];
-    final targetOnSet = target.onyomi.toSet();
-    final matches = <KanjiReading>[];
-    for (final r in kanjiReadingDict.values) {
-      if (r.kanji == target.kanji) continue;
-      for (final o in r.onyomi) {
-        if (targetOnSet.contains(o)) {
-          matches.add(r);
-          break;
+    final seen = <String>{target.kanji};
+    final candidates = <KanjiReading>[];
+    for (final on in target.onyomi) {
+      final list = _onyomiHomophoneIndex[on];
+      if (list != null) {
+        for (final r in list) {
+          if (seen.add(r.kanji)) {
+            candidates.add(r);
+          }
         }
       }
     }
-    matches.sort((a, b) => a.frequencyRank.compareTo(b.frequencyRank));
-    return matches.take(8).toList();
+    candidates.sort((a, b) => a.frequencyRank.compareTo(b.frequencyRank));
+    return candidates.take(8).toList();
   }
 }
 
