@@ -15,6 +15,9 @@ class QueryStore extends ChangeNotifier {
   /// 历史条数上限, 防止无限增长。
   static const maxHistory = 20;
 
+  /// 收藏条数上限, 防止无限增长。
+  static const maxFavorites = 500;
+
   QueryStore._();
 
   static final QueryStore instance = QueryStore._();
@@ -57,6 +60,10 @@ class QueryStore extends ChangeNotifier {
       if (_history.length > maxHistory) {
         _history = _history.sublist(0, maxHistory);
         _persistHistory();
+      }
+      if (_favorites.length > maxFavorites) {
+        _favorites = _favorites.sublist(0, maxFavorites);
+        _persistFavorites();
       }
       _loadError = null;
     } catch (e) {
@@ -107,6 +114,9 @@ class QueryStore extends ChangeNotifier {
       return false;
     }
     _favorites = [trimmed, ..._favorites];
+    if (_favorites.length > maxFavorites) {
+      _favorites = _favorites.sublist(0, maxFavorites);
+    }
     notifyListeners();
     _persistFavorites();
     return true;

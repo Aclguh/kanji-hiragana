@@ -806,6 +806,81 @@ void main() {
     });
   });
 
+  group('查询存储与收藏 (QueryStore)', () {
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      await QueryStore.instance.load();
+      QueryStore.instance.clearHistory();
+      for (final f in QueryStore.instance.favorites.toList()) {
+        QueryStore.instance.toggleFavorite(f);
+      }
+    });
+
+    test('记录查询与去重置顶', () {
+      final q = QueryStore.instance;
+      q.recordQuery('日本語');
+      q.recordQuery('東京');
+      expect(q.history, ['東京', '日本語']);
+
+      q.recordQuery('日本語');
+      expect(q.history, ['日本語', '東京']);
+    });
+
+    test('连续输入前缀折叠', () {
+      final q = QueryStore.instance;
+      q.recordQuery('日');
+      q.recordQuery('日本', previous: '日');
+      q.recordQuery('日本語', previous: '日本');
+      expect(q.history, ['日本語']);
+    });
+
+    test('历史记录上限保护 (maxHistory)', () {
+      final q = QueryStore.instance;
+      for (var i = 0; i < 30; i++) {
+        q.recordQuery('word_$i');
+      }
+      expect(q.history.length, QueryStore.maxHistory);
+      expect(q.history.first, 'word_29');
+    });
+
+    test('收藏切换与容量上限保护 (maxFavorites)', () {
+      final q = QueryStore.instance;
+      expect(q.isFavorite('桜'), isFalse);
+
+      final added = q.toggleFavorite('桜');
+      expect(added, isTrue);
+      expect(q.isFavorite('桜'), isTrue);
+      expect(q.favorites, ['桜']);
+
+      final removed = q.toggleFavorite('桜');
+      expect(removed, isFalse);
+      expect(q.isFavorite('桜'), isFalse);
+      expect(q.favorites, isEmpty);
+
+      // 批量添加测试上限保护
+      for (var i = 0; i < 550; i++) {
+        q.toggleFavorite('fav_$i');
+      }
+      expect(q.favorites.length, QueryStore.maxFavorites);
+      expect(q.favorites.first, 'fav_549');
+    });
+
+    test('移除单条历史与清空历史', () {
+      final q = QueryStore.instance;
+      q.recordQuery('A');
+      q.recordQuery('B');
+      q.toggleFavorite('F');
+
+      q.removeHistory('A');
+      expect(q.history, ['B']);
+      expect(q.favorites, ['F']);
+
+      q.clearHistory();
+      expect(q.history, isEmpty);
+      expect(q.favorites, ['F']); // 收藏不随历史清空
+    });
+  });
+
   group('多语言与界面文案 (AppStrings)', () {
     test('AppLanguage 键值解析与默认回退', () {
       expect(AppLanguage.fromName('zh'), AppLanguage.zh);
