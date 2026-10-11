@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../core/japanese_analyzer.dart';
 import '../core/kanji_reading_dict.dart';
+import '../core/morpheme.dart';
 import '../core/strings.dart';
 import '../theme.dart';
 import 'feedback.dart';
@@ -22,7 +24,7 @@ class AnkiExportSheet extends StatelessWidget {
     );
   }
 
-  String _generateAnkiTsv() {
+  Future<String> _generateAnkiTsv(AppStrings s) async {
     final buffer = StringBuffer();
     // 写入表头 (供 Anki 自动映射字段)
     buffer.writeln('#separator:tab');
@@ -37,15 +39,43 @@ class AnkiExportSheet extends StatelessWidget {
       final reading = kanjiReadingDict[trimmed];
       if (reading != null) {
         final readings = [
-          if (reading.onyomi.isNotEmpty) '音: ${reading.onyomi.join("、")}',
-          if (reading.kunyomi.isNotEmpty) '训: ${reading.kunyomi.join("、")}',
+          if (reading.onyomi.isNotEmpty)
+            s.ankiOnyomiPrefix(reading.onyomi.join('、')),
+          if (reading.kunyomi.isNotEmpty)
+            s.ankiKunyomiPrefix(reading.kunyomi.join('、')),
         ].join(' / ');
-        final meanings = reading.meanings.join('；');
-        final note = '笔画: ${reading.strokes} | 频率: ${reading.frequencyRank}';
-        buffer.writeln('$trimmed\t$readings\t\t$meanings\t$note');
+        final meanings = AnalysisResult.escapeTsvField(
+          s.language == AppLanguage.en && reading.meaningsEn.isNotEmpty
+              ? reading.meaningsEn.join('; ')
+              : reading.meanings.join('；'),
+        );
+        final note = s.ankiNote(reading.strokes, reading.frequencyRank);
+        buffer.writeln(
+          '${AnalysisResult.escapeTsvField(trimmed)}\t${AnalysisResult.escapeTsvField(readings)}\t\t$meanings\t$note',
+        );
       } else {
-        // 多字词条
-        buffer.writeln('$trimmed\t\t\t收藏词条\t');
+        // 多字词条: 异步形态素分析提取假名、罗马音与词性
+        try {
+          final res = await JapaneseAnalyzer.instance.analyze(trimmed);
+          final hira = AnalysisResult.escapeTsvField(res.fullHiragana);
+          final romaji = AnalysisResult.escapeTsvField(res.fullRomaji);
+          final posList = res.morphemes
+              .map((m) => m.partOfSpeech)
+              .where((p) => p.isNotEmpty)
+              .toSet();
+          final pos = posList.isNotEmpty
+              ? AnalysisResult.escapeTsvField(
+                  posList.map(s.posLabel).join('/'),
+                )
+              : s.ankiTagFavorite;
+          buffer.writeln(
+            '${AnalysisResult.escapeTsvField(trimmed)}\t$hira\t$romaji\t$pos\t${s.ankiTagFavorite}',
+          );
+        } catch (_) {
+          buffer.writeln(
+            '${AnalysisResult.escapeTsvField(trimmed)}\t\t\t${s.ankiTagFavorite}\t',
+          );
+        }
       }
     }
     return buffer.toString().trimRight();
@@ -114,9 +144,12 @@ class AnkiExportSheet extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                onPressed: () {
+                onPressed: () async {
                   Navigator.of(context).pop();
-                  copyWithToast(context, _generateAnkiTsv(), s.copiedAnki);
+                  final tsv = await _generateAnkiTsv(s);
+                  if (context.mounted) {
+                    copyWithToast(context, tsv, s.copiedAnki);
+                  }
                 },
               ),
               const SizedBox(height: 10),

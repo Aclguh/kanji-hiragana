@@ -63,9 +63,11 @@ class MainActivity : FlutterActivity(), TextToSpeech.OnInitListener {
                     "isAvailable" -> result.success(ttsReady)
                     "speak" -> {
                         val text = call.argument<String>("text") ?: ""
+                        val utteranceId = call.argument<String>("utteranceId")
+                            ?: "KANJI_TTS_${System.currentTimeMillis()}"
                         if (ttsReady && text.isNotEmpty()) {
                             tts?.stop()
-                            tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "KANJI_TTS_${System.currentTimeMillis()}")
+                            tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
                             result.success(true)
                         } else {
                             result.success(false)

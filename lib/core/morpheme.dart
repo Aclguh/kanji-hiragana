@@ -188,22 +188,52 @@ class AnalysisResult {
           return m.surface;
         }).join();
 
+  /// 规范化 TSV 字段内容: 换行替换为 `<br>` 以免断行破坏 TSV 结构, 制表符替换为空格。
+  static String escapeTsvField(String field) {
+    return field
+        .replaceAll('\r\n', '<br>')
+        .replaceAll('\r', '<br>')
+        .replaceAll('\n', '<br>')
+        .replaceAll('\t', ' ');
+  }
+
   /// 导出为 Anki 牌组格式 (制表符分隔 TSV: 正面 \t 背面/假名 \t 罗马音 \t 词性/释义 \t 备注)。
-  String get toAnkiTsv {
+  String get toAnkiTsv => toAnkiTsvFormatted();
+
+  /// 导出为 Anki 牌组格式，支持自定义国际化标签与释义语言。
+  String toAnkiTsvFormatted({
+    String sentenceTag = '完整句',
+    String Function(String reading)? onyomiPrefix,
+    String Function(String reading)? kunyomiPrefix,
+    String Function(int strokes, int rank)? noteFormatter,
+    String Function(String basicForm)? baseFormPrefix,
+    bool englishMeaning = false,
+  }) {
+    final formatOnyomi = onyomiPrefix ?? (r) => '音: $r';
+    final formatKunyomi = kunyomiPrefix ?? (r) => '训: $r';
+    final formatNote = noteFormatter ?? (s, r) => '笔画: $s | 频率: $r';
+    final formatBase = baseFormPrefix ?? (b) => '原形: $b';
+
     if (isSingleKanji) {
       final k = singleKanji!;
       final readings = [
-        if (k.onyomi.isNotEmpty) '音: ${k.onyomi.join("、")}',
-        if (k.kunyomi.isNotEmpty) '训: ${k.kunyomi.join("、")}',
+        if (k.onyomi.isNotEmpty) formatOnyomi(k.onyomi.join('、')),
+        if (k.kunyomi.isNotEmpty) formatKunyomi(k.kunyomi.join('、')),
       ].join(' / ');
-      final meanings = k.meanings.join('；');
-      final note = '笔画: ${k.strokes} | 频率: ${k.frequencyRank}';
-      return '${k.kanji}\t$readings\t\t$meanings\t$note';
+      final meanings = escapeTsvField(
+        englishMeaning && k.meaningsEn.isNotEmpty
+            ? k.meaningsEn.join('; ')
+            : k.meanings.join('；'),
+      );
+      final note = formatNote(k.strokes, k.frequencyRank);
+      return '${escapeTsvField(k.kanji)}\t${escapeTsvField(readings)}\t\t$meanings\t$note';
     }
 
     final buffer = StringBuffer();
     // 首先输出整句为一张卡片
-    buffer.writeln('$source\t$fullHiragana\t$fullRomaji\t完整句\t');
+    buffer.writeln(
+      '${escapeTsvField(source)}\t${escapeTsvField(fullHiragana)}\t${escapeTsvField(fullRomaji)}\t$sentenceTag\t',
+    );
 
     // 随后输出句子中含汉字或有注音的词汇卡片 (去重)
     final seen = <String>{};
@@ -212,8 +242,10 @@ class AnalysisResult {
         final pos = m.partOfSpeechDetail.isNotEmpty
             ? '${m.partOfSpeech}/${m.partOfSpeechDetail}'
             : m.partOfSpeech;
-        final note = m.isConjugated ? '原形: ${m.basicForm}' : '';
-        buffer.writeln('${m.surface}\t${m.hiragana}\t${m.romaji}\t$pos\t$note');
+        final note = m.isConjugated ? formatBase(m.basicForm) : '';
+        buffer.writeln(
+          '${escapeTsvField(m.surface)}\t${escapeTsvField(m.hiragana)}\t${escapeTsvField(m.romaji)}\t${escapeTsvField(pos)}\t${escapeTsvField(note)}',
+        );
       }
     }
     return buffer.toString().trimRight();

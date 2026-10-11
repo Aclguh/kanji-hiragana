@@ -98,6 +98,13 @@ sealed class AppStrings {
   String get copiedRuby;
   String get copiedBrackets;
   String get copiedAnki;
+  String get ttsUnavailable;
+  String get ankiTagSentence;
+  String get ankiTagFavorite;
+  String ankiBaseFormPrefix(String form);
+  String ankiOnyomiPrefix(String readings);
+  String ankiKunyomiPrefix(String readings);
+  String ankiNote(int strokes, int rank);
 
   /// 结果区底部。
   String get labelHiragana;
@@ -425,6 +432,27 @@ class ZhStrings extends AppStrings {
 
   @override
   String get copiedAnki => '已复制 Anki 牌组格式文本';
+
+  @override
+  String get ttsUnavailable => '未检测到系统日语语音引擎，请在系统设置中安装 TTS 语音数据';
+
+  @override
+  String get ankiTagSentence => '完整句';
+
+  @override
+  String get ankiTagFavorite => '收藏词条';
+
+  @override
+  String ankiBaseFormPrefix(String form) => '原形: $form';
+
+  @override
+  String ankiOnyomiPrefix(String readings) => '音: $readings';
+
+  @override
+  String ankiKunyomiPrefix(String readings) => '训: $readings';
+
+  @override
+  String ankiNote(int strokes, int rank) => '笔画: $strokes | 频率: $rank';
 
   @override
   String get labelHiragana => '平假名';
@@ -926,6 +954,28 @@ class EnStrings extends AppStrings {
 
   @override
   String get copiedAnki => 'Anki deck text copied';
+
+  @override
+  String get ttsUnavailable =>
+      'Japanese TTS engine not available. Please install speech data in system settings.';
+
+  @override
+  String get ankiTagSentence => 'Full sentence';
+
+  @override
+  String get ankiTagFavorite => 'Saved item';
+
+  @override
+  String ankiBaseFormPrefix(String form) => 'Base: $form';
+
+  @override
+  String ankiOnyomiPrefix(String readings) => 'On: $readings';
+
+  @override
+  String ankiKunyomiPrefix(String readings) => 'Kun: $readings';
+
+  @override
+  String ankiNote(int strokes, int rank) => 'Strokes: $strokes | Frequency: $rank';
 
   @override
   String get labelHiragana => 'Hiragana';

@@ -321,7 +321,15 @@ class _HomePageState extends State<HomePage>
                 title: Text(s.exportAnki),
                 onTap: () {
                   Navigator.pop(ctx);
-                  copyWithToast(context, result.toAnkiTsv, s.copiedAnki);
+                  final anki = result.toAnkiTsvFormatted(
+                    sentenceTag: s.ankiTagSentence,
+                    onyomiPrefix: s.ankiOnyomiPrefix,
+                    kunyomiPrefix: s.ankiKunyomiPrefix,
+                    noteFormatter: s.ankiNote,
+                    baseFormPrefix: s.ankiBaseFormPrefix,
+                    englishMeaning: s.language == AppLanguage.en,
+                  );
+                  copyWithToast(context, anki, s.copiedAnki);
                 },
               ),
             ],

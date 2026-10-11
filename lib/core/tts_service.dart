@@ -17,6 +17,8 @@ class TtsService with ChangeNotifier {
 
   bool _isSpeaking = false;
   String _speakingText = '';
+  int _utteranceSeq = 0;
+  String? _currentUtteranceId;
 
   /// 是否正在发音。
   bool get isSpeaking => _isSpeaking;
@@ -24,16 +26,33 @@ class TtsService with ChangeNotifier {
   /// 当前正在发音的文本。
   String get speakingText => _speakingText;
 
+  /// 当前发音任务标识。
+  String? get currentUtteranceId => _currentUtteranceId;
+
+  /// 检查系统 TTS 引擎是否就绪。
+  Future<bool> isAvailable() async {
+    try {
+      final result = await _channel.invokeMethod<bool>('isAvailable');
+      return result == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> _handlePlatformCall(MethodCall call) async {
+    final utteranceId = call.arguments as String?;
     switch (call.method) {
       case 'onSpeakStart':
+        if (utteranceId != null && utteranceId != _currentUtteranceId) return;
         _isSpeaking = true;
         notifyListeners();
         break;
       case 'onSpeakDone':
       case 'onSpeakError':
+        if (utteranceId != null && utteranceId != _currentUtteranceId) return;
         _isSpeaking = false;
         _speakingText = '';
+        _currentUtteranceId = null;
         notifyListeners();
         break;
     }
@@ -44,30 +63,42 @@ class TtsService with ChangeNotifier {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return false;
 
-    try {
-      _speakingText = trimmed;
-      _isSpeaking = true;
-      notifyListeners();
+    final utteranceId = 'tts_${++_utteranceSeq}';
+    _currentUtteranceId = utteranceId;
+    _speakingText = trimmed;
+    _isSpeaking = true;
+    notifyListeners();
 
-      final result = await _channel.invokeMethod<bool>('speak', {'text': trimmed});
+    try {
+      final result = await _channel.invokeMethod<bool>('speak', {
+        'text': trimmed,
+        'utteranceId': utteranceId,
+      });
       if (result != true) {
-        _isSpeaking = false;
-        _speakingText = '';
-        notifyListeners();
+        if (_currentUtteranceId == utteranceId) {
+          _isSpeaking = false;
+          _speakingText = '';
+          _currentUtteranceId = null;
+          notifyListeners();
+        }
         return false;
       }
       return true;
     } catch (_) {
       // 在宿主测试或不支持的平台上静默降级
-      _isSpeaking = false;
-      _speakingText = '';
-      notifyListeners();
+      if (_currentUtteranceId == utteranceId) {
+        _isSpeaking = false;
+        _speakingText = '';
+        _currentUtteranceId = null;
+        notifyListeners();
+      }
       return false;
     }
   }
 
   /// 停止发音。
   Future<void> stop() async {
+    _currentUtteranceId = null;
     try {
       await _channel.invokeMethod<bool>('stop');
     } catch (_) {
