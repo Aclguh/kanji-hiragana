@@ -70,15 +70,53 @@ class VerticalView extends StatelessWidget {
     );
   }
 
+  /// 每一纵列容纳的最大字符数 (折行阈值)。
+  /// 保持文库本典籍单列高度适中, 超出部分自动向左折行。
+  static const int maxCharsPerColumn = 14;
+
+  List<List<Morpheme>> _splitIntoColumns(List<Morpheme> morphemes) {
+    if (morphemes.isEmpty) return const [];
+    final columns = <List<Morpheme>>[];
+    var current = <Morpheme>[];
+    var currentLen = 0;
+
+    for (final m in morphemes) {
+      final len = m.surface.length;
+      if (current.isNotEmpty && currentLen + len > maxCharsPerColumn) {
+        columns.add(current);
+        current = [m];
+        currentLen = len;
+      } else {
+        current.add(m);
+        currentLen += len;
+      }
+    }
+    if (current.isNotEmpty) {
+      columns.add(current);
+    }
+    return columns;
+  }
+
   Widget _buildParagraph(BuildContext context, List<Morpheme> morphemes) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
+    final columns = _splitIntoColumns(morphemes);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      textDirection: TextDirection.rtl,
       children: [
-        for (final m in morphemes)
-          _VerticalMorphemeItem(
-            morpheme: m,
-            showRomaji: showRomaji,
+        for (var c = 0; c < columns.length; c++) ...[
+          if (c > 0) const SizedBox(width: 14),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              for (final m in columns[c])
+                _VerticalMorphemeItem(
+                  morpheme: m,
+                  showRomaji: showRomaji,
+                ),
+            ],
           ),
+        ],
       ],
     );
   }

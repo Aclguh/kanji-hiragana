@@ -486,6 +486,39 @@ void main() {
         expect(find.text('の'), findsOneWidget);
         expect(find.text('に'), findsOneWidget);
       });
+
+      testWidgets('长段落超阈值自动向左折列排版', (tester) async {
+        final m1 = Morpheme.fromToken({
+          'surface_form': '吾輩は猫である',
+          'reading': 'ワガハイハネコデアル',
+          'pos': '名詞',
+        });
+        final m2 = Morpheme.fromToken({
+          'surface_form': '名前はまだ無い',
+          'reading': 'ナマエハマダナイ',
+          'pos': '名詞',
+        });
+        final m3 = Morpheme.fromToken({
+          'surface_form': 'どこで生れたかとんと見当がつかぬ',
+          'reading': 'ドコデウマレタカトントケントウガツカヌ',
+          'pos': '名詞',
+        });
+        final res = AnalysisResult(
+          source: '吾輩は猫である名前はまだ無いどこで生れたかとんと見当がつかぬ',
+          morphemes: [m1, m2, m3],
+          paragraphs: [
+            [m1, m2, m3],
+          ],
+        );
+        await tester.pumpWidget(scrollHost(VerticalView(
+          result: res,
+          showRomaji: true,
+        )));
+
+        expect(find.text('吾'), findsOneWidget);
+        expect(find.text('猫'), findsOneWidget);
+        expect(find.text('見'), findsOneWidget);
+      });
     });
 
     group('RadicalPickerSheet 部首检字表 ($name)', () {
