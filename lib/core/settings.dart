@@ -59,7 +59,7 @@ class SettingsController extends ChangeNotifier {
   /// 结果区是否显示罗马音。
   bool _showRomaji = true;
 
-  /// 结果视图, 取值为主界面 ViewMode 枚举的 name ('alignment' / 'furigana')。
+  /// 结果视图, 取值为主界面 ViewMode 枚举的 name ('alignment' / 'furigana' / 'vertical')。
   /// 用字符串而非直接依赖 UI 枚举, 保持 core 层不引用界面代码。
   String _viewModeName = 'alignment';
 
