@@ -22,28 +22,12 @@ class FilterResultPage extends StatefulWidget {
 class _FilterResultPageState extends State<FilterResultPage> {
   final _scrollController = ScrollController();
 
-  late final List<KanjiReading> _results = widget.filter.apply(
+  late final FilterResult _filterResult = widget.filter.applyWithStats(
     kanjiReadingDict.values,
   );
 
-  /// 设置了频率区间时, 「满足其他条件但没有频率排名」而被排除的字数。
-  ///
-  /// 频率筛选会把这类字一刀切掉 (见 [kNoFrequencyRank]); 界面上提示一句,
-  /// 避免用户误以为「频率 1~2000」的结果就是全集。
-  late final int _excludedNoRank = _countExcludedNoRank();
-
-  int _countExcludedNoRank() {
-    if (widget.filter.frequencyMin == null &&
-        widget.filter.frequencyMax == null) {
-      return 0;
-    }
-    final withoutFrequency = widget.filter.copyWith(clearFrequency: true);
-    return kanjiReadingDict.values
-        .where((r) =>
-            r.frequencyRank >= kNoFrequencyRank &&
-            withoutFrequency.matches(r))
-        .length;
-  }
+  List<KanjiReading> get _results => _filterResult.items;
+  int get _excludedNoRank => _filterResult.excludedNoRankCount;
 
   @override
   void dispose() {

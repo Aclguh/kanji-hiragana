@@ -68,6 +68,7 @@ sealed class AppStrings {
 
   String get tagline;
   String get inputHint;
+  String inputExceededLimit(int limit);
   String get loadingDictionary;
   String get clear;
   String get filterKanji;
@@ -367,6 +368,9 @@ class ZhStrings extends AppStrings {
   String get inputHint => '输入日语汉字';
 
   @override
+  String inputExceededLimit(int limit) => '输入过长，已截取前 $limit 字进行分析';
+
+  @override
   String get loadingDictionary => '正在加载日语词典…';
 
   @override
@@ -600,7 +604,7 @@ class ZhStrings extends AppStrings {
   String get homophoneHeading => '同音汉字';
 
   @override
-  String get homophoneHint => '共享相同音读的常用汉字';
+  String get homophoneHint => '共享相同音读或训读的常用汉字';
 
   @override
   String homophoneBadge(int count) => '$count 字';
@@ -889,6 +893,10 @@ class EnStrings extends AppStrings {
   String get inputHint => 'Enter Japanese kanji';
 
   @override
+  String inputExceededLimit(int limit) =>
+      'Input exceeds limit, truncated to first $limit characters';
+
+  @override
   String get loadingDictionary => 'Loading Japanese dictionary…';
 
   @override
@@ -1167,7 +1175,7 @@ class EnStrings extends AppStrings {
   String get homophoneHeading => 'Homophones';
 
   @override
-  String get homophoneHint => 'Kanji sharing on\'yomi';
+  String get homophoneHint => 'Kanji sharing on\'yomi or kun\'yomi';
 
   @override
   String homophoneBadge(int count) => '$count kanji';

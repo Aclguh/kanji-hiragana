@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kanji_hiragana/core/japanese_analyzer.dart';
 import 'package:kanji_hiragana/core/kana_romaji.dart';
 import 'package:kanji_hiragana/core/kanji_filter.dart';
+import 'package:kanji_hiragana/core/kanji_homophones.dart';
 import 'package:kanji_hiragana/core/kanji_reading_dict.dart';
 import 'package:kanji_hiragana/core/kanji_words_dict.dart';
 import 'package:kanji_hiragana/core/loanwords_dict.dart';
@@ -1114,6 +1115,71 @@ void main() {
       expect(tsv, contains('東京に\tとうきょうに\ttoukyou ni\t完整句'));
       expect(tsv, contains('東京\tとうきょう\ttoukyou\t名詞/固有名詞'));
       expect(tsv.contains('\nに\t'), isFalse);
+    });
+  });
+
+  group('安全与性能改进用例 (IMPROVEMENTS)', () {
+    test('SEC-01: 超长文本分词截断保护与标记', () async {
+      final huge = '本' * (kMaxInputLength + 500);
+      final res = await JapaneseAnalyzer.instance.analyze(huge);
+      expect(res.isTruncated, isTrue);
+      expect(res.source.length, kMaxInputLength);
+    });
+
+    test('SEC-02: QueryStore 文本清洗与最大长度截断', () {
+      final longText = 'A' * 300;
+      final sanitized = QueryStore.sanitizeText(longText);
+      expect(sanitized.length, QueryStore.maxQueryTextLength);
+
+      const dirty = '東京\x00\x08テスト';
+      expect(QueryStore.sanitizeText(dirty), '東京テスト');
+    });
+
+    test('SEC-03: Anki TSV HTML 特殊字符转义', () {
+      const text = '<b>"test"</b>&\'sample\'';
+      final escaped = AnalysisResult.escapeTsvField(text);
+      expect(escaped, contains('&lt;b&gt;'));
+      expect(escaped, contains('&quot;test&quot;'));
+      expect(escaped, contains('&amp;'));
+      expect(escaped.contains('<b'), isFalse);
+    });
+
+    test('ARCH-01: 单例 resetForTesting 状态复位', () {
+      QueryStore.instance.recordQuery('测试');
+      expect(QueryStore.instance.history, isNotEmpty);
+      QueryStore.instance.resetForTesting();
+      expect(QueryStore.instance.history, isEmpty);
+      expect(QueryStore.instance.favorites, isEmpty);
+
+      SettingsController.instance.resetForTesting();
+      expect(SettingsController.instance.themeMode, AppThemeMode.system);
+    });
+
+    test('ARCH-03 & CODE-02: KanjiHomophones 同音词反向索引与音训推荐', () {
+      final flower = kanjiReadingDict['花']!;
+      final homophones = KanjiHomophones.findHomophones(flower);
+      expect(homophones, isNotEmpty);
+      expect(homophones.any((r) => r.kanji == '鼻'), isTrue);
+
+      final nichiList = KanjiHomophones.getByOnyomi('にち');
+      expect(nichiList.any((r) => r.kanji == '日'), isTrue);
+
+      final hanaList = KanjiHomophones.getByKunyomi('はな');
+      expect(hanaList.any((r) => r.kanji == '花'), isTrue);
+      expect(hanaList.any((r) => r.kanji == '鼻'), isTrue);
+    });
+
+    test('PERF-01: applyWithStats 单次遍历返回 FilterResult', () {
+      const filter = KanjiFilter(frequencyMin: 1, frequencyMax: 50);
+      final res = filter.applyWithStats(kanjiReadingDict.values);
+      expect(res.items.length, 50);
+      expect(res.excludedNoRankCount, greaterThan(0));
+    });
+
+    test('CODE-01: 改良平文罗马音全角标点符号转半角', () {
+      final romaji = hiraganaToRomaji('わたし、にほん。');
+      expect(romaji, 'watashi, nihon. ');
+      expect(hiraganaToRomaji('「はい」'), '"hai"');
     });
   });
 }

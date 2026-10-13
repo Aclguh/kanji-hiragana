@@ -59,6 +59,19 @@ const Map<String, String> _singleMap = {
   'ー': '',
 };
 
+/// 常见全角日文标点符号到 ASCII 罗马音标点的映射。
+const Map<String, String> _punctuationMap = {
+  '、': ', ',
+  '。': '. ',
+  '！': '!',
+  '？': '?',
+  '「': '"',
+  '」': '"',
+  '・': '/',
+  '〜': '~',
+  '～': '~',
+};
+
 /// 片假名 -> 平假名 的 Unicode 码位偏移量。
 const int _katakanaToHiraganaOffset = 0x30A1 - 0x3041;
 
@@ -185,6 +198,8 @@ String hiraganaToRomaji(String input) {
     final single = _singleMap[char];
     if (single != null) {
       buffer.write(single);
+    } else if (_punctuationMap.containsKey(char)) {
+      buffer.write(_punctuationMap[char]);
     } else if (char.trim().isNotEmpty) {
       // 非假名字符(汉字、标点等)保持原样。
       buffer.write(char);

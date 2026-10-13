@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../core/kana_romaji.dart';
 import '../core/kanji_filter.dart';
+import '../core/kanji_homophones.dart';
 import '../core/kanji_reading_dict.dart';
 import '../core/kanji_words_dict.dart';
 import '../core/strings.dart';
@@ -29,7 +30,7 @@ class SingleKanjiView extends StatelessWidget {
     final s = AppStrings.of(context);
     // 常见搭配词来自构建期生成的 IPADIC 数据; 查不到的字整段省略。
     final words = kanjiWordsDict[reading.kanji] ?? const <KanjiWord>[];
-    final homophones = _findHomophones(reading);
+    final homophones = KanjiHomophones.findHomophones(reading);
     final yojijukugo = getYojijukugoForKanji(reading.kanji);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -211,37 +212,6 @@ class SingleKanjiView extends StatelessWidget {
   static String _frequencyLabel(AppStrings s, int rank) {
     if (rank >= kNoFrequencyRank) return s.frequencyUnranked;
     return 'No.$rank';
-  }
-
-  static final Map<String, List<KanjiReading>> _onyomiHomophoneIndex = () {
-    final map = <String, List<KanjiReading>>{};
-    for (final r in kanjiReadingDict.values) {
-      for (final on in r.onyomi) {
-        (map[on] ??= []).add(r);
-      }
-    }
-    for (final list in map.values) {
-      list.sort((a, b) => a.frequencyRank.compareTo(b.frequencyRank));
-    }
-    return map;
-  }();
-
-  static List<KanjiReading> _findHomophones(KanjiReading target) {
-    if (target.onyomi.isEmpty) return const [];
-    final seen = <String>{target.kanji};
-    final candidates = <KanjiReading>[];
-    for (final on in target.onyomi) {
-      final list = _onyomiHomophoneIndex[on];
-      if (list != null) {
-        for (final r in list) {
-          if (seen.add(r.kanji)) {
-            candidates.add(r);
-          }
-        }
-      }
-    }
-    candidates.sort((a, b) => a.frequencyRank.compareTo(b.frequencyRank));
-    return candidates.take(8).toList();
   }
 }
 

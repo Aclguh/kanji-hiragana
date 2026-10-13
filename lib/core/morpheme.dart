@@ -134,11 +134,15 @@ class AnalysisResult {
   /// 若输入恰好是单个汉字, 这里是该字的音读/训读详情; 否则为 null。
   final KanjiReading? singleKanji;
 
+  /// 若输入文本超长，该标记指示结果是否已被截断。
+  final bool isTruncated;
+
   const AnalysisResult({
     required this.source,
     required this.morphemes,
     this.paragraphs = const [],
     this.singleKanji,
+    this.isTruncated = false,
   });
 
   /// 全文平假名(规范拼写), 多段落时以换行连接。
@@ -188,9 +192,13 @@ class AnalysisResult {
           return m.surface;
         }).join();
 
-  /// 规范化 TSV 字段内容: 换行替换为 `<br>` 以免断行破坏 TSV 结构, 制表符替换为空格。
+  /// 规范化 TSV 字段内容: 转义 HTML 特殊字符并替换换行与制表符。
   static String escapeTsvField(String field) {
     return field
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
         .replaceAll('\r\n', '<br>')
         .replaceAll('\r', '<br>')
         .replaceAll('\n', '<br>')

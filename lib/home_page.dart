@@ -191,6 +191,12 @@ class _HomePageState extends State<HomePage>
         _errorKind = null;
         _errorDetail = null;
       });
+      if (r.isTruncated && mounted) {
+        showToast(
+          context,
+          AppStrings.of(context).inputExceededLimit(kMaxInputLength),
+        );
+      }
       final previous = _lastAnalyzedText;
       _lastAnalyzedText = trimmed;
       _queryStore.recordQuery(trimmed, previous: previous);

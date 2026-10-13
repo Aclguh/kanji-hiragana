@@ -46,6 +46,19 @@ class SettingsController extends ChangeNotifier {
 
   static final SettingsController instance = SettingsController._();
 
+  /// 供测试环境重置单例状态。
+  @visibleForTesting
+  void resetForTesting() {
+    _themeMode = AppThemeMode.system;
+    _autoRotate = false;
+    _language = AppLanguage.zh;
+    _showRomaji = true;
+    _viewModeName = 'alignment';
+    _prefs = null;
+    _loadError = null;
+    notifyListeners();
+  }
+
   SharedPreferences? _prefs;
 
   AppThemeMode _themeMode = AppThemeMode.system;

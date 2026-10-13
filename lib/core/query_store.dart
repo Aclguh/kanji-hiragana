@@ -18,9 +18,31 @@ class QueryStore extends ChangeNotifier {
   /// 收藏条数上限, 防止无限增长。
   static const maxFavorites = 500;
 
+  /// 单条查询记录的最大字符长度，防止超大异常文本写入持久化。
+  static const maxQueryTextLength = 200;
+
+  /// 清洗输入文本: 截断超长部分并过滤控制字符。
+  static String sanitizeText(String text) {
+    var trimmed = text.trim();
+    if (trimmed.length > maxQueryTextLength) {
+      trimmed = trimmed.substring(0, maxQueryTextLength).trim();
+    }
+    return trimmed.replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F]'), '');
+  }
+
   QueryStore._();
 
   static final QueryStore instance = QueryStore._();
+
+  /// 供测试环境重置单例状态。
+  @visibleForTesting
+  void resetForTesting() {
+    _history = const [];
+    _favorites = const [];
+    _prefs = null;
+    _loadError = null;
+    notifyListeners();
+  }
 
   SharedPreferences? _prefs;
 
@@ -43,7 +65,7 @@ class QueryStore extends ChangeNotifier {
   List<String> get favorites => List.unmodifiable(_favorites);
 
   /// 该文本是否已收藏。
-  bool isFavorite(String text) => _favorites.contains(text.trim());
+  bool isFavorite(String text) => _favorites.contains(sanitizeText(text));
 
   /// 从本地读取。应在 runApp 之前 await 完成。
   ///
@@ -79,10 +101,10 @@ class QueryStore extends ChangeNotifier {
   /// (以它开头且更长, 且它就是当前最新记录), 则原位更新首条,
   /// 把连续打字产生的中间态折叠成一条, 而不是每次按键都留痕。
   void recordQuery(String text, {String previous = ''}) {
-    final trimmed = text.trim();
+    final trimmed = sanitizeText(text);
     if (trimmed.isEmpty) return;
 
-    final prev = previous.trim();
+    final prev = sanitizeText(previous);
     final extendsLast = prev.isNotEmpty &&
         trimmed.startsWith(prev) &&
         trimmed.length > prev.length &&
@@ -104,7 +126,7 @@ class QueryStore extends ChangeNotifier {
 
   /// 切换收藏状态, 返回切换后是否已收藏。
   bool toggleFavorite(String text) {
-    final trimmed = text.trim();
+    final trimmed = sanitizeText(text);
     if (trimmed.isEmpty) return isFavorite(trimmed);
 
     if (_favorites.contains(trimmed)) {

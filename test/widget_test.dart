@@ -549,5 +549,67 @@ void main() {
         expect(find.textContaining('纯文本列表'), findsOneWidget);
       });
     });
+
+    group('无障碍超大文字缩放渲染 ($name)', () {
+      Widget largeFontHost(Widget child, {bool scrollable = false}) {
+        final content =
+            scrollable ? SingleChildScrollView(child: child) : child;
+        return AppStringsScope(
+          strings: const ZhStrings(),
+          child: MaterialApp(
+            theme: theme,
+            home: MediaQuery(
+              data: const MediaQueryData(
+                size: Size(360, 640),
+                textScaler: TextScaler.linear(1.8),
+              ),
+              child: Scaffold(body: content),
+            ),
+          ),
+        );
+      }
+
+      testWidgets('单汉字详解与同音字在大字号下安全换行', (tester) async {
+        final kanji = kanjiReadingDict['日']!;
+        await tester.pumpWidget(largeFontHost(
+          SingleKanjiView(reading: kanji),
+          scrollable: true,
+        ));
+        expect(tester.takeException(), isNull);
+        expect(find.text('日'), findsWidgets);
+      });
+
+      testWidgets('对照表与总结在大字号下安全换行', (tester) async {
+        final m1 = Morpheme.fromToken({
+          'surface_form': '吾輩',
+          'reading': 'ワガハイ',
+          'pos': '名詞',
+        });
+        final res = AnalysisResult(
+          source: '吾輩',
+          morphemes: [m1],
+          paragraphs: [
+            [m1],
+          ],
+        );
+        await tester.pumpWidget(largeFontHost(
+          AlignmentTable(result: res),
+          scrollable: true,
+        ));
+        expect(tester.takeException(), isNull);
+        expect(find.text('吾輩'), findsOneWidget);
+      });
+
+      testWidgets('筛选抽屉表单在大字号下正常构建', (tester) async {
+        await tester.pumpWidget(largeFontHost(
+          FilterDrawerContent(
+            initial: KanjiFilter.initial,
+            onSubmit: (_) {},
+          ),
+        ));
+        expect(tester.takeException(), isNull);
+        expect(find.text('重置'), findsOneWidget);
+      });
+    });
   }
 }

@@ -94,8 +94,15 @@ class MainActivity : FlutterActivity(), TextToSpeech.OnInitListener {
                 override fun onDone(utteranceId: String?) {
                     runOnUiThread { ttsChannel?.invokeMethod("onSpeakDone", utteranceId) }
                 }
+                @Deprecated("Deprecated in Java")
                 override fun onError(utteranceId: String?) {
                     runOnUiThread { ttsChannel?.invokeMethod("onSpeakError", utteranceId) }
+                }
+                override fun onError(utteranceId: String?, errorCode: Int) {
+                    runOnUiThread {
+                        val args = mapOf("utteranceId" to utteranceId, "errorCode" to errorCode)
+                        ttsChannel?.invokeMethod("onSpeakError", args)
+                    }
                 }
             })
         } else {
@@ -104,6 +111,10 @@ class MainActivity : FlutterActivity(), TextToSpeech.OnInitListener {
     }
 
     override fun onDestroy() {
+        platformChannel?.setMethodCallHandler(null)
+        ttsChannel?.setMethodCallHandler(null)
+        platformChannel = null
+        ttsChannel = null
         tts?.stop()
         tts?.shutdown()
         tts = null

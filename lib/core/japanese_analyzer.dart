@@ -11,9 +11,13 @@ import 'morpheme.dart';
 // ignore: implementation_imports
 import 'package:kuromoji/src/tokenizer.dart';
 
+/// 单次分析的最大字符数限制，防止超长文本造成内存膨胀与卡顿。
+const int kMaxInputLength = 4000;
+
 /// isolate 消息标签 (主 -> 分词 isolate)。
 const _buildTag = 'build';
 const _tokenizeTag = 'tokenize';
+const _tokenizeBatchTag = 'tokenize_batch';
 
 /// isolate 消息标签 (分词 isolate -> 主)。
 const _resultTag = 'result';
@@ -56,7 +60,7 @@ class JapaneseAnalyzer {
   Future<void>? _initializing;
 
   /// 在途请求, 按请求 id 配对回信; 支持并发请求 (isolate 侧天然串行)。
-  final _pending = <int, Completer<List<Map<String, dynamic>>>>{};
+  final _pending = <int, Completer<dynamic>>{};
 
   int _nextId = 0;
 
@@ -95,11 +99,34 @@ class JapaneseAnalyzer {
       throw StateError('analyzer is not ready');
     }
     final id = _nextId++;
-    final completer = Completer<List<Map<String, dynamic>>>();
+    final completer = Completer<dynamic>();
     _pending[id] = completer;
     port.send(makeMessage(id));
     try {
-      return await completer.future;
+      final result = await completer.future;
+      return (result as List).cast<Map<String, dynamic>>();
+    } finally {
+      _pending.remove(id);
+    }
+  }
+
+  /// 发送多行文本批量分词请求并等待回信。
+  Future<List<List<Map<String, dynamic>>>> _sendBatch(
+    List<String> lines,
+  ) async {
+    final port = _tokenizerPort;
+    if (port == null) {
+      throw StateError('analyzer is not ready');
+    }
+    final id = _nextId++;
+    final completer = Completer<dynamic>();
+    _pending[id] = completer;
+    port.send([_tokenizeBatchTag, id, lines]);
+    try {
+      final result = await completer.future as List;
+      return result
+          .map((lineTokens) => (lineTokens as List).cast<Map<String, dynamic>>())
+          .toList(growable: false);
     } finally {
       _pending.remove(id);
     }
@@ -114,9 +141,7 @@ class JapaneseAnalyzer {
     if (message is! List || message.isEmpty) return;
     switch (message[0]) {
       case _resultTag:
-        final tokens =
-            (message[2] as List).cast<Map<String, dynamic>>();
-        _pending.remove(message[1])?.complete(tokens);
+        _pending.remove(message[1])?.complete(message[2]);
       case _errorTag:
         _pending.remove(message[1])
             ?.completeError(Exception(message[2] as String));
@@ -168,27 +193,32 @@ class JapaneseAnalyzer {
     String text, {
     bool Function()? isCancelled,
   }) async {
-    final trimmed = text.trim();
-    if (trimmed.isEmpty) {
+    final rawTrimmed = text.trim();
+    if (rawTrimmed.isEmpty) {
       return AnalysisResult(source: text, morphemes: const []);
     }
+
+    final bool isTruncated = rawTrimmed.length > kMaxInputLength;
+    final trimmed = isTruncated
+        ? rawTrimmed.substring(0, kMaxInputLength).trim()
+        : rawTrimmed;
 
     await warmUp();
     if (isCancelled?.call() ?? false) {
       return AnalysisResult(source: trimmed, morphemes: const []);
     }
 
-    final lines = trimmed.split(RegExp(r'\r?\n'));
-    if (lines.length > 1) {
+    final rawLines = trimmed.split(RegExp(r'\r?\n'));
+    final validLines = rawLines.map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
+
+    if (validLines.length > 1) {
+      final batchTokens = await _sendBatch(validLines);
+      if (isCancelled?.call() ?? false) {
+        return AnalysisResult(source: trimmed, morphemes: const []);
+      }
+
       final paragraphs = <List<Morpheme>>[];
-      for (final line in lines) {
-        final lineTrimmed = line.trim();
-        if (lineTrimmed.isEmpty) continue;
-        final lineTokens =
-            await _send((id) => [_tokenizeTag, id, lineTrimmed]);
-        if (isCancelled?.call() ?? false) {
-          return AnalysisResult(source: trimmed, morphemes: const []);
-        }
+      for (final lineTokens in batchTokens) {
         final ms = lineTokens
             .map(Morpheme.fromToken)
             .where((m) => m.surface.trim().isNotEmpty)
@@ -204,6 +234,7 @@ class JapaneseAnalyzer {
         morphemes: allMorphemes,
         paragraphs: paragraphs,
         singleKanji: _lookupSingleKanji(trimmed),
+        isTruncated: isTruncated,
       );
     }
 
@@ -223,6 +254,7 @@ class JapaneseAnalyzer {
       morphemes: morphemes,
       paragraphs: morphemes.isNotEmpty ? [morphemes] : const [],
       singleKanji: _lookupSingleKanji(trimmed),
+      isTruncated: isTruncated,
     );
   }
 
@@ -259,6 +291,11 @@ Future<void> _tokenizerMain(SendPort mainPort) async {
           mainPort.send(
             [_resultTag, id, tokenizer.tokenize(request[2] as String)],
           );
+        case _tokenizeBatchTag:
+          tokenizer ??= await TokenizerBuilder().build();
+          final lines = (request[2] as List).cast<String>();
+          final batch = lines.map((l) => tokenizer!.tokenize(l)).toList();
+          mainPort.send([_resultTag, id, batch]);
       }
     } catch (e) {
       mainPort.send([_errorTag, id, e.toString()]);

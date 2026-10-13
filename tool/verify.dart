@@ -6,9 +6,11 @@ import 'package:kanji_hiragana/core/app_meta.dart';
 import 'package:kanji_hiragana/core/japanese_analyzer.dart';
 import 'package:kanji_hiragana/core/kana_romaji.dart';
 import 'package:kanji_hiragana/core/kanji_filter.dart';
+import 'package:kanji_hiragana/core/kanji_homophones.dart';
 import 'package:kanji_hiragana/core/kanji_reading_dict.dart';
 import 'package:kanji_hiragana/core/kanji_words_dict.dart';
 import 'package:kanji_hiragana/core/loanwords_dict.dart';
+import 'package:kanji_hiragana/core/morpheme.dart';
 import 'package:kanji_hiragana/core/radical_dict.dart';
 import 'package:kanji_hiragana/core/yojijukugo_dict.dart';
 
@@ -34,6 +36,7 @@ Future<void> main() async {
   expectEq(hiraganaToRomaji('がっこう'), 'gakkou', '促音');
   expectEq(hiraganaToRomaji('しんいち'), "shin'ichi", '拨音加撇');
   expectEq(hiraganaToRomaji('こーひー'), 'koohii', '长音延展');
+  expectEq(hiraganaToRomaji('あ、これ。'), 'a, kore. ', '标点映射为半角罗马音');
   expectEq(katakanaToRomaji('ニッポンノブンカ'), 'nipponnobunka', '片假名直转');
 
   print('--- 字符判断 ---');
@@ -101,6 +104,16 @@ Future<void> main() async {
     true,
     'Anki TSV 导出句子词汇',
   );
+  expectEq(
+    AnalysisResult.escapeTsvField('test<script>alert(1)</script>&"'),
+    'test&lt;script&gt;alert(1)&lt;/script&gt;&amp;&quot;',
+    'Anki TSV HTML安全转义',
+  );
+
+  final hugeText = 'あ' * 5000;
+  final rHuge = await a.analyze(hugeText);
+  expectEq(rHuge.isTruncated, true, '超长输入标记截断');
+  expectEq(rHuge.source.length, kMaxInputLength, '超长输入截断至上限');
 
   final r4 = await a.analyze('   ');
   expectEq(r4.isEmpty, true, '空输入返回空');
@@ -125,6 +138,13 @@ Future<void> main() async {
   expectEq((await a.analyze('日本')).isSingleKanji, false, '日本 不触发');
   expectEq((await a.analyze('あ')).isSingleKanji, false, '假名 不触发');
   expectEq((await a.analyze('日a')).isSingleKanji, false, '汉字+字母 不触发');
+
+  print('--- 汉字同音词索引 (KanjiHomophones) ---');
+  final hanaHoms = KanjiHomophones.findHomophones(kanjiReadingDict['花']!);
+  expectEq(hanaHoms.isNotEmpty, true, '花 查同音字有结果');
+  expectEq(hanaHoms.any((r) => r.kanji == '鼻'), true, '花 训读同音包含 鼻 (はな)');
+  final nichiHoms = KanjiHomophones.getByOnyomi('にち');
+  expectEq(nichiHoms.any((r) => r.kanji == '日'), true, '音读 にち 包含 日');
 
   print('--- 筛选: 笔画范围 ---');
   final all = kanjiReadingDict.values;
@@ -178,6 +198,10 @@ Future<void> main() async {
   // 7. 未设频率条件时, 无排名的字仍照常出现
   expectEq(const KanjiFilter().apply(all).length, all.length,
       '不加条件时结果数 == 字典总数');
+
+  final statResult = const KanjiFilter(frequencyMin: 1, frequencyMax: 100).applyWithStats(all);
+  expectEq(statResult.items.length, 100, 'applyWithStats 命中 100 字');
+  expectEq(statResult.excludedNoRankCount > 0, true, 'applyWithStats 统计无排名排除数');
 
   print('--- 筛选: 其他维度与计数 ---');
   final g1 = const KanjiFilter(gradeMin: 1, gradeMax: 1).apply(all);

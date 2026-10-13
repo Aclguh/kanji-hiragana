@@ -15,6 +15,16 @@ class TtsService with ChangeNotifier {
 
   static final TtsService instance = TtsService._();
 
+  /// 供测试环境重置单例状态。
+  @visibleForTesting
+  void resetForTesting() {
+    _isSpeaking = false;
+    _speakingText = '';
+    _currentUtteranceId = null;
+    _utteranceSeq = 0;
+    notifyListeners();
+  }
+
   bool _isSpeaking = false;
   String _speakingText = '';
   int _utteranceSeq = 0;
@@ -40,7 +50,13 @@ class TtsService with ChangeNotifier {
   }
 
   Future<void> _handlePlatformCall(MethodCall call) async {
-    final utteranceId = call.arguments as String?;
+    String? utteranceId;
+    if (call.arguments is String) {
+      utteranceId = call.arguments as String;
+    } else if (call.arguments is Map) {
+      utteranceId = (call.arguments as Map)['utteranceId'] as String?;
+    }
+
     switch (call.method) {
       case 'onSpeakStart':
         if (utteranceId != null && utteranceId != _currentUtteranceId) return;

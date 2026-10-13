@@ -278,6 +278,49 @@ class KanjiFilter {
     out.sort(comparator(sort));
     return out;
   }
+
+  /// 应用筛选与排序，同时在单次遍历中统计因无频率排名而被排除的字数。
+  FilterResult applyWithStats([Iterable<KanjiReading>? source]) {
+    final hasFreqFilter = frequencyMin != null || frequencyMax != null;
+    final withoutFreq = hasFreqFilter ? copyWith(clearFrequency: true) : null;
+    var excludedCount = 0;
+
+    final targetSource =
+        (source == null || _isDictionarySource(source))
+            ? _presortedAll[sort]!
+            : source;
+
+    final out = <KanjiReading>[];
+    for (final r in targetSource) {
+      if (matches(r)) {
+        out.add(r);
+      } else if (hasFreqFilter &&
+          r.frequencyRank >= kNoFrequencyRank &&
+          withoutFreq!.matches(r)) {
+        excludedCount++;
+      }
+    }
+
+    if (source != null && !_isDictionarySource(source)) {
+      out.sort(comparator(sort));
+    }
+
+    return FilterResult(items: out, excludedNoRankCount: excludedCount);
+  }
+}
+
+/// 筛选结果与统计。
+class FilterResult {
+  /// 满足条件的汉字结果。
+  final List<KanjiReading> items;
+
+  /// 满足其他维度条件但因无频率排名被排除的汉字数量。
+  final int excludedNoRankCount;
+
+  const FilterResult({
+    required this.items,
+    this.excludedNoRankCount = 0,
+  });
 }
 
 /// 判断 [r] 的音读或训读中是否有包含 [query] 子串的条目。
