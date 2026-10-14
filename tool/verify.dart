@@ -391,9 +391,6 @@ Future<void> main() async {
     '一 反向索引包含 一期一会',
   );
 
-  // 常驻分词 isolate 会阻止裸 dart 进程在 main 返回后退出, 用完即关。
-  JapaneseAnalyzer.instance.close();
-
   print('--- 版本与字典范围同步 ---');
   // 改版本号漏改 about 页常量时, 在这里变成显式失败而非上线后才发现。
   final pubspec = File('pubspec.yaml').readAsStringSync();
@@ -450,6 +447,9 @@ Future<void> main() async {
   expectEq(rSingleSimplified.isSingleKanji, true, '简体单字「练」触发单字模式');
   expectEq(rSingleSimplified.singleKanji?.kanji, '練', '单字规范化为「練」');
   expectEq(rSingleSimplified.singleKanji?.onyomi.contains('れん'), true, '单字读音包含音读「れん」');
+
+  // 常驻分词 isolate 会阻止裸 dart 进程在 main 返回后退出, 全部用完即关。
+  JapaneseAnalyzer.instance.close();
 
   print('\n结果: $_pass 通过, $_fail 失败');
   if (_fail > 0) throw StateError('有 $_fail 项未通过');
