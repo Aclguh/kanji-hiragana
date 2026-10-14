@@ -85,14 +85,22 @@ void main() {
       expect(find.text('纵书'), findsNothing);
     });
 
-    testWidgets('输入句子触发分词并展开对照表视图', (tester) async {
+    testWidgets('输入句子后停留在主界面，点击右箭头按钮才展开对照表', (tester) async {
       await pumpHome(tester);
 
       final input = find.byType(TextField);
       await tester.enterText(input, '日本語を勉強する');
       await tester.pump();
 
-      // 等待防抖 (220ms) 与后台 Isolate 分词回传
+      // 输入后停留在主界面，尚未展开结果区
+      expect(find.byType(AlignmentTable), findsNothing);
+      final searchButton = find.byTooltip('查询');
+      expect(searchButton, findsOneWidget);
+
+      // 点击右箭头按钮触发查询并进入查询界面
+      await tester.tap(searchButton);
+      await tester.pump();
+
       await pumpUntilFound(tester, find.byType(AlignmentTable));
 
       expect(find.byType(AlignmentTable), findsOneWidget);
@@ -102,10 +110,107 @@ void main() {
       expect(find.text('日本語'), findsOneWidget);
     });
 
+    testWidgets('输入简体汉字自动转化为日文新字体并查询 (练习->練習, 练->練)', (tester) async {
+      await pumpHome(tester);
+
+      final input = find.byType(TextField);
+      // 输入简体多字词
+      await tester.enterText(input, '练习');
+      await tester.pump();
+
+      final searchButton = find.byTooltip('查询');
+      await tester.tap(searchButton);
+      await tester.pump();
+
+      await pumpUntilFound(tester, find.byType(AlignmentTable));
+
+      // 文本框规范化为「練習」
+      final field = tester.widget<TextField>(find.byType(TextField));
+      expect(field.controller?.text, '練習');
+      expect(
+        find.descendant(
+          of: find.byType(AlignmentTable),
+          matching: find.text('練習'),
+        ),
+        findsOneWidget,
+      );
+
+      // 单汉字测试: 输入简体「练」
+      await tester.enterText(input, '练');
+      await tester.pump();
+      await tester.tap(searchButton);
+      await tester.pump();
+
+      await pumpUntilFound(tester, find.byType(SingleKanjiView));
+      expect(field.controller?.text, '練');
+      expect(find.text('音読'), findsOneWidget);
+      expect(find.text('訓読'), findsOneWidget);
+    });
+
+    testWidgets('查询界面内修改文本不立即刷新，点击右箭头按钮后才刷新', (tester) async {
+      await pumpHome(tester);
+
+      final input = find.byType(TextField);
+      await tester.enterText(input, '日本語');
+      await tester.pump();
+      await tester.tap(find.byTooltip('查询'));
+      await tester.pump();
+
+      await pumpUntilFound(tester, find.byType(AlignmentTable));
+      expect(
+        find.descendant(
+          of: find.byType(AlignmentTable),
+          matching: find.text('日本語'),
+        ),
+        findsOneWidget,
+      );
+
+      // 在查询界面中修改输入内容为「文化」
+      await tester.enterText(input, '文化');
+      await tester.pump();
+
+      // 验证尚未刷新，原有内容仍可见，文化尚未在对照表出现
+      expect(
+        find.descendant(
+          of: find.byType(AlignmentTable),
+          matching: find.text('日本語'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(AlignmentTable),
+          matching: find.text('文化'),
+        ),
+        findsNothing,
+      );
+
+      // 点击右箭头按钮后刷新
+      await tester.tap(find.byTooltip('查询'));
+      await tester.pump();
+
+      await pumpUntilFound(
+        tester,
+        find.descendant(
+          of: find.byType(AlignmentTable),
+          matching: find.text('文化'),
+        ),
+      );
+      expect(
+        find.descendant(
+          of: find.byType(AlignmentTable),
+          matching: find.text('文化'),
+        ),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('视图模式切换: 对照表 -> 注音 -> 纵书', (tester) async {
       await pumpHome(tester);
 
       await tester.enterText(find.byType(TextField), '日本の文化');
+      await tester.pump();
+      await tester.tap(find.byTooltip('查询'));
       await tester.pump();
       await pumpUntilFound(tester, find.byType(AlignmentTable));
 
@@ -132,6 +237,8 @@ void main() {
 
       await tester.enterText(find.byType(TextField), '日');
       await tester.pump();
+      await tester.tap(find.byTooltip('查询'));
+      await tester.pump();
       await pumpUntilFound(tester, find.byType(SingleKanjiView));
 
       expect(find.byType(SingleKanjiView), findsOneWidget);
@@ -146,6 +253,8 @@ void main() {
 
       await tester.enterText(find.byType(TextField), 'こんにちは');
       await tester.pump();
+      await tester.tap(find.byTooltip('查询'));
+      await tester.pump();
       await pumpUntilFound(tester, find.byType(AlignmentTable));
 
       // 点击清空图标
@@ -158,10 +267,26 @@ void main() {
       expect(find.text('对照表'), findsNothing);
     });
 
+    testWidgets('enterText 为空时回到空态', (tester) async {
+      await pumpHome(tester);
+      await tester.enterText(find.byType(TextField), '日本');
+      await tester.pump();
+      await tester.tap(find.byTooltip('查询'));
+      await tester.pump();
+      await pumpUntilFound(tester, find.byType(AlignmentTable));
+      expect(find.text('对照表'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), '');
+      await tester.pumpAndSettle();
+      expect(find.text('对照表'), findsNothing);
+    });
+
     testWidgets('收藏星标切换', (tester) async {
       await pumpHome(tester);
 
       await tester.enterText(find.byType(TextField), '桜');
+      await tester.pump();
+      await tester.tap(find.byTooltip('查询'));
       await tester.pump();
       await pumpUntilFound(tester, find.byType(SingleKanjiView));
 

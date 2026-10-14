@@ -5,6 +5,7 @@ import 'package:kuromoji/kuromoji.dart';
 
 import 'input_sanitizer.dart';
 import 'kana_romaji.dart';
+import 'kanji_converter.dart';
 import 'kanji_reading_dict.dart';
 import 'morpheme.dart';
 
@@ -201,10 +202,11 @@ class JapaneseAnalyzer {
     String text, {
     bool Function()? isCancelled,
   }) async {
-    final cleaned = InputSanitizer.clean(text, maxLength: kMaxInputLength);
-    final rawTrimmed = text.trim();
+    final converted = KanjiConverter.toJapaneseKanji(text);
+    final cleaned = InputSanitizer.clean(converted, maxLength: kMaxInputLength);
+    final rawTrimmed = converted.trim();
     if (cleaned.isEmpty) {
-      return AnalysisResult(source: text, morphemes: const []);
+      return AnalysisResult(source: converted, morphemes: const []);
     }
 
     final bool isTruncated = rawTrimmed.length > kMaxInputLength;
@@ -291,7 +293,8 @@ class JapaneseAnalyzer {
     final runes = text.runes.toList();
     if (runes.length != 1) return null;
 
-    final char = String.fromCharCode(runes.first);
+    final rawChar = String.fromCharCode(runes.first);
+    final char = KanjiConverter.toJapaneseKanji(rawChar);
     if (!isKanji(char)) return null;
 
     return kanjiReadingDict[char];

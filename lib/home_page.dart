@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import 'core/input_sanitizer.dart';
 import 'core/japanese_analyzer.dart';
+import 'core/kanji_converter.dart';
 import 'core/kanji_filter.dart';
 import 'core/kanji_services.dart';
 import 'core/strings.dart';
@@ -57,11 +58,14 @@ class _HomePageState extends State<HomePage>
   /// 当前生效的筛选条件。
   KanjiFilter _filter = KanjiFilter.initial;
 
-  /// 是否有输入内容(决定处于展开态还是聚焦态)。
-  bool get _hasInput => _controller.text.trim().isNotEmpty;
+  /// 是否处于查询结果界面态。
+  ///
+  /// 用户在主界面输入文字后暂时停留在主界面，点击右箭头按钮才进入查询态；
+  /// 在查询态下编辑文字也不会立即刷新，点击右箭头按钮后才刷新。
+  bool _isSearching = false;
 
-  /// 上一次同步时的 [_hasInput] 值。
-  bool _lastHasInput = false;
+  /// 是否有输入内容。
+  bool get _hasInput => _controller.text.trim().isNotEmpty;
 
   /// 抽屉是否处于展开状态。
   bool get _drawerOpen => _openDrawer != OpenDrawer.none;
@@ -88,8 +92,15 @@ class _HomePageState extends State<HomePage>
       vsync: this,
       duration: const Duration(milliseconds: 420),
     );
-    // 输入框内容变化时同步动画状态(含粘贴、清空等非键盘输入)。
-    _controller.addListener(_syncAnim);
+    _controller.addListener(_onTextChanged);
+  }
+
+  void _onTextChanged() {
+    if (_controller.text.isEmpty && _isSearching) {
+      _isSearching = false;
+      _anim.reverse();
+    }
+    if (mounted) setState(() {});
   }
 
   @override
@@ -111,25 +122,41 @@ class _HomePageState extends State<HomePage>
     if (mounted) setState(() {});
   }
 
-  void _syncAnim() {
-    final hasInput = _hasInput;
-    final target = hasInput ? 1.0 : 0.0;
-    if (_anim.value != target) {
-      if (target == 1.0) {
-        _anim.forward();
-      } else {
-        _anim.reverse();
-      }
-    }
-    if (hasInput != _lastHasInput) {
-      _lastHasInput = hasInput;
-      if (mounted) setState(() {});
-    }
+  void _onChanged(String value) {
+    // 文本变更时仅触发重绘以更新输入框右侧按钮可用性，
+    // 不再自动防抖刷新，实现「点击右箭头按钮后才刷新」的需求。
+    setState(() {});
   }
 
-  void _onChanged(String value) {
-    _coordinator?.onInputChanged(
-      value,
+  /// 提交并执行查询。
+  ///
+  /// 自动将中文简体汉字转换为日本新字体 (如「练习」->「練習」)，
+  /// 更新输入框显示、展开结果界面并执行形态素分析与单字检索。
+  void _submitQuery([String? explicitText]) {
+    final raw = (explicitText ?? _controller.text).trim();
+    if (raw.isEmpty) {
+      if (_isSearching) {
+        setState(() => _isSearching = false);
+        _anim.reverse();
+      }
+      return;
+    }
+
+    final converted = KanjiConverter.toJapaneseKanji(raw);
+    if (_controller.text != converted) {
+      _controller.text = converted;
+      _controller.selection =
+          TextSelection.collapsed(offset: converted.length);
+    }
+
+    _focusNode.unfocus();
+    if (!_isSearching) {
+      setState(() => _isSearching = true);
+      _anim.forward();
+    }
+
+    _coordinator?.runAnalysis(
+      converted,
       onTruncated: (limit) {
         if (mounted) {
           showToast(
@@ -145,6 +172,10 @@ class _HomePageState extends State<HomePage>
   void _clear() {
     _coordinator?.clear();
     _controller.clear();
+    if (_isSearching) {
+      setState(() => _isSearching = false);
+      _anim.reverse();
+    }
     _focusNode.requestFocus();
   }
 
@@ -152,24 +183,16 @@ class _HomePageState extends State<HomePage>
   void _clearAndDismissKeyboard() {
     _coordinator?.clear();
     _controller.clear();
+    if (_isSearching) {
+      setState(() => _isSearching = false);
+      _anim.reverse();
+    }
     _focusNode.unfocus();
   }
 
-  /// 点按历史 / 收藏词条: 回填并重新查询。
+  /// 点按历史 / 收藏词条: 回填并直接进入查询界面。
   void _useQuery(String text) {
-    _focusNode.unfocus();
-    _controller.text = text;
-    _coordinator?.runAnalysis(
-      text,
-      onTruncated: (limit) {
-        if (mounted) {
-          showToast(
-            context,
-            AppStrings.of(context).inputExceededLimit(limit),
-          );
-        }
-      },
-    );
+    _submitQuery(text);
   }
 
   /// 切换当前查询的收藏状态。
@@ -218,7 +241,7 @@ class _HomePageState extends State<HomePage>
     if (widget.coordinator == null) {
       _coordinator?.dispose();
     }
-    _controller.removeListener(_syncAnim);
+    _controller.removeListener(_onTextChanged);
     _controller.dispose();
     _focusNode.dispose();
     _anim.dispose();
@@ -227,14 +250,14 @@ class _HomePageState extends State<HomePage>
 
   /// 处理系统返回键。
   ///
-  /// 优先级: 收起已展开的抽屉 > 清空输入内容 > 交给系统退出应用。
+  /// 优先级: 收起已展开的抽屉 > 退出查询结果界面 > 清空输入内容 > 退出应用。
   /// 返回 true 表示本次返回已被消费, 不应退出应用。
   bool _onBackPressed() {
     if (_drawerOpen) {
       _closeDrawer();
       return true;
     }
-    if (_hasInput) {
+    if (_isSearching || _hasInput) {
       _clearAndDismissKeyboard();
       return true;
     }
@@ -246,7 +269,7 @@ class _HomePageState extends State<HomePage>
     final isLoading = _coordinator?.loading ?? true;
     final mainBody = Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: _hasInput ? _buildAppBar() : null,
+      appBar: _isSearching ? _buildAppBar() : null,
       body: SafeArea(
         child: isLoading ? const _LoadingView() : _buildAnimatedBody(),
       ),
@@ -254,8 +277,8 @@ class _HomePageState extends State<HomePage>
 
     // 抽屉外壳: 面板自带压暗遮罩, 主界面内容保持不动。
     return PopScope(
-      // 仍有抽屉展开或尚有输入时拦截返回键, 避免误退出应用。
-      canPop: !_drawerOpen && !_hasInput,
+      // 仍有抽屉展开或正处于查询界面时拦截返回键, 避免误退出应用。
+      canPop: !_drawerOpen && !_isSearching,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
         _onBackPressed();
@@ -286,9 +309,9 @@ class _HomePageState extends State<HomePage>
 
   /// 悬浮按钮是否可见。
   ///
-  /// 仅在空态(未输入任何内容)且没有抽屉展开时出现;
-  /// 一旦开始输入, 按钮即让位于内容区。
-  bool get _buttonsVisible => !_hasInput && !_drawerOpen;
+  /// 仅在主界面(未进入查询结果界面)且没有抽屉展开时出现;
+  /// 一旦进入查询界面, 按钮即让位于结果内容区。
+  bool get _buttonsVisible => !_isSearching && !_drawerOpen;
 
   /// 右下角设置按钮 + 左下角筛选按钮。
   Widget _buildFloatingButtons() {
@@ -443,14 +466,17 @@ class _HomePageState extends State<HomePage>
   Widget _buildInput(double t) {
     final colors = AppTheme.of(context);
     final s = AppStrings.of(context);
+    final hasInput = _hasInput;
     return TextField(
       controller: _controller,
       focusNode: _focusNode,
       onChanged: _onChanged,
+      textInputAction: TextInputAction.search,
+      onSubmitted: (_) => _submitQuery(),
       autofocus: false,
       maxLines: 3,
       minLines: 1,
-      textAlign: _hasInput ? TextAlign.start : TextAlign.center,
+      textAlign: (_isSearching || hasInput) ? TextAlign.start : TextAlign.center,
       style: TextStyle(
         color: colors.textPrimary,
         fontSize: _lerp(17.0, 20.0, 1 - t),
@@ -458,16 +484,8 @@ class _HomePageState extends State<HomePage>
       ),
       decoration: InputDecoration(
         hintText: s.inputHint,
-        suffixIcon: _hasInput
+        suffixIcon: (!_isSearching && !hasInput)
             ? IconButton(
-                icon: Icon(
-                  Icons.close_rounded,
-                  size: 18,
-                  color: colors.textSecondary,
-                ),
-                onPressed: _clear,
-              )
-            : IconButton(
                 tooltip: s.paste,
                 icon: Icon(
                   Icons.content_paste_rounded,
@@ -480,7 +498,10 @@ class _HomePageState extends State<HomePage>
                   if (text != null && text.isNotEmpty) {
                     final cleanText = InputSanitizer.clean(text);
                     if (cleanText.isNotEmpty) {
-                      _useQuery(cleanText);
+                      _controller.text = cleanText;
+                      _controller.selection =
+                          TextSelection.collapsed(offset: cleanText.length);
+                      setState(() {});
                       if (text.length > kMaxInputLength && mounted) {
                         showToast(
                           context,
@@ -490,6 +511,17 @@ class _HomePageState extends State<HomePage>
                     }
                   }
                 },
+              )
+            : IconButton(
+                tooltip: s.search,
+                icon: Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 20,
+                  color: hasInput
+                      ? colors.textPrimary
+                      : colors.textSecondary.withValues(alpha: 0.4),
+                ),
+                onPressed: hasInput ? () => _submitQuery() : null,
               ),
         contentPadding: EdgeInsets.symmetric(
           horizontal: 16,

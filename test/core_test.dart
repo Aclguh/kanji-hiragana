@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kanji_hiragana/core/input_sanitizer.dart';
 import 'package:kanji_hiragana/core/japanese_analyzer.dart';
 import 'package:kanji_hiragana/core/kana_romaji.dart';
+import 'package:kanji_hiragana/core/kanji_converter.dart';
 import 'package:kanji_hiragana/core/kanji_filter.dart';
 import 'package:kanji_hiragana/core/kanji_homophones.dart';
 import 'package:kanji_hiragana/core/kanji_reading_dict.dart';
@@ -1286,6 +1287,29 @@ void main() {
       expect(coordinator.lastAnalyzedText, '');
 
       coordinator.dispose();
+    });
+
+    test('KANJI-CONV-01: KanjiConverter 简体字转日文新字体', () {
+      expect(KanjiConverter.toJapaneseKanji('练习'), '練習');
+      expect(KanjiConverter.toJapaneseKanji('练'), '練');
+      expect(KanjiConverter.toJapaneseKanji('单'), '単');
+      expect(KanjiConverter.toJapaneseKanji('发'), '発');
+      expect(KanjiConverter.toJapaneseKanji('广'), '広');
+      expect(KanjiConverter.toJapaneseKanji('变'), '変');
+      expect(KanjiConverter.toJapaneseKanji('图'), '図');
+      expect(KanjiConverter.toJapaneseKanji('铁'), '鉄');
+      expect(KanjiConverter.toJapaneseKanji('关'), '関');
+      expect(KanjiConverter.toJapaneseKanji('齿'), '歯');
+      expect(KanjiConverter.toJapaneseKanji('气'), '気');
+      expect(KanjiConverter.toJapaneseKanji('学'), '学');
+      expect(KanjiConverter.toJapaneseKanji('国'), '国');
+      expect(KanjiConverter.toJapaneseKanji('汉语'), '漢語');
+      expect(KanjiConverter.toJapaneseKanji('机会'), '機会');
+      expect(KanjiConverter.toJapaneseKanji('头发'), '頭髪');
+
+      expect(KanjiConverter.hasSimplified('练习'), isTrue);
+      expect(KanjiConverter.hasSimplified('練習'), isFalse);
+      expect(KanjiConverter.hasSimplified(''), isFalse);
     });
   });
 }

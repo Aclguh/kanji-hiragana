@@ -71,6 +71,7 @@ sealed class AppStrings {
   String inputExceededLimit(int limit);
   String get loadingDictionary;
   String get clear;
+  String get search;
   String get filterKanji;
   String get settings;
 
@@ -375,6 +376,9 @@ class ZhStrings extends AppStrings {
 
   @override
   String get clear => '清空';
+
+  @override
+  String get search => '查询';
 
   @override
   String get filterKanji => '筛选汉字';
@@ -901,6 +905,9 @@ class EnStrings extends AppStrings {
 
   @override
   String get clear => 'Clear';
+
+  @override
+  String get search => 'Search';
 
   @override
   String get filterKanji => 'Filter kanji';

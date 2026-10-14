@@ -6,6 +6,7 @@ import 'package:kanji_hiragana/core/app_meta.dart';
 import 'package:kanji_hiragana/core/input_sanitizer.dart';
 import 'package:kanji_hiragana/core/japanese_analyzer.dart';
 import 'package:kanji_hiragana/core/kana_romaji.dart';
+import 'package:kanji_hiragana/core/kanji_converter.dart';
 import 'package:kanji_hiragana/core/kanji_filter.dart';
 import 'package:kanji_hiragana/core/kanji_homophones.dart';
 import 'package:kanji_hiragana/core/kanji_reading_dict.dart';
@@ -423,6 +424,32 @@ Future<void> main() async {
       .firstMatch(about)
       ?.group(1);
   expectEq(aboutPackage, applicationId, 'about 页包名与 applicationId 一致');
+
+  print('--- 简中汉字自动转换日文新字体 (KanjiConverter) ---');
+  expectEq(KanjiConverter.toJapaneseKanji('练习'), '練習', '练习→練習');
+  expectEq(KanjiConverter.toJapaneseKanji('练'), '練', '练→練');
+  expectEq(KanjiConverter.toJapaneseKanji('单'), '単', '单→単');
+  expectEq(KanjiConverter.toJapaneseKanji('发'), '発', '发→発');
+  expectEq(KanjiConverter.toJapaneseKanji('广'), '広', '广→広');
+  expectEq(KanjiConverter.toJapaneseKanji('变'), '変', '变→変');
+  expectEq(KanjiConverter.toJapaneseKanji('图'), '図', '图→図');
+  expectEq(KanjiConverter.toJapaneseKanji('铁'), '鉄', '铁→鉄');
+  expectEq(KanjiConverter.toJapaneseKanji('关'), '関', '关→関');
+  expectEq(KanjiConverter.toJapaneseKanji('齿'), '歯', '齿→歯');
+  expectEq(KanjiConverter.toJapaneseKanji('气'), '気', '气→気');
+  expectEq(KanjiConverter.toJapaneseKanji('学'), '学', '学保持日文新字体');
+  expectEq(KanjiConverter.toJapaneseKanji('国'), '国', '国保持日文新字体');
+  expectEq(KanjiConverter.toJapaneseKanji('机会'), '機会', '机会特例→機会');
+
+  final rSimplified = await a.analyze('练习');
+  expectEq(rSimplified.morphemes.length, 1, '简体「练习」正确分词为单个词');
+  expectEq(rSimplified.morphemes[0].surface, '練習', '分词表面形规范化为「練習」');
+  expectEq(rSimplified.morphemes[0].hiragana, 'れんしゅう', '分词假名识别为「れんしゅう」');
+
+  final rSingleSimplified = await a.analyze('练');
+  expectEq(rSingleSimplified.isSingleKanji, true, '简体单字「练」触发单字模式');
+  expectEq(rSingleSimplified.singleKanji?.kanji, '練', '单字规范化为「練」');
+  expectEq(rSingleSimplified.singleKanji?.onyomi.contains('れん'), true, '单字读音包含音读「れん」');
 
   print('\n结果: $_pass 通过, $_fail 失败');
   if (_fail > 0) throw StateError('有 $_fail 项未通过');

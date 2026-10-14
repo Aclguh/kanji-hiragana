@@ -60,9 +60,9 @@ on'yomi and kun'yomi.
   漢字仮名 stay in traditional form as the app's mark
 - **Settings**: theme (light / dark / follow system, system bars adaptively match),
   auto-rotate switch (off by default), about page
-- Tap any word to play pronunciation and copy; one-tap copy of the full kana; romaji can be toggled; quick clipboard paste button in the empty state
-- **Focus-first main screen**: opens with a single centred input box, then animates
-  into the full interface as you type
+- **Simplified Chinese to Japanese Shinjitai conversion**: enter Simplified Chinese characters (e.g. 练习 automatically converts to 練習, 单 to 単, 发 to 発) and seamlessly look up words or kanji details
+- **Confirm-to-search interaction**: entering text stays on the main screen with a right-arrow button; tap the arrow to enter the search interface. Modifying text inside the search view does not immediately reload, refreshing only when the arrow button is tapped
+- **Focus-first main screen**: opens with a single centred input box, then animates into the full interface upon searching
 - **Fully offline**: the dictionary ships with the app — no network calls, no permissions,
   no ads
 
@@ -91,9 +91,9 @@ Download the APK for your architecture from
 
 | File | Devices | Size |
 | --- | --- | --- |
-| `app-arm64-v8a-release.apk` | Almost all modern phones (**recommended**) | 40.4 MB |
-| `app-armeabi-v7a-release.apk` | Older 32-bit devices | 38.5 MB |
-| `app-x86_64-release.apk` | Emulators / x86 tablets | 41.8 MB |
+| `app-arm64-v8a-release.apk` | Almost all modern phones (**recommended**) | 40.6 MB |
+| `app-armeabi-v7a-release.apk` | Older 32-bit devices | 38.8 MB |
+| `app-x86_64-release.apk` | Emulators / x86 tablets | 42.0 MB |
 
 > If you are unsure, install `arm64-v8a`. The wrong architecture reports
 > "App not installed".
@@ -116,25 +116,26 @@ flutter build apk --release --split-per-abi
 
 ## Usage
 
-1. Open the app and type Japanese into the centred input box (kanji, kana or a mixed
-   sentence all work), or tap the clipboard button to paste copied text
-2. The interface expands as you type:
-   - **Several characters** → the word-by-word table, furigana view, or vertical view
+1. Open the app and type Japanese or Simplified Chinese (e.g. 练习) into the centred input box, or tap the clipboard button to paste
+2. Tap the right-arrow button next to the input box to enter the search view:
+   - **Several characters** → automatically normalized to Japanese Shinjitai (e.g. 練習) and displayed in the word-by-word Table, Furigana view, or Vertical view
    - **A single kanji** → additionally its on'yomi, kun'yomi, meanings, four-character idioms, and common words
-3. Switch between **Table**, **Furigana**, and **Vertical** at the top
-4. Tap any word to hear native offline pronunciation and copy it, or use the top-right action to copy the full kana
-5. Tap the **star** in the app bar to favorite the current query; when the keyboard is
+3. Modifying text inside the search view does not interrupt reading; tap the right arrow to refresh
+4. Switch between **Table**, **Furigana**, and **Vertical** at the top
+5. Tap any word to hear native offline pronunciation and copy it, or use the top-right action to copy the full kana
+6. Tap the **star** in the app bar to favorite the current query; when the keyboard is
    dismissed, the empty state shows **Recent / Favorites** chips — tap one to look it
    up again (long-press removes a chip; history can be cleared at once; starred vocabulary can be exported as an Anki deck)
-6. The gear at the bottom right opens **Settings** (theme / auto-rotate / language /
+7. The gear at the bottom right opens **Settings** (theme / auto-rotate / language /
    about); the magnifier at the bottom left opens **Filter** (find kanji by strokes,
    frequency, 214 Kangxi radicals, and more)
-7. Select Japanese text in any other app on Android and choose **漢字仮名** in the context menu for instant lookup
+8. Select Japanese text in any other app on Android and choose **漢字仮名** in the context menu for instant lookup
 
 ## How it works
 
 | Stage | Implementation |
 | --- | --- |
+| Simplified Chinese to Shinjitai | Built-in 2720-character mapping and exceptions dictionary, see `lib/core/kanji_converter.dart` |
 | Tokenization and readings | [`kuromoji`](https://pub.dev/packages/kuromoji) (Atilika IPADIC, pure Dart) |
 | On'yomi / kun'yomi | 2999 common kanji extracted from KANJIDIC2, see `lib/core/kanji_reading_dict.dart` |
 | Common words | ~20k collocations extracted at build time from the IPADIC embedded in kuromoji, see `lib/core/kanji_words_dict.dart` |
@@ -202,6 +203,7 @@ lib/
     japanese_analyzer.dart   Morphological analysis service (singleton, offline)
     kanji_reading_dict.dart  [GENERATED] on'yomi / kun'yomi for 2999 kanji
     kanji_words_dict.dart    [GENERATED] common words per kanji (extracted from IPADIC)
+    kanji_converter.dart     Simplified Chinese to Japanese Shinjitai kanji conversion
     radical_dict.dart        214 Kangxi radicals and stroke index table
     loanwords_dict.dart      Katakana loanwords dictionary and origin language tags
     yojijukugo_dict.dart     Curated four-character idioms dictionary and reverse index

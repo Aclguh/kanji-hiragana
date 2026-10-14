@@ -121,6 +121,28 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// 输入文本并点击右箭头按钮提交查询 (若 text 为空则清空)。
+  Future<void> enterAndSearch(WidgetTester tester, String text) async {
+    final input = find.byType(TextField);
+    final focusNode = tester.widget<TextField>(input).focusNode;
+    if (focusNode != null && !focusNode.hasFocus) {
+      await tester.tap(input);
+      await tester.pumpAndSettle();
+    }
+    await tester.enterText(input, text);
+    await tester.pumpAndSettle();
+    if (text.isNotEmpty) {
+      final searchBtn = find.descendant(
+        of: input,
+        matching: find.byIcon(Icons.arrow_forward_rounded),
+      );
+      if (searchBtn.evaluate().isNotEmpty) {
+        await tester.tap(searchBtn);
+        await tester.pump();
+      }
+    }
+  }
+
   testWidgets('空态只显示输入框, 不显示工具栏', (tester) async {
     await pumpHome(tester);
 
@@ -144,19 +166,19 @@ void main() {
     expect(buttonsVisible(tester), isTrue);
 
     // 输入多字后按钮消失。
-    await tester.enterText(find.byType(TextField), '日本の文化');
+    await enterAndSearch(tester, '日本の文化');
     await pumpUntilFound(tester, find.byType(AlignmentTable));
     await tester.pumpAndSettle();
     expect(buttonsVisible(tester), isFalse);
 
     // 输入单个汉字同样不显示按钮。
-    await tester.enterText(find.byType(TextField), '日');
+    await enterAndSearch(tester, '日');
     await pumpUntilFound(tester, find.byType(SingleKanjiView));
     await tester.pumpAndSettle();
     expect(buttonsVisible(tester), isFalse);
 
     // 清空后回到空态, 按钮恢复。
-    await tester.enterText(find.byType(TextField), '');
+    await enterAndSearch(tester, '');
     await tester.pumpAndSettle();
     expect(buttonsVisible(tester), isTrue);
   });
@@ -165,7 +187,7 @@ void main() {
     await pumpHome(tester);
 
     // 输入内容后按下返回键: 应清空文本而非退出。
-    await tester.enterText(find.byType(TextField), '日本の文化');
+    await enterAndSearch(tester, '日本の文化');
     await pumpUntilFound(tester, find.byType(AlignmentTable));
     await tester.pumpAndSettle();
     expect(find.text('对照表'), findsOneWidget);
@@ -203,7 +225,7 @@ void main() {
   testWidgets('输入多字后出现工具栏与结果', (tester) async {
     await pumpHome(tester);
 
-    await tester.enterText(find.byType(TextField), '日本の文化');
+    await enterAndSearch(tester, '日本の文化');
     // 等待防抖 + 解析 + 动画。
     await pumpUntilFound(tester, find.byType(AlignmentTable));
     await tester.pumpAndSettle();
@@ -219,7 +241,7 @@ void main() {
   testWidgets('输入单个汉字展示音读与训读', (tester) async {
     await pumpHome(tester);
 
-    await tester.enterText(find.byType(TextField), '日');
+    await enterAndSearch(tester, '日');
     await pumpUntilFound(tester, find.byType(SingleKanjiView));
     await tester.pumpAndSettle();
 
@@ -243,13 +265,13 @@ void main() {
     await pumpHome(tester);
 
     // 多字: 出现对照表。
-    await tester.enterText(find.byType(TextField), '日本の文化');
+    await enterAndSearch(tester, '日本の文化');
     await pumpUntilFound(tester, find.byType(AlignmentTable));
     await tester.pumpAndSettle();
     expect(find.byType(AlignmentTable), findsOneWidget);
 
     // 删到只剩一个汉字: 对照表消失, 改为音训读详解。
-    await tester.enterText(find.byType(TextField), '日');
+    await enterAndSearch(tester, '日');
     await pumpUntilFound(tester, find.byType(SingleKanjiView));
     await tester.pumpAndSettle();
     expect(find.byType(AlignmentTable), findsNothing);
@@ -259,7 +281,7 @@ void main() {
   testWidgets('对照表全文平假名与罗马音可复制', (tester) async {
     await pumpHome(tester);
 
-    await tester.enterText(find.byType(TextField), '日本');
+    await enterAndSearch(tester, '日本');
     await pumpUntilFound(tester, find.byType(AlignmentTable));
     await tester.pumpAndSettle();
 
@@ -282,12 +304,12 @@ void main() {
   testWidgets('清空后回到空态', (tester) async {
     await pumpHome(tester);
 
-    await tester.enterText(find.byType(TextField), '日本');
+    await enterAndSearch(tester, '日本');
     await pumpUntilFound(tester, find.byType(AlignmentTable));
     await tester.pumpAndSettle();
     expect(find.text('对照表'), findsOneWidget);
 
-    await tester.enterText(find.byType(TextField), '');
+    await enterAndSearch(tester, '');
     await tester.pumpAndSettle();
 
     // 回到空态: 工具栏消失。
@@ -297,11 +319,11 @@ void main() {
   testWidgets('查询后清空, 空态出现历史词条且点按可回查', (tester) async {
     await pumpHome(tester);
 
-    await tester.enterText(find.byType(TextField), '日本の文化');
+    await enterAndSearch(tester, '日本の文化');
     await pumpUntilFound(tester, find.byType(AlignmentTable));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField), '');
+    await enterAndSearch(tester, '');
     await tester.pumpAndSettle();
 
     // 空态出现「最近查询」区与刚查过的词条。
@@ -319,11 +341,11 @@ void main() {
   testWidgets('长按历史词条移除并弹出提示', (tester) async {
     await pumpHome(tester);
 
-    await tester.enterText(find.byType(TextField), '日本の文化');
+    await enterAndSearch(tester, '日本の文化');
     await pumpUntilFound(tester, find.byType(AlignmentTable));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField), '');
+    await enterAndSearch(tester, '');
     await tester.pumpAndSettle();
 
     expect(find.text('日本の文化'), findsOneWidget);
@@ -339,11 +361,11 @@ void main() {
   testWidgets('点按清空历史移除全部词条并弹出提示', (tester) async {
     await pumpHome(tester);
 
-    await tester.enterText(find.byType(TextField), '日本の文化');
+    await enterAndSearch(tester, '日本の文化');
     await pumpUntilFound(tester, find.byType(AlignmentTable));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField), '');
+    await enterAndSearch(tester, '');
     await tester.pumpAndSettle();
 
     expect(find.text('最近查询'), findsOneWidget);
@@ -358,14 +380,14 @@ void main() {
     await pumpHome(tester);
 
     // 打字过程中的中间态不应各自留痕。
-    await tester.enterText(find.byType(TextField), '私');
+    await enterAndSearch(tester, '私');
     await pumpUntilFound(tester, find.byType(SingleKanjiView));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), '私は学生');
+    await enterAndSearch(tester, '私は学生');
     await pumpUntilFound(tester, find.byType(AlignmentTable));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField), '');
+    await enterAndSearch(tester, '');
     await tester.pumpAndSettle();
 
     expect(find.text('私は学生'), findsOneWidget);
@@ -375,7 +397,7 @@ void main() {
   testWidgets('星标收藏查询, 空态出现收藏词条', (tester) async {
     await pumpHome(tester);
 
-    await tester.enterText(find.byType(TextField), '日');
+    await enterAndSearch(tester, '日');
     await pumpUntilFound(tester, find.byType(SingleKanjiView));
     await tester.pumpAndSettle();
 
@@ -385,7 +407,7 @@ void main() {
     expect(find.byIcon(Icons.star_rounded), findsWidgets);
 
     // 清空后空态出现「收藏」区。
-    await tester.enterText(find.byType(TextField), '');
+    await enterAndSearch(tester, '');
     await tester.pumpAndSettle();
     expect(find.text('收藏'), findsOneWidget);
     // 「日」同时出现在收藏区与历史区 (收藏不把条目从历史中移走)。
@@ -401,7 +423,7 @@ void main() {
   testWidgets('长按收藏词条取消收藏并弹出提示', (tester) async {
     await pumpHome(tester);
 
-    await tester.enterText(find.byType(TextField), '日');
+    await enterAndSearch(tester, '日');
     await pumpUntilFound(tester, find.byType(SingleKanjiView));
     await tester.pumpAndSettle();
 
@@ -410,7 +432,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // 清空输入回到空态
-    await tester.enterText(find.byType(TextField), '');
+    await enterAndSearch(tester, '');
     await tester.pumpAndSettle();
 
     expect(find.text('收藏'), findsOneWidget);
@@ -425,7 +447,7 @@ void main() {
   testWidgets('单字详解出现常见词汇区', (tester) async {
     await pumpHome(tester);
 
-    await tester.enterText(find.byType(TextField), '日');
+    await enterAndSearch(tester, '日');
     await pumpUntilFound(tester, find.byType(SingleKanjiView));
     await tester.pumpAndSettle();
 
@@ -438,7 +460,7 @@ void main() {
   testWidgets('点按常见词跳转查询展开对照表', (tester) async {
     await pumpHome(tester);
 
-    await tester.enterText(find.byType(TextField), '日');
+    await enterAndSearch(tester, '日');
     await pumpUntilFound(tester, find.byType(SingleKanjiView));
     await tester.pumpAndSettle();
 
@@ -777,7 +799,7 @@ void main() {
 
     // 输入后工具栏与结果也是英文。句子取 東京に行きます:
     // 恰好覆盖 名詞/動詞/助動詞 三种词性各一次。
-    await tester.enterText(find.byType(TextField), '東京に行きます');
+    await enterAndSearch(tester, '東京に行きます');
     await pumpUntilFound(tester, find.byType(AlignmentTable));
     await tester.pumpAndSettle();
     expect(find.text('Table'), findsOneWidget);
@@ -808,7 +830,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField), '生');
+    await enterAndSearch(tester, '生');
     await pumpUntilFound(tester, find.byType(SingleKanjiView));
     await tester.pumpAndSettle();
 
@@ -906,7 +928,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(AboutPage), findsOneWidget);
-    expect(find.text('1.1.1'), findsWidgets);
+    expect(find.text('1.2.0'), findsWidgets);
     expect(
       find.text('https://github.com/Aclguh/kanji-hiragana'),
       findsOneWidget,
@@ -914,5 +936,22 @@ void main() {
     expect(find.text('许可'), findsOneWidget);
     expect(find.text('致谢'), findsOneWidget);
   });
-}
 
+  testWidgets('输入简体汉字自动转日文新字体查询 (练习->練習)', (tester) async {
+    await pumpHome(tester);
+
+    await enterAndSearch(tester, '练习');
+    await pumpUntilFound(tester, find.byType(AlignmentTable));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byType(AlignmentTable),
+        matching: find.text('練習'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('れんしゅう'), findsWidgets);
+  });
+
+}
