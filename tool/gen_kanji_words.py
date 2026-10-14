@@ -148,11 +148,15 @@ def locate_kuromoji_package() -> tuple[Path, str]:
     config = json.loads(config_path.read_text(encoding='utf-8'))
     for pkg in config.get('packages', []):
         if pkg.get('name') == 'kuromoji':
-            # Windows 的 file:///C:/... 解析出 /C:/... 前缀, 需剥掉。
-            raw = unquote(urlparse(pkg['rootUri']).path)
-            if re.match(r'^/[A-Za-z]:', raw):
-                raw = raw[1:]
-            root = Path(raw)
+            uri_str = pkg['rootUri']
+            if uri_str.startswith('file:'):
+                raw = unquote(urlparse(uri_str).path)
+                if re.match(r'^/[A-Za-z]:', raw):
+                    raw = raw[1:]
+                root = Path(raw)
+            else:
+                # 相对路径以 package_config.json 所在目录为基准
+                root = (config_path.parent / uri_str).resolve()
 
             pubspec = root / 'pubspec.yaml'
             version = None
@@ -173,7 +177,7 @@ def locate_kuromoji_package() -> tuple[Path, str]:
             if data_dir.is_dir():
                 return root, data_dir
             sys.exit(f'kuromoji 包内嵌词典目录不存在: {data_dir}')
-    sys.exit('未找到 kuromoji 包, 请确认 pubspec.yaml 的依赖配置')
+    sys.exit('未在 package_config.json 找到 kuromoji 包, 请确认 pubspec.yaml 的依赖配置')
 
 
 def load_embedded_gzip(path: Path) -> bytes:

@@ -12,7 +12,14 @@ enum ViewMode {
   furigana,
 
   /// 和风传统竖排排版。
-  vertical,
+  vertical;
+
+  /// 按持久化名称解析枚举，缺省或未知名称回退为 [ViewMode.alignment]。
+  static ViewMode fromName(String? name) => switch (name) {
+        'vertical' => ViewMode.vertical,
+        'furigana' => ViewMode.furigana,
+        _ => ViewMode.alignment,
+      };
 }
 
 /// 展开态工具栏: 对照 / 振假名 / 纵书 视图切换 + 罗马音开关 + 导出。

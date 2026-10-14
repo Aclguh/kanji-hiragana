@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 
+import 'input_sanitizer.dart';
+
 /// 平台级系统交互服务。
 ///
 /// 负责处理 Android 系统级划词 (android.intent.action.PROCESS_TEXT) 调起。
@@ -22,8 +24,11 @@ class PlatformService {
   Future<void> _handleCall(MethodCall call) async {
     if (call.method == 'onProcessText') {
       final text = call.arguments as String?;
-      if (text != null && text.trim().isNotEmpty) {
-        _textController.add(text.trim());
+      if (text != null) {
+        final cleaned = InputSanitizer.clean(text);
+        if (cleaned.isNotEmpty) {
+          _textController.add(cleaned);
+        }
       }
     }
   }
@@ -32,8 +37,11 @@ class PlatformService {
   Future<String?> getInitialProcessedText() async {
     try {
       final text = await _channel.invokeMethod<String>('getInitialProcessedText');
-      if (text != null && text.trim().isNotEmpty) {
-        return text.trim();
+      if (text != null) {
+        final cleaned = InputSanitizer.clean(text);
+        if (cleaned.isNotEmpty) {
+          return cleaned;
+        }
       }
     } catch (_) {
       // 非 Android 或测试环境静默返回 null

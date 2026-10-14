@@ -521,6 +521,32 @@ void main() {
         expect(find.text('猫'), findsOneWidget);
         expect(find.text('見'), findsOneWidget);
       });
+
+      testWidgets('避头尾禁则排版: 句读与标点正常悬挂渲染', (tester) async {
+        final m1 = Morpheme.fromToken({
+          'surface_form': '一二三四五六七八九十一二三四',
+          'reading': 'イチニサンシゴロクシチハチキュウジュウイチニサンシ',
+          'pos': '名詞',
+        });
+        final mPunct = Morpheme.fromToken({
+          'surface_form': '。',
+          'reading': '。',
+          'pos': '記号',
+        });
+        final res = AnalysisResult(
+          source: '一二三四五六七八九十一二三四。',
+          morphemes: [m1, mPunct],
+          paragraphs: [
+            [m1, mPunct],
+          ],
+        );
+        await tester.pumpWidget(scrollHost(VerticalView(
+          result: res,
+          showRomaji: true,
+        )));
+
+        expect(find.text('。'), findsOneWidget);
+      });
     });
 
     group('RadicalPickerSheet 部首检字表 ($name)', () {

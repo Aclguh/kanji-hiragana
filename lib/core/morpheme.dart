@@ -192,9 +192,10 @@ class AnalysisResult {
           return m.surface;
         }).join();
 
-  /// 规范化 TSV 字段内容: 转义 HTML 特殊字符并替换换行与制表符。
+  /// 规范化 TSV 字段内容: 转义 HTML 特殊字符并替换换行与制表符,
+  /// 同时对以 `=,+,-,@` 开头的字段前置单引号以防止 CSV/TSV 公式注入 (Formula Injection)。
   static String escapeTsvField(String field) {
-    return field
+    var escaped = field
         .replaceAll('&', '&amp;')
         .replaceAll('<', '&lt;')
         .replaceAll('>', '&gt;')
@@ -203,6 +204,14 @@ class AnalysisResult {
         .replaceAll('\r', '<br>')
         .replaceAll('\n', '<br>')
         .replaceAll('\t', ' ');
+
+    if (escaped.isNotEmpty) {
+      final first = escaped[0];
+      if (first == '=' || first == '+' || first == '-' || first == '@') {
+        escaped = "'$escaped";
+      }
+    }
+    return escaped;
   }
 
   /// 导出为 Anki 牌组格式 (制表符分隔 TSV: 正面 \t 背面/假名 \t 罗马音 \t 词性/释义 \t 备注)。

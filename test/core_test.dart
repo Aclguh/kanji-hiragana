@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kanji_hiragana/core/input_sanitizer.dart';
 import 'package:kanji_hiragana/core/japanese_analyzer.dart';
 import 'package:kanji_hiragana/core/kana_romaji.dart';
 import 'package:kanji_hiragana/core/kanji_filter.dart';
@@ -15,6 +16,8 @@ import 'package:kanji_hiragana/core/settings.dart';
 import 'package:kanji_hiragana/core/strings.dart';
 import 'package:kanji_hiragana/core/tts_service.dart';
 import 'package:kanji_hiragana/core/yojijukugo_dict.dart';
+import 'package:kanji_hiragana/widgets/home/home_coordinator.dart';
+import 'package:kanji_hiragana/widgets/home/home_toolbar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -1223,6 +1226,66 @@ void main() {
       expect(identical(services.settings, SettingsController.instance), isTrue);
       expect(identical(services.tts, TtsService.instance), isTrue);
       expect(identical(services.platform, PlatformService.instance), isTrue);
+    });
+
+    test('SEC-01: InputSanitizer 字符过滤与截断防护', () {
+      expect(InputSanitizer.clean(''), '');
+      expect(InputSanitizer.clean('   '), '');
+      // 双向文本控制字符与零宽空格过滤
+      expect(InputSanitizer.clean('abc\u202A\u200Bdef\uFEFF'), 'abcdef');
+      // C0 控制字符过滤，但保留中间的换行与制表符，首尾空白正常 trim
+      expect(InputSanitizer.clean('line1\x00\x07\nline2\tmore'), 'line1\nline2\tmore');
+      expect(InputSanitizer.clean('  hello\nworld\t  '), 'hello\nworld');
+      // 长度超限截断
+      final long = 'a' * 5000;
+      expect(InputSanitizer.clean(long, maxLength: 50).length, 50);
+    });
+
+    test('SEC-02: TSV Formula Injection 防御测试', () {
+      expect(AnalysisResult.escapeTsvField('=1+1'), "'=1+1");
+      expect(AnalysisResult.escapeTsvField('+cmd|'), "'+cmd|");
+      expect(AnalysisResult.escapeTsvField('-5'), "'-5");
+      expect(AnalysisResult.escapeTsvField('@SUM(A1)'), "'@SUM(A1)");
+      // 普通文本不受影响
+      expect(AnalysisResult.escapeTsvField('日本語'), '日本語');
+      expect(AnalysisResult.escapeTsvField('a=b'), 'a=b');
+    });
+
+    test('CODE-02: ViewMode.fromName 模式匹配解析', () {
+      expect(ViewMode.fromName('vertical'), ViewMode.vertical);
+      expect(ViewMode.fromName('furigana'), ViewMode.furigana);
+      expect(ViewMode.fromName('alignment'), ViewMode.alignment);
+      expect(ViewMode.fromName('unknown'), ViewMode.alignment);
+      expect(ViewMode.fromName(null), ViewMode.alignment);
+    });
+
+    test('ARCH-01: HomeCoordinator 业务调度与防抖分词', () async {
+      final services = KanjiServices.defaultServices;
+      final coordinator = HomeCoordinator(services: services);
+
+      expect(coordinator.loading, isTrue);
+      await coordinator.init();
+      expect(coordinator.loading, isFalse);
+      expect(coordinator.errorKind, isNull);
+
+      // 立即触发分词
+      await coordinator.runAnalysis('桜');
+      expect(coordinator.result, isNotNull);
+      expect(coordinator.result!.singleKanji, isNotNull);
+      expect(coordinator.lastAnalyzedText, '桜');
+
+      // 收藏切换
+      expect(coordinator.isFavorite('桜'), isFalse);
+      final favorited = coordinator.toggleFavorite('桜');
+      expect(favorited, isTrue);
+      expect(coordinator.isFavorite('桜'), isTrue);
+      coordinator.toggleFavorite('桜'); // 还原
+
+      // 清空
+      coordinator.clear();
+      expect(coordinator.lastAnalyzedText, '');
+
+      coordinator.dispose();
     });
   });
 }

@@ -3,6 +3,7 @@
 import 'dart:io';
 
 import 'package:kanji_hiragana/core/app_meta.dart';
+import 'package:kanji_hiragana/core/input_sanitizer.dart';
 import 'package:kanji_hiragana/core/japanese_analyzer.dart';
 import 'package:kanji_hiragana/core/kana_romaji.dart';
 import 'package:kanji_hiragana/core/kanji_filter.dart';
@@ -108,6 +109,26 @@ Future<void> main() async {
     AnalysisResult.escapeTsvField('test<script>alert(1)</script>&"'),
     'test&lt;script&gt;alert(1)&lt;/script&gt;&amp;&quot;',
     'Anki TSV HTML安全转义',
+  );
+  expectEq(
+    AnalysisResult.escapeTsvField('=1+2'),
+    "'=1+2",
+    'Anki TSV 公式注入前缀防护 (=)',
+  );
+  expectEq(
+    AnalysisResult.escapeTsvField('@cmd'),
+    "'@cmd",
+    'Anki TSV 公式注入前缀防护 (@)',
+  );
+  expectEq(
+    InputSanitizer.clean('  \u202Ahello\x00world\uFEFF  '),
+    'helloworld',
+    'InputSanitizer 控制字符与双向格式过滤',
+  );
+  expectEq(
+    InputSanitizer.clean('a' * 5000, maxLength: 10).length,
+    10,
+    'InputSanitizer 长度截断',
   );
 
   final hugeText = 'あ' * 5000;

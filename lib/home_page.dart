@@ -4,12 +4,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'core/input_sanitizer.dart';
 import 'core/japanese_analyzer.dart';
 import 'core/kanji_filter.dart';
-import 'core/morpheme.dart';
-import 'core/platform_service.dart';
-import 'core/query_store.dart';
-import 'core/settings.dart';
+import 'core/kanji_services.dart';
 import 'core/strings.dart';
 import 'theme.dart';
 import 'widgets/about_page.dart';
@@ -20,24 +18,24 @@ import 'widgets/filter_result_page.dart';
 import 'widgets/furigana_view.dart';
 import 'widgets/settings_drawer.dart';
 import 'widgets/single_kanji_view.dart';
-import 'widgets/home/debouncer.dart';
 import 'widgets/home/export_sheet.dart';
 import 'widgets/home/floating_button.dart';
 import 'widgets/home/furigana_footer.dart';
 import 'widgets/home/hero_title.dart';
+import 'widgets/home/home_coordinator.dart';
 import 'widgets/home/home_toolbar.dart';
 import 'widgets/home/query_chips.dart';
 import 'widgets/sliding_drawer.dart';
 import 'widgets/vector_icon.dart';
 import 'widgets/vertical_view.dart';
 
+export 'widgets/home/home_coordinator.dart' show HomeErrorKind;
 export 'widgets/home/home_toolbar.dart' show ViewMode;
 
-/// 出错环节, 决定界面上显示哪一条提示。
-enum _ErrorKind { dictionary, analysis }
-
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final HomeCoordinator? coordinator;
+
+  const HomePage({super.key, this.coordinator});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -45,35 +43,14 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage>
     with SingleTickerProviderStateMixin {
-  static final _settings = SettingsController.instance;
-
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
-  final _analyzer = JapaneseAnalyzer.instance;
-  final _queryStore = QueryStore.instance;
-  final _debounce = Debouncer(const Duration(milliseconds: 220));
+
+  HomeCoordinator? _coordinator;
+  StreamSubscription<String>? _externalQuerySub;
 
   /// 驱动「聚焦态 ↔ 展开态」过渡的动画。
   late final AnimationController _anim;
-
-  AnalysisResult? _result;
-
-  /// 上一次成功分析的文本, 供历史记录判断「本次是否为上次输入的延续」。
-  String _lastAnalyzedText = '';
-
-  /// 分析请求序号: await 期间输入又变化时, 过期的结果直接丢弃,
-  /// 避免旧结果覆盖新结果。
-  int _requestSeq = 0;
-
-  bool _loading = true;
-
-  /// 系统级外部划词监听。
-  StreamSubscription<String>? _processTextSub;
-
-  /// 只记录出错环节与原始异常, 文案在 build 时按当前语言生成 ——
-  /// 否则切换语言后这条提示会停留在旧语言。
-  _ErrorKind? _errorKind;
-  Object? _errorDetail;
 
   OpenDrawer _openDrawer = OpenDrawer.none;
 
@@ -84,28 +61,25 @@ class _HomePageState extends State<HomePage>
   bool get _hasInput => _controller.text.trim().isNotEmpty;
 
   /// 上一次同步时的 [_hasInput] 值。
-  ///
-  /// AppBar 有无 / 悬浮按钮显隐 / 返回键拦截都依赖这个状态;
-  /// 只在「空 ↔ 非空」跃迁时整页重建, 输入过程中的动画帧不再全页 setState。
   bool _lastHasInput = false;
 
   /// 抽屉是否处于展开状态。
   bool get _drawerOpen => _openDrawer != OpenDrawer.none;
 
   /// 当前视图, 持久化在设置里, 重启后保持。
-  ViewMode get _viewMode {
-    final name = _settings.viewModeName;
-    if (name == ViewMode.vertical.name) return ViewMode.vertical;
-    if (name == ViewMode.furigana.name) return ViewMode.furigana;
-    return ViewMode.alignment;
-  }
+  ViewMode get _viewMode => ViewMode.fromName(
+        _coordinator?.services.settings.viewModeName,
+      );
 
-  set _viewMode(ViewMode mode) => _settings.setViewModeName(mode.name);
+  set _viewMode(ViewMode mode) =>
+      _coordinator?.services.settings.setViewModeName(mode.name);
 
   /// 罗马音开关, 同样持久化。
-  bool get _showRomaji => _settings.showRomaji;
+  bool get _showRomaji =>
+      _coordinator?.services.settings.showRomaji ?? true;
 
-  set _showRomaji(bool value) => _settings.setShowRomaji(value);
+  set _showRomaji(bool value) =>
+      _coordinator?.services.settings.setShowRomaji(value);
 
   @override
   void initState() {
@@ -116,34 +90,25 @@ class _HomePageState extends State<HomePage>
     );
     // 输入框内容变化时同步动画状态(含粘贴、清空等非键盘输入)。
     _controller.addListener(_syncAnim);
-    _init();
-
-    // 检查 Android 系统外部划词传入的文本
-    PlatformService.instance.getInitialProcessedText().then((text) {
-      if (text != null && text.isNotEmpty && mounted) {
-        _useQuery(text);
-      }
-    });
-    _processTextSub = PlatformService.instance.onProcessedText.listen((text) {
-      if (text.isNotEmpty && mounted) {
-        _useQuery(text);
-      }
-    });
   }
 
-  Future<void> _init() async {
-    try {
-      await _analyzer.warmUp();
-      if (!mounted) return;
-      setState(() => _loading = false);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _errorKind = _ErrorKind.dictionary;
-        _errorDetail = e;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_coordinator == null) {
+      final coordinator = widget.coordinator ??
+          HomeCoordinator(services: KanjiServices.of(context));
+      _coordinator = coordinator;
+      coordinator.addListener(_onCoordinatorChanged);
+      _externalQuerySub = coordinator.onExternalQuery.listen((text) {
+        if (mounted) _useQuery(text);
       });
+      coordinator.init();
     }
+  }
+
+  void _onCoordinatorChanged() {
+    if (mounted) setState(() {});
   }
 
   void _syncAnim() {
@@ -156,9 +121,6 @@ class _HomePageState extends State<HomePage>
         _anim.reverse();
       }
     }
-    // 状态跃迁 (开始输入 / 完全清空) 影响 AppBar 与悬浮按钮, 需要整页
-    // 重建; 逐字输入只有动画值变化, 由 _buildAnimatedBody 的
-    // AnimatedBuilder 局部消化, 不再重建整页。
     if (hasInput != _lastHasInput) {
       _lastHasInput = hasInput;
       if (mounted) setState(() {});
@@ -166,93 +128,60 @@ class _HomePageState extends State<HomePage>
   }
 
   void _onChanged(String value) {
-    _debounce.run((isCancelled) => _run(value, isCancelled));
-  }
-
-  Future<void> _run(String text, [bool Function()? isCancelled]) async {
-    final trimmed = text.trim();
-    if (trimmed.isEmpty) {
-      setState(() => _result = null);
-      return;
-    }
-    final seq = ++_requestSeq;
-    try {
-      final r = await _analyzer.analyze(
-        text,
-        isCancelled: () {
-          return (isCancelled?.call() ?? false) || seq != _requestSeq;
-        },
-      );
-      // await 期间输入又变了或被取消: 本次结果已过期, 丢弃。
-      if (!mounted || seq != _requestSeq || (isCancelled?.call() ?? false)) {
-        return;
-      }
-      setState(() {
-        _result = r;
-        _errorKind = null;
-        _errorDetail = null;
-      });
-      if (r.isTruncated && mounted) {
-        showToast(
-          context,
-          AppStrings.of(context).inputExceededLimit(kMaxInputLength),
-        );
-      }
-      final previous = _lastAnalyzedText;
-      _lastAnalyzedText = trimmed;
-      _queryStore.recordQuery(trimmed, previous: previous);
-    } catch (e) {
-      if (!mounted || seq != _requestSeq || (isCancelled?.call() ?? false)) {
-        return;
-      }
-      setState(() {
-        _errorKind = _ErrorKind.analysis;
-        _errorDetail = e;
-      });
-    }
+    _coordinator?.onInputChanged(
+      value,
+      onTruncated: (limit) {
+        if (mounted) {
+          showToast(
+            context,
+            AppStrings.of(context).inputExceededLimit(limit),
+          );
+        }
+      },
+    );
   }
 
   /// 清空输入并保持焦点 (供界面上的 ✕ / 垃圾桶按钮使用)。
   void _clear() {
-    _debounce.cancel();
+    _coordinator?.clear();
     _controller.clear();
-    // 置空延续标记: 清空后的下一次输入是新查询, 不并入上一条历史。
-    _lastAnalyzedText = '';
     _focusNode.requestFocus();
   }
 
   /// 清空输入并收起键盘 (供系统返回键使用)。
-  ///
-  /// 返回键的语义是「退出当前状态」, 因此这里不再主动唤起键盘。
   void _clearAndDismissKeyboard() {
-    _debounce.cancel();
+    _coordinator?.clear();
     _controller.clear();
-    _lastAnalyzedText = '';
     _focusNode.unfocus();
   }
 
   /// 点按历史 / 收藏词条: 回填并重新查询。
-  ///
-  /// 不主动聚焦, 让用户直接看到结果; 键盘若开着则收起。
   void _useQuery(String text) {
-    _debounce.cancel();
     _focusNode.unfocus();
     _controller.text = text;
-    // controller 监听器会推进展开动画; 这里直接分析, 不再走防抖。
-    _run(text);
+    _coordinator?.runAnalysis(
+      text,
+      onTruncated: (limit) {
+        if (mounted) {
+          showToast(
+            context,
+            AppStrings.of(context).inputExceededLimit(limit),
+          );
+        }
+      },
+    );
   }
 
   /// 切换当前查询的收藏状态。
   void _toggleFavorite() {
     final text = _controller.text.trim();
-    if (text.isEmpty) return;
-    final added = _queryStore.toggleFavorite(text);
+    if (text.isEmpty || _coordinator == null) return;
+    final added = _coordinator!.toggleFavorite(text);
     final s = AppStrings.of(context);
     showToast(context, added ? s.favoriteAdded(text) : s.favoriteRemoved(text));
   }
 
   void _toggleDrawer(OpenDrawer which) {
-    // 收起键盘, 避免抽屉展开时键盘遮挡。
     _focusNode.unfocus();
     setState(() {
       _openDrawer = _openDrawer == which ? OpenDrawer.none : which;
@@ -284,8 +213,11 @@ class _HomePageState extends State<HomePage>
 
   @override
   void dispose() {
-    _processTextSub?.cancel();
-    _debounce.dispose();
+    _externalQuerySub?.cancel();
+    _coordinator?.removeListener(_onCoordinatorChanged);
+    if (widget.coordinator == null) {
+      _coordinator?.dispose();
+    }
     _controller.removeListener(_syncAnim);
     _controller.dispose();
     _focusNode.dispose();
@@ -311,11 +243,12 @@ class _HomePageState extends State<HomePage>
 
   @override
   Widget build(BuildContext context) {
+    final isLoading = _coordinator?.loading ?? true;
     final mainBody = Scaffold(
       backgroundColor: Colors.transparent,
       appBar: _hasInput ? _buildAppBar() : null,
       body: SafeArea(
-        child: _loading ? const _LoadingView() : _buildAnimatedBody(),
+        child: isLoading ? const _LoadingView() : _buildAnimatedBody(),
       ),
     );
 
@@ -427,20 +360,21 @@ class _HomePageState extends State<HomePage>
         ],
       ),
       actions: [
-        AnimatedBuilder(
-          animation: _queryStore,
-          builder: (context, _) {
-            final favorite = _queryStore.isFavorite(_controller.text);
-            return IconButton(
-              tooltip: s.favoritesLabel,
-              onPressed: _toggleFavorite,
-              icon: Icon(
-                favorite ? Icons.star_rounded : Icons.star_border_rounded,
-                color: favorite ? AppTheme.kanjiHighlight : null,
-              ),
-            );
-          },
-        ),
+        if (_coordinator != null)
+          AnimatedBuilder(
+            animation: _coordinator!.services.queryStore,
+            builder: (context, _) {
+              final favorite = _coordinator!.isFavorite(_controller.text);
+              return IconButton(
+                tooltip: s.favoritesLabel,
+                onPressed: _toggleFavorite,
+                icon: Icon(
+                  favorite ? Icons.star_rounded : Icons.star_border_rounded,
+                  color: favorite ? AppTheme.kanjiHighlight : null,
+                ),
+              );
+            },
+          ),
         IconButton(
           tooltip: s.clear,
           onPressed: _clear,
@@ -544,17 +478,15 @@ class _HomePageState extends State<HomePage>
                   final data = await Clipboard.getData(Clipboard.kTextPlain);
                   final text = data?.text?.trim();
                   if (text != null && text.isNotEmpty) {
-                    if (text.length > kMaxInputLength) {
-                      final safeText = text.substring(0, kMaxInputLength);
-                      _useQuery(safeText);
-                      if (mounted) {
+                    final cleanText = InputSanitizer.clean(text);
+                    if (cleanText.isNotEmpty) {
+                      _useQuery(cleanText);
+                      if (text.length > kMaxInputLength && mounted) {
                         showToast(
                           context,
                           AppStrings.of(context).inputExceededLimit(kMaxInputLength),
                         );
                       }
-                    } else {
-                      _useQuery(text);
                     }
                   }
                 },
@@ -572,8 +504,9 @@ class _HomePageState extends State<HomePage>
     // 完全收起时不构建内容, 避免无谓计算。
     if (t <= 0.001) return const SizedBox.shrink();
 
+    final result = _coordinator?.result;
     // 单汉字只显示音读/训读详解, 视图切换与罗马音开关都不适用。
-    final isSingleKanji = _result?.isSingleKanji ?? false;
+    final isSingleKanji = result?.isSingleKanji ?? false;
 
     return IgnorePointer(
       ignoring: t < 0.5,
@@ -585,14 +518,14 @@ class _HomePageState extends State<HomePage>
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SizedBox(height: isSingleKanji ? 4 : 12),
-              if (!isSingleKanji && _result != null)
+              if (!isSingleKanji && result != null)
                 HomeToolbar(
                   viewMode: _viewMode,
                   showRomaji: _showRomaji,
                   onSelectMode: (mode) => setState(() => _viewMode = mode),
                   onRomajiChanged: (value) =>
                       setState(() => _showRomaji = value),
-                  onExport: () => showAnalysisExportSheet(context, _result!),
+                  onExport: () => showAnalysisExportSheet(context, result),
                 ),
               _buildContent(),
             ],
@@ -604,10 +537,12 @@ class _HomePageState extends State<HomePage>
 
   Widget _buildContent() {
     final s = AppStrings.of(context);
-    if (_errorKind != null) {
-      final msg = switch (_errorKind!) {
-        _ErrorKind.dictionary => s.dictionaryInitFailed(_errorDetail!),
-        _ErrorKind.analysis => s.analysisFailed(_errorDetail!),
+    final errorKind = _coordinator?.errorKind;
+    if (errorKind != null) {
+      final detail = _coordinator?.errorDetail ?? '';
+      final msg = switch (errorKind) {
+        HomeErrorKind.dictionary => s.dictionaryInitFailed(detail),
+        HomeErrorKind.analysis => s.analysisFailed(detail),
       };
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -619,7 +554,7 @@ class _HomePageState extends State<HomePage>
       );
     }
 
-    final result = _result;
+    final result = _coordinator?.result;
     if (result == null || result.isEmpty) {
       // 输入了内容但解析尚未完成: 显示轻量占位, 避免闪烁。
       return const SizedBox(height: 40);

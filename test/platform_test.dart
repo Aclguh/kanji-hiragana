@@ -244,5 +244,22 @@ void main() {
       expect(zh.aboutTitle('1.0.0').isNotEmpty, isTrue);
       expect(en.aboutTitle('1.0.0').isNotEmpty, isTrue);
     });
+
+    test('FAULT-01: 原生平台通道抛出 PlatformException 时优雅降级', () async {
+      messenger.setMockMethodCallHandler(ttsChannel, (call) async {
+        throw PlatformException(code: 'ERROR', message: 'TTS engine failure');
+      });
+
+      final success = await TtsService.instance.speak('桜');
+      expect(success, isFalse);
+      expect(TtsService.instance.isSpeaking, isFalse);
+      expect(TtsService.instance.speakingText, '');
+
+      messenger.setMockMethodCallHandler(platformChannel, (call) async {
+        throw PlatformException(code: 'UNAVAILABLE');
+      });
+      final initial = await PlatformService.instance.getInitialProcessedText();
+      expect(initial, isNull);
+    });
   });
 }

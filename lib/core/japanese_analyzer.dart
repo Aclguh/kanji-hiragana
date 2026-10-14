@@ -3,6 +3,7 @@ import 'dart:isolate';
 
 import 'package:kuromoji/kuromoji.dart';
 
+import 'input_sanitizer.dart';
 import 'kana_romaji.dart';
 import 'kanji_reading_dict.dart';
 import 'morpheme.dart';
@@ -200,15 +201,14 @@ class JapaneseAnalyzer {
     String text, {
     bool Function()? isCancelled,
   }) async {
+    final cleaned = InputSanitizer.clean(text, maxLength: kMaxInputLength);
     final rawTrimmed = text.trim();
-    if (rawTrimmed.isEmpty) {
+    if (cleaned.isEmpty) {
       return AnalysisResult(source: text, morphemes: const []);
     }
 
     final bool isTruncated = rawTrimmed.length > kMaxInputLength;
-    final trimmed = isTruncated
-        ? rawTrimmed.substring(0, kMaxInputLength).trim()
-        : rawTrimmed;
+    final trimmed = cleaned;
 
     try {
       return await _analyzeInternal(trimmed, isTruncated, isCancelled);

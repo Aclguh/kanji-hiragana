@@ -74,21 +74,65 @@ class VerticalView extends StatelessWidget {
   /// 保持文库本典籍单列高度适中, 超出部分自动向左折行。
   static const int maxCharsPerColumn = 14;
 
+  /// 日语排版行首禁则字符集合 (不得出现在一列的列首)。
+  static const Set<String> lineStartForbidden = {
+    '、', '。', '，', '．', '！', '？', '：', '；', '・',
+    '」', '』', '）', '】', '”', '’', '＞', '»',
+    'ー', 'っ', 'ゃ', 'ゅ', 'ょ', 'ゎ',
+    'ァ', 'ィ', 'ゥ', 'ェ', 'ォ', 'ッ', 'ャ', 'ュ', 'ョ', 'ヮ', 'ヶ', 'ヵ',
+  };
+
+  /// 日语排版行末禁则字符集合 (不得出现在一列的列末)。
+  static const Set<String> lineEndForbidden = {
+    '「', '『', '（', '【', '“', '‘', '＜', '«',
+  };
+
   List<List<Morpheme>> _splitIntoColumns(List<Morpheme> morphemes) {
     if (morphemes.isEmpty) return const [];
     final columns = <List<Morpheme>>[];
     var current = <Morpheme>[];
     var currentLen = 0;
 
-    for (final m in morphemes) {
+    for (var i = 0; i < morphemes.length; i++) {
+      final m = morphemes[i];
       final len = m.surface.length;
+      final firstChar = m.surface.isNotEmpty ? m.surface[0] : '';
+      final isStartForbidden = lineStartForbidden.contains(firstChar);
+
       if (current.isNotEmpty && currentLen + len > maxCharsPerColumn) {
+        // 避头禁则: 若当前词首字符不得置于列首 (如句读符/闭括号),
+        // 允许其作为悬挂字符挂在当前列末尾 (ぶら下げ組版)
+        if (isStartForbidden) {
+          current.add(m);
+          columns.add(current);
+          current = <Morpheme>[];
+          currentLen = 0;
+          continue;
+        }
+
         columns.add(current);
         current = [m];
         currentLen = len;
       } else {
         current.add(m);
         currentLen += len;
+      }
+
+      // 避尾禁则: 若当前列末词是以开括号等行末禁则字符结尾,
+      // 且当前列已接近满列且后续还有词, 提前折至新列首
+      if (current.isNotEmpty && i + 1 < morphemes.length) {
+        final lastM = current.last;
+        final lastChar =
+            lastM.surface.isNotEmpty ? lastM.surface[lastM.surface.length - 1] : '';
+        if (lineEndForbidden.contains(lastChar) &&
+            currentLen >= maxCharsPerColumn - 2) {
+          if (current.length > 1) {
+            current.removeLast();
+            columns.add(current);
+            current = [lastM];
+            currentLen = lastM.surface.length;
+          }
+        }
       }
     }
     if (current.isNotEmpty) {

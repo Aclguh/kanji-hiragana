@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'input_sanitizer.dart';
+
 /// 查询历史与收藏。
 ///
 /// 与 [SettingsController] 同一套模式: 单例 + ChangeNotifier + SharedPreferences,
@@ -22,13 +24,8 @@ class QueryStore extends ChangeNotifier {
   static const maxQueryTextLength = 200;
 
   /// 清洗输入文本: 截断超长部分并过滤控制字符。
-  static String sanitizeText(String text) {
-    var trimmed = text.trim();
-    if (trimmed.length > maxQueryTextLength) {
-      trimmed = trimmed.substring(0, maxQueryTextLength).trim();
-    }
-    return trimmed.replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F]'), '');
-  }
+  static String sanitizeText(String text) =>
+      InputSanitizer.clean(text, maxLength: maxQueryTextLength);
 
   QueryStore._();
 
