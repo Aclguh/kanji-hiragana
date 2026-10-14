@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'core/japanese_analyzer.dart';
+import 'core/kanji_services.dart';
 import 'core/query_store.dart';
 import 'core/settings.dart';
 import 'core/strings.dart';
@@ -117,17 +118,20 @@ class _KanjiAppState extends State<KanjiApp> with WidgetsBindingObserver {
         if (key != _rootKey) {
           _rootKey = key;
           final strings = _settings.strings;
-          _cachedRoot = AppStringsScope(
-            strings: strings,
-            child: MaterialApp(
-              title: strings.appTitle,
-              debugShowCheckedModeBanner: false,
-              theme: AppTheme.light(),
-              darkTheme: AppTheme.dark(),
-              themeMode: _settings.themeMode.material,
-              home: RotationGuard(
-                enabled: _settings.autoRotate,
-                child: const HomePage(),
+          _cachedRoot = KanjiServicesScope(
+            services: KanjiServices.defaultServices,
+            child: AppStringsScope(
+              strings: strings,
+              child: MaterialApp(
+                title: strings.appTitle,
+                debugShowCheckedModeBanner: false,
+                theme: AppTheme.light(),
+                darkTheme: AppTheme.dark(),
+                themeMode: _settings.themeMode.material,
+                home: RotationGuard(
+                  enabled: _settings.autoRotate,
+                  child: const HomePage(),
+                ),
               ),
             ),
           );

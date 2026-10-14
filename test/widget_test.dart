@@ -10,11 +10,13 @@ import 'dart:ui' show Tristate;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kanji_hiragana/core/kanji_filter.dart';
+import 'package:kanji_hiragana/core/kanji_homophones.dart';
 import 'package:kanji_hiragana/core/kanji_reading_dict.dart';
 import 'package:kanji_hiragana/core/kanji_words_dict.dart';
 import 'package:kanji_hiragana/core/morpheme.dart';
 import 'package:kanji_hiragana/core/settings.dart';
 import 'package:kanji_hiragana/core/strings.dart';
+import 'package:kanji_hiragana/core/yojijukugo_dict.dart';
 import 'package:kanji_hiragana/theme.dart';
 import 'package:kanji_hiragana/widgets/alignment_table.dart';
 import 'package:kanji_hiragana/widgets/anki_export_sheet.dart';
@@ -609,6 +611,79 @@ void main() {
         ));
         expect(tester.takeException(), isNull);
         expect(find.text('重置'), findsOneWidget);
+      });
+    });
+
+    group('SingleKanji 子组件独立渲染 ($name)', () {
+      testWidgets('KanjiHeroCard 渲染汉字、释义与元信息', (tester) async {
+        final r = kanjiReadingDict['日']!;
+        await tester.pumpWidget(scrollHost(KanjiHeroCard(reading: r)));
+        expect(find.text('日'), findsNWidgets(2)); // 大字形与释义各包含一次
+        expect(find.text('太阳'), findsOneWidget);
+        expect(find.text('4'), findsOneWidget);
+      });
+
+      testWidgets('ReadingGroup 渲染读音并支持折叠展开', (tester) async {
+        await tester.pumpWidget(scrollHost(
+          const ReadingGroup(
+            label: '音读',
+            sublabel: 'Onyomi',
+            badge: '4 项',
+            color: AppTheme.accent,
+            readings: ['にち', 'じつ', 'ひ', 'か'],
+            maxItems: 2,
+          ),
+        ));
+        expect(find.text('音读'), findsOneWidget);
+        expect(find.text('にち'), findsOneWidget);
+        expect(find.text('等 2 项'), findsOneWidget);
+
+        await tester.tap(find.text('等 2 项'));
+        await tester.pump();
+        expect(find.text('收起'), findsOneWidget);
+      });
+
+      testWidgets('CommonWordsGroup 渲染词列表与词性标签', (tester) async {
+        final words = kanjiWordsDict['日']!;
+        String? tapped;
+        await tester.pumpWidget(scrollHost(
+          CommonWordsGroup(
+            words: words,
+            onWordTap: (w) => tapped = w,
+          ),
+        ));
+        expect(find.text('常见词汇'), findsOneWidget);
+        expect(find.text('日本'), findsOneWidget);
+
+        await tester.tap(find.text('日本'));
+        await tester.pump();
+        expect(tapped, '日本');
+      });
+
+      testWidgets('HomophonesGroup 渲染同音字候选', (tester) async {
+        final r = kanjiReadingDict['日']!;
+        final homophones = KanjiHomophones.findHomophones(r);
+        await tester.pumpWidget(scrollHost(
+          HomophonesGroup(
+            homophones: homophones,
+            onWordTap: (_) {},
+          ),
+        ));
+        expect(find.text('同音汉字'), findsOneWidget);
+        expect(homophones, isNotEmpty);
+      });
+
+      testWidgets('YojijukugoGroup 渲染成语推荐', (tester) async {
+        final yojijukugo = getYojijukugoForKanji('日');
+        await tester.pumpWidget(scrollHost(
+          YojijukugoGroup(
+            entries: yojijukugo,
+            onWordTap: (_) {},
+          ),
+        ));
+        expect(find.text('四字熟語'), findsOneWidget);
+        expect(yojijukugo, isNotEmpty);
+        expect(find.text('日進月歩'), findsOneWidget);
       });
     });
   }

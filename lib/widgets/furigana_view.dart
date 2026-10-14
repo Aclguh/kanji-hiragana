@@ -35,15 +35,17 @@ class FuriganaView extends StatelessWidget {
         children: [
           for (var p = 0; p < paragraphs.length; p++) ...[
             if (p > 0) const SizedBox(height: 18),
-            Wrap(
-              // 逐词换行, 保证「汉字-读音」始终成组不被拆散。
-              spacing: 2,
-              runSpacing: 18,
-              crossAxisAlignment: WrapCrossAlignment.end,
-              children: paragraphs[p]
-                  .map((m) =>
-                      _FuriganaToken(morpheme: m, showRomaji: showRomaji))
-                  .toList(),
+            RepaintBoundary(
+              child: Wrap(
+                // 逐词换行, 保证「汉字-读音」始终成组不被拆散。
+                spacing: 2,
+                runSpacing: 18,
+                crossAxisAlignment: WrapCrossAlignment.end,
+                children: paragraphs[p]
+                    .map((m) =>
+                        _FuriganaToken(morpheme: m, showRomaji: showRomaji))
+                    .toList(),
+              ),
             ),
           ],
         ],

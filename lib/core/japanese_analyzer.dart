@@ -182,6 +182,12 @@ class JapaneseAnalyzer {
     _reset();
   }
 
+  /// 仅供测试环境模拟分词 isolate 异常崩溃与退出。
+  void simulateCrashForTesting() {
+    _isolate?.kill(priority: Isolate.immediate);
+    _onIsolateExited();
+  }
+
   /// 分析一段日语文本, 返回逐词的「汉字 / 平假名 / 罗马音」对应结果。
   ///
   /// 若输入恰好是**单个汉字**, 结果中会附带该字的音读/训读详情
@@ -189,6 +195,7 @@ class JapaneseAnalyzer {
   ///
   /// 若提供了 [isCancelled], 在分词前与分词后会检查该判定条件;
   /// 若已被取消, 则提早返回空结果, 避免后续对象构造与无谓计算。
+  /// 若遇 isolate 意外退出且未被取消, 自动重启并重试一次。
   Future<AnalysisResult> analyze(
     String text, {
     bool Function()? isCancelled,
@@ -203,6 +210,24 @@ class JapaneseAnalyzer {
         ? rawTrimmed.substring(0, kMaxInputLength).trim()
         : rawTrimmed;
 
+    try {
+      return await _analyzeInternal(trimmed, isTruncated, isCancelled);
+    } catch (e) {
+      final isExited = e.toString().contains('tokenizer isolate exited') ||
+          (e is StateError && e.message.contains('analyzer is not ready'));
+      if (isExited && !(isCancelled?.call() ?? false)) {
+        await warmUp();
+        return await _analyzeInternal(trimmed, isTruncated, isCancelled);
+      }
+      rethrow;
+    }
+  }
+
+  Future<AnalysisResult> _analyzeInternal(
+    String trimmed,
+    bool isTruncated,
+    bool Function()? isCancelled,
+  ) async {
     await warmUp();
     if (isCancelled?.call() ?? false) {
       return AnalysisResult(source: trimmed, morphemes: const []);
@@ -289,16 +314,33 @@ Future<void> _tokenizerMain(SendPort mainPort) async {
         case _tokenizeTag:
           tokenizer ??= await TokenizerBuilder().build();
           mainPort.send(
-            [_resultTag, id, tokenizer.tokenize(request[2] as String)],
+            [_resultTag, id, _tokenizeSafe(tokenizer, request[2] as String)],
           );
         case _tokenizeBatchTag:
           tokenizer ??= await TokenizerBuilder().build();
           final lines = (request[2] as List).cast<String>();
-          final batch = lines.map((l) => tokenizer!.tokenize(l)).toList();
+          final batch = lines.map((l) => _tokenizeSafe(tokenizer!, l)).toList();
           mainPort.send([_resultTag, id, batch]);
       }
     } catch (e) {
       mainPort.send([_errorTag, id, e.toString()]);
     }
   }
+}
+
+/// 安全调用 kuromoji 分词。
+///
+/// kuromoji 内部通过 `split(RegExp(r'[、。]'))` 切分句子; 若文本以标点结尾、
+/// 或包含连续标点与空白, 会产生空字符串片段传入其 ViterbiLattice,
+/// 触发其 EOS 节点指向自身的死循环并耗尽内存崩溃。
+/// 因此预先按标点与换行切分为非空片段后再行分词。
+List<Map<String, dynamic>> _tokenizeSafe(Tokenizer tokenizer, String text) {
+  final chunks =
+      text.split(RegExp(r'[、。\r\n]+')).where((s) => s.trim().isNotEmpty);
+  if (chunks.isEmpty) return const [];
+  final allTokens = <Map<String, dynamic>>[];
+  for (final chunk in chunks) {
+    allTokens.addAll(tokenizer.tokenize(chunk));
+  }
+  return allTokens;
 }

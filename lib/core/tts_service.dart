@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -18,6 +20,8 @@ class TtsService with ChangeNotifier {
   /// 供测试环境重置单例状态。
   @visibleForTesting
   void resetForTesting() {
+    _timeoutTimer?.cancel();
+    _timeoutTimer = null;
     _isSpeaking = false;
     _speakingText = '';
     _currentUtteranceId = null;
@@ -25,6 +29,7 @@ class TtsService with ChangeNotifier {
     notifyListeners();
   }
 
+  Timer? _timeoutTimer;
   bool _isSpeaking = false;
   String _speakingText = '';
   int _utteranceSeq = 0;
@@ -66,6 +71,8 @@ class TtsService with ChangeNotifier {
       case 'onSpeakDone':
       case 'onSpeakError':
         if (utteranceId != null && utteranceId != _currentUtteranceId) return;
+        _timeoutTimer?.cancel();
+        _timeoutTimer = null;
         _isSpeaking = false;
         _speakingText = '';
         _currentUtteranceId = null;
@@ -79,11 +86,22 @@ class TtsService with ChangeNotifier {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return false;
 
+    _timeoutTimer?.cancel();
     final utteranceId = 'tts_${++_utteranceSeq}';
     _currentUtteranceId = utteranceId;
     _speakingText = trimmed;
     _isSpeaking = true;
     notifyListeners();
+
+    // 设置 15 秒超时守护, 防止原生通道无回调时状态悬挂
+    _timeoutTimer = Timer(const Duration(seconds: 15), () {
+      if (_isSpeaking && _currentUtteranceId == utteranceId) {
+        _isSpeaking = false;
+        _speakingText = '';
+        _currentUtteranceId = null;
+        notifyListeners();
+      }
+    });
 
     try {
       final result = await _channel.invokeMethod<bool>('speak', {
@@ -92,6 +110,8 @@ class TtsService with ChangeNotifier {
       });
       if (result != true) {
         if (_currentUtteranceId == utteranceId) {
+          _timeoutTimer?.cancel();
+          _timeoutTimer = null;
           _isSpeaking = false;
           _speakingText = '';
           _currentUtteranceId = null;
@@ -103,6 +123,8 @@ class TtsService with ChangeNotifier {
     } catch (_) {
       // 在宿主测试或不支持的平台上静默降级
       if (_currentUtteranceId == utteranceId) {
+        _timeoutTimer?.cancel();
+        _timeoutTimer = null;
         _isSpeaking = false;
         _speakingText = '';
         _currentUtteranceId = null;
@@ -114,6 +136,8 @@ class TtsService with ChangeNotifier {
 
   /// 停止发音。
   Future<void> stop() async {
+    _timeoutTimer?.cancel();
+    _timeoutTimer = null;
     _currentUtteranceId = null;
     try {
       await _channel.invokeMethod<bool>('stop');

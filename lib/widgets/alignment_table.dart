@@ -40,11 +40,18 @@ class AlignmentTable extends StatelessWidget {
                 color: colors.border.withValues(alpha: 0.6),
               ),
             ),
-          for (final m in paragraphs[p])
-            _MorphemeRow(morpheme: m, showRomaji: showRomaji),
+          RepaintBoundary(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final m in paragraphs[p])
+                  _MorphemeRow(morpheme: m, showRomaji: showRomaji),
+              ],
+            ),
+          ),
         ],
         const SizedBox(height: 16),
-        _buildSummary(context),
+        RepaintBoundary(child: _buildSummary(context)),
       ],
     );
   }

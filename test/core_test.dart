@@ -4,17 +4,22 @@ import 'package:kanji_hiragana/core/kana_romaji.dart';
 import 'package:kanji_hiragana/core/kanji_filter.dart';
 import 'package:kanji_hiragana/core/kanji_homophones.dart';
 import 'package:kanji_hiragana/core/kanji_reading_dict.dart';
+import 'package:kanji_hiragana/core/kanji_services.dart';
 import 'package:kanji_hiragana/core/kanji_words_dict.dart';
 import 'package:kanji_hiragana/core/loanwords_dict.dart';
 import 'package:kanji_hiragana/core/morpheme.dart';
+import 'package:kanji_hiragana/core/platform_service.dart';
 import 'package:kanji_hiragana/core/query_store.dart';
 import 'package:kanji_hiragana/core/radical_dict.dart';
 import 'package:kanji_hiragana/core/settings.dart';
 import 'package:kanji_hiragana/core/strings.dart';
+import 'package:kanji_hiragana/core/tts_service.dart';
 import 'package:kanji_hiragana/core/yojijukugo_dict.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('假名 ↔ 罗马音', () {
     test('片假名转平假名', () {
       expect(katakanaToHiragana('ニッポン'), 'にっぽん');
@@ -1180,6 +1185,44 @@ void main() {
       final romaji = hiraganaToRomaji('わたし、にほん。');
       expect(romaji, 'watashi, nihon. ');
       expect(hiraganaToRomaji('「はい」'), '"hai"');
+    });
+
+    test('ROBUST-01: JapaneseAnalyzer 分词 isolate 异常崩溃时自动重启并重试', () async {
+      final analyzer = JapaneseAnalyzer.instance;
+      await analyzer.warmUp();
+      expect(analyzer.isReady, isTrue);
+
+      // 模拟 isolate 崩溃退出
+      analyzer.simulateCrashForTesting();
+      expect(analyzer.isReady, isFalse);
+
+      // 再次调用 analyze，断言能自动自愈并返回正确结果
+      final result = await analyzer.analyze('日本語');
+      expect(result.morphemes, isNotEmpty);
+      expect(result.fullHiragana, 'にほんご');
+      expect(analyzer.isReady, isTrue);
+    });
+
+    test('PERF-02: 4000 字符长文本分词、分段及截断边界验证', () async {
+      final analyzer = JapaneseAnalyzer.instance;
+      // 构造超过 4000 字符的超长多段落文本 (测试截断边界与长文本分词鲁棒性)
+      final text = '吾輩は猫である。名前はまだ無い。どこで生れたかとんと見当がつかぬ。\n' * 125;
+      expect(text.length, greaterThan(kMaxInputLength));
+
+      final res = await analyzer.analyze(text);
+      expect(res.isTruncated, isTrue);
+      expect(res.source.length, kMaxInputLength);
+      expect(res.paragraphs, isNotEmpty);
+      expect(res.morphemes, isNotEmpty);
+    });
+
+    test('DI-01: KanjiServices 默认单例组合与服务访问', () {
+      final services = KanjiServices.defaultServices;
+      expect(identical(services.analyzer, JapaneseAnalyzer.instance), isTrue);
+      expect(identical(services.queryStore, QueryStore.instance), isTrue);
+      expect(identical(services.settings, SettingsController.instance), isTrue);
+      expect(identical(services.tts, TtsService.instance), isTrue);
+      expect(identical(services.platform, PlatformService.instance), isTrue);
     });
   });
 }
