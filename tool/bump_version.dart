@@ -65,6 +65,19 @@ void main(List<String> args) {
     print('OK  已更新 integration_test/ui_test.dart -> 断言 $semver');
   }
 
+  // 4. 更新 README.md 与 README.en.md (若存在版本字面量)
+  for (final filename in ['README.md', 'README.en.md']) {
+    final file = File(filename);
+    if (file.existsSync()) {
+      final content = file.readAsStringSync();
+      if (content.contains(oldSemver)) {
+        final newContent = content.replaceAll(oldSemver, semver);
+        file.writeAsStringSync(newContent);
+        print('OK  已更新 $filename -> $semver');
+      }
+    }
+  }
+
   print('\n开始执行数据与断言同步验证: dart run tool/verify.dart ...');
   final result = Process.runSync(
     Platform.resolvedExecutable,

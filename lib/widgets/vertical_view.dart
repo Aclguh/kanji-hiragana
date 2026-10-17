@@ -3,9 +3,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../core/kanji_services.dart';
 import '../core/morpheme.dart';
 import '../core/strings.dart';
-import '../core/tts_service.dart';
+
 import '../theme.dart';
 import 'feedback.dart';
 
@@ -150,15 +151,17 @@ class VerticalView extends StatelessWidget {
       children: [
         for (var c = 0; c < columns.length; c++) ...[
           if (c > 0) const SizedBox(width: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              for (final m in columns[c])
-                _VerticalMorphemeItem(
-                  morpheme: m,
-                  showRomaji: showRomaji,
-                ),
-            ],
+          RepaintBoundary(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                for (final m in columns[c])
+                  _VerticalMorphemeItem(
+                    morpheme: m,
+                    showRomaji: showRomaji,
+                  ),
+              ],
+            ),
           ),
         ],
       ],
@@ -189,7 +192,7 @@ class _VerticalMorphemeItem extends StatelessWidget {
       child: InkWell(
         onTap: () {
           // 点击复制并播放发音
-          TtsService.instance.speak(morpheme.pronunciationHiragana);
+          KanjiServices.of(context).tts.speak(morpheme.pronunciationHiragana);
           copyWithToast(context, morpheme.surface, s.copiedSurface(morpheme.surface));
         },
         onLongPress: () {
@@ -340,7 +343,8 @@ class _VerticalFooter extends StatelessWidget {
             icon: const Icon(Icons.volume_up_rounded, size: 20),
             color: AppTheme.accent,
             tooltip: s.speak,
-            onPressed: () => TtsService.instance.speak(result.fullPronunciation),
+            onPressed: () =>
+                KanjiServices.of(context).tts.speak(result.fullPronunciation),
           ),
           const SizedBox(width: 8),
           Expanded(

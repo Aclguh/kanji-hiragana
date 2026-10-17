@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/kanji_services.dart';
 import '../core/settings.dart';
 import '../core/strings.dart';
 import '../theme.dart';
@@ -13,7 +14,7 @@ class SettingsDrawerContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settings = SettingsController.instance;
+    final settings = KanjiServices.of(context).settings;
     final s = AppStrings.of(context);
 
     return DrawerPanel(

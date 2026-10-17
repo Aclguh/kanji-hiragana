@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../core/input_sanitizer.dart';
 import '../core/kanji_filter.dart';
 import '../core/kanji_reading_dict.dart';
 import '../core/strings.dart';
@@ -396,7 +397,9 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
       ],
       onChanged: (text) {
         setState(() {
-          _filter = _filter.copyWith(readingQuery: text.trim());
+          _filter = _filter.copyWith(
+            readingQuery: InputSanitizer.clean(text, maxLength: 20),
+          );
         });
       },
       style: TextStyle(color: colors.textPrimary, fontSize: 14),
@@ -447,7 +450,9 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
       ],
       onChanged: (text) {
         setState(() {
-          _filter = _filter.copyWith(meaningQuery: text.trim());
+          _filter = _filter.copyWith(
+            meaningQuery: InputSanitizer.clean(text, maxLength: 30),
+          );
         });
       },
       style: TextStyle(color: colors.textPrimary, fontSize: 14),

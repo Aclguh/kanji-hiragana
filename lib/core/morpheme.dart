@@ -205,9 +205,15 @@ class AnalysisResult {
         .replaceAll('\n', '<br>')
         .replaceAll('\t', ' ');
 
-    if (escaped.isNotEmpty) {
-      final first = escaped[0];
-      if (first == '=' || first == '+' || first == '-' || first == '@') {
+    final trimmed = escaped.trimLeft();
+    if (trimmed.isNotEmpty) {
+      final first = trimmed[0];
+      if (first == '=' ||
+          first == '+' ||
+          first == '-' ||
+          first == '@' ||
+          first == '|' ||
+          first == '%') {
         escaped = "'$escaped";
       }
     }
@@ -242,14 +248,14 @@ class AnalysisResult {
             ? k.meaningsEn.join('; ')
             : k.meanings.join('；'),
       );
-      final note = formatNote(k.strokes, k.frequencyRank);
+      final note = escapeTsvField(formatNote(k.strokes, k.frequencyRank));
       return '${escapeTsvField(k.kanji)}\t${escapeTsvField(readings)}\t\t$meanings\t$note';
     }
 
     final buffer = StringBuffer();
     // 首先输出整句为一张卡片
     buffer.writeln(
-      '${escapeTsvField(source)}\t${escapeTsvField(fullHiragana)}\t${escapeTsvField(fullRomaji)}\t$sentenceTag\t',
+      '${escapeTsvField(source)}\t${escapeTsvField(fullHiragana)}\t${escapeTsvField(fullRomaji)}\t${escapeTsvField(sentenceTag)}\t',
     );
 
     // 随后输出句子中含汉字或有注音的词汇卡片 (去重)

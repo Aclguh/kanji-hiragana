@@ -1247,6 +1247,9 @@ void main() {
       expect(AnalysisResult.escapeTsvField('+cmd|'), "'+cmd|");
       expect(AnalysisResult.escapeTsvField('-5'), "'-5");
       expect(AnalysisResult.escapeTsvField('@SUM(A1)'), "'@SUM(A1)");
+      expect(AnalysisResult.escapeTsvField('|calc.exe'), "'|calc.exe");
+      expect(AnalysisResult.escapeTsvField('%PATH%'), "'%PATH%");
+      expect(AnalysisResult.escapeTsvField('  =cmd'), "'  =cmd");
       // 普通文本不受影响
       expect(AnalysisResult.escapeTsvField('日本語'), '日本語');
       expect(AnalysisResult.escapeTsvField('a=b'), 'a=b');

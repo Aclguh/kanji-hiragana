@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../core/query_store.dart';
+import '../../core/kanji_services.dart';
 import '../../core/strings.dart';
 import '../../theme.dart';
 import '../anki_export_sheet.dart';
@@ -25,7 +25,7 @@ class QueryChips extends StatelessWidget {
     final opacity = (1 - t).clamp(0.0, 1.0);
     if (opacity <= 0.001) return const SizedBox.shrink();
 
-    final store = QueryStore.instance;
+    final store = KanjiServices.of(context).queryStore;
     return AnimatedBuilder(
       animation: store,
       builder: (context, _) {
@@ -79,7 +79,7 @@ class QueryChips extends StatelessWidget {
   }) {
     final colors = AppTheme.of(context);
     final s = AppStrings.of(context);
-    final store = QueryStore.instance;
+    final store = KanjiServices.of(context).queryStore;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(

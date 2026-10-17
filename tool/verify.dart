@@ -122,6 +122,16 @@ Future<void> main() async {
     'Anki TSV 公式注入前缀防护 (@)',
   );
   expectEq(
+    AnalysisResult.escapeTsvField('|calc'),
+    "'|calc",
+    'Anki TSV 公式注入前缀防护 (|)',
+  );
+  expectEq(
+    AnalysisResult.escapeTsvField('  =cmd'),
+    "'  =cmd",
+    'Anki TSV 公式注入前缀防护 (空格绕过防御)',
+  );
+  expectEq(
     InputSanitizer.clean('  \u202Ahello\x00world\uFEFF  '),
     'helloworld',
     'InputSanitizer 控制字符与双向格式过滤',
@@ -136,6 +146,18 @@ Future<void> main() async {
   final rHuge = await a.analyze(hugeText);
   expectEq(rHuge.isTruncated, true, '超长输入标记截断');
   expectEq(rHuge.source.length, kMaxInputLength, '超长输入截断至上限');
+
+  final rPunct = await a.analyze('桜、綺麗ですね。');
+  expectEq(rPunct.morphemes.any((m) => m.surface == '、'), true, '句读标点、保留在分词中');
+  expectEq(rPunct.morphemes.any((m) => m.surface == '。'), true, '句点。保留在分词中');
+  expectEq(rPunct.toBracketAnnotation.contains('、'), true, '括号注音导出保留标点');
+  expectEq(rPunct.toHtmlRuby.contains('。'), true, 'HTML Ruby 导出保留标点');
+
+  final rBatch = await a.analyzeBatch(['猫', '犬', '富士山']);
+  expectEq(rBatch.length, 3, '批量分词返回全部文本结果');
+  expectEq(rBatch[0].fullHiragana, 'ねこ', '批量词1 平假名');
+  expectEq(rBatch[1].fullHiragana, 'いぬ', '批量词2 平假名');
+  expectEq(rBatch[2].fullHiragana, 'ふじさん', '批量词3 平假名');
 
   final r4 = await a.analyze('   ');
   expectEq(r4.isEmpty, true, '空输入返回空');
@@ -437,6 +459,8 @@ Future<void> main() async {
   expectEq(KanjiConverter.toJapaneseKanji('学'), '学', '学保持日文新字体');
   expectEq(KanjiConverter.toJapaneseKanji('国'), '国', '国保持日文新字体');
   expectEq(KanjiConverter.toJapaneseKanji('机会'), '機会', '机会特例→機会');
+  expectEq(KanjiConverter.toJapaneseKanji('𠆲'), '儣', '增补平面代理对字符安全转换 (𠆲→儣)');
+  expectEq(KanjiConverter.hasSimplified('𠆲'), true, '增补平面代理对字符识别为可转换');
 
   final rSimplified = await a.analyze('练习');
   expectEq(rSimplified.morphemes.length, 1, '简体「练习」正确分词为单个词');

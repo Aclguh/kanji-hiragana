@@ -5,26 +5,23 @@ import 'package:flutter/foundation.dart';
 import '../../core/japanese_analyzer.dart';
 import '../../core/kanji_services.dart';
 import '../../core/morpheme.dart';
-import 'debouncer.dart';
 
 /// 出错环节, 决定界面上显示哪一条提示。
 enum HomeErrorKind { dictionary, analysis }
 
 /// 主界面业务协调器。
 ///
-/// 封装「输入防抖、形态素分析异步调度、序列号防竞态、系统外部划词监听、
+/// 封装「形态素分析异步调度、序列号防竞态、系统外部划词监听、
 /// 查询历史与收藏联动」等业务状态与逻辑，将纯视图交互与业务流程解耦。
 ///
 /// 依赖通过 [KanjiServices] 注入，完全消除对全局单例的硬编码依赖，
 /// 支持脱离 Widget 树进行独立单元测试。
 class HomeCoordinator with ChangeNotifier {
   final KanjiServices services;
-  final Debouncer debouncer;
 
   HomeCoordinator({
     required this.services,
-    Debouncer? debouncer,
-  }) : debouncer = debouncer ?? Debouncer(const Duration(milliseconds: 220));
+  });
 
   StreamSubscription<String>? _processTextSub;
 
@@ -81,16 +78,7 @@ class HomeCoordinator with ChangeNotifier {
     });
   }
 
-  /// 输入框文字变更时触发防抖分析。
-  void onInputChanged(String text, {void Function(int limit)? onTruncated}) {
-    debouncer.run((isCancelled) => runAnalysis(
-          text,
-          isCancelled: isCancelled,
-          onTruncated: onTruncated,
-        ));
-  }
-
-  /// 立即触发分析 (用于点击历史词条、粘贴、外部划词回填等非打字场景)。
+  /// 立即触发分析 (用于点击历史词条、粘贴、外部划词回填等输入场景)。
   Future<void> runAnalysis(
     String text, {
     bool Function()? isCancelled,
@@ -151,7 +139,6 @@ class HomeCoordinator with ChangeNotifier {
 
   /// 清空当前输入状态与延续标记。
   void clear() {
-    debouncer.cancel();
     _lastAnalyzedText = '';
   }
 
@@ -159,7 +146,6 @@ class HomeCoordinator with ChangeNotifier {
   void dispose() {
     _processTextSub?.cancel();
     _externalQueryController.close();
-    debouncer.dispose();
     super.dispose();
   }
 }

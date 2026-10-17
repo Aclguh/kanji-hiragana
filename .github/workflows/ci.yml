@@ -39,6 +39,7 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze --fatal-warnings
       - run: flutter test --coverage
+      - run: dart run tool/check_coverage.dart
       # 提醒: Golden 视觉回归测试依赖本地环境, 默认在 CI 跳过。
       - name: Golden test notice
         run: echo "::notice::Golden tests are skipped on CI. Run locally with GOLDEN=1 flutter test test/golden_test.dart"

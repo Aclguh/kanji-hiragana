@@ -46,9 +46,10 @@ class KanjiConverter {
       }
     }
 
-    // 2. 逐字替换单字
+    // 2. 逐字替换单字 (使用 runes 保证增补平面代理对字符不被劈开)
     final buffer = StringBuffer();
-    for (final char in result.split('')) {
+    for (final rune in result.runes) {
+      final char = String.fromCharCode(rune);
       buffer.write(_charMap[char] ?? char);
     }
     return buffer.toString();
@@ -60,7 +61,8 @@ class KanjiConverter {
     for (final phrase in _phraseOverrides.keys) {
       if (text.contains(phrase)) return true;
     }
-    for (final char in text.split('')) {
+    for (final rune in text.runes) {
+      final char = String.fromCharCode(rune);
       if (_charMap.containsKey(char)) return true;
     }
     return false;

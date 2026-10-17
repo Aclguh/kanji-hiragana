@@ -97,6 +97,7 @@ sealed class AppStrings {
   String get favoritesExportTitle;
   String favoritesExportHint(int count);
   String get exportPlainText;
+  String get exporting;
   String get copiedRuby;
   String get copiedBrackets;
   String get copiedAnki;
@@ -431,6 +432,9 @@ class ZhStrings extends AppStrings {
 
   @override
   String get exportPlainText => '纯文本列表';
+
+  @override
+  String get exporting => '正在导出...';
 
   @override
   String get copiedRuby => '已复制 HTML Ruby 注音文本';
@@ -960,6 +964,9 @@ class EnStrings extends AppStrings {
 
   @override
   String get exportPlainText => 'Plain text list';
+
+  @override
+  String get exporting => 'Exporting...';
 
   @override
   String get copiedRuby => 'HTML Ruby text copied';

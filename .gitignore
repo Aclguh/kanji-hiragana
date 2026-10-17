@@ -67,4 +67,6 @@ __pycache__/
 # AI工具
 .workbuddy
 AGENTS.md
+IMPROVEMENTS.md
 .zcode/
+

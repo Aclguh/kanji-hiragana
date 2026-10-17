@@ -35,8 +35,9 @@ class MainActivity : FlutterActivity(), TextToSpeech.OnInitListener {
         if (intent?.action == Intent.ACTION_PROCESS_TEXT) {
             val text = intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()
             if (!text.isNullOrEmpty()) {
-                initialProcessedText = text
-                platformChannel?.invokeMethod("onProcessText", text)
+                val safeText = text.take(10000)
+                initialProcessedText = safeText
+                platformChannel?.invokeMethod("onProcessText", safeText)
             }
         }
     }

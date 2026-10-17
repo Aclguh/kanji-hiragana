@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../core/kanji_services.dart';
 import '../../core/morpheme.dart';
 import '../../core/strings.dart';
-import '../../core/tts_service.dart';
+
 import '../../theme.dart';
 import '../feedback.dart';
 
@@ -95,9 +96,10 @@ class FooterLine extends StatelessWidget {
           tooltip: s.speak,
           iconSize: 18,
           onPressed: () async {
-            final ok = await TtsService.instance.speak(value);
+            final tts = KanjiServices.of(context).tts;
+            final ok = await tts.speak(value);
             if (!ok && context.mounted) {
-              final available = await TtsService.instance.isAvailable();
+              final available = await tts.isAvailable();
               if (!available && context.mounted) {
                 showToast(context, s.ttsUnavailable);
               }

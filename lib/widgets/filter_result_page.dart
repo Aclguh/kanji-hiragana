@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/kanji_filter.dart';
 import '../core/kanji_reading_dict.dart';
+import '../core/kanji_services.dart';
 import '../core/query_store.dart';
 import '../core/strings.dart';
 import '../theme.dart';
@@ -272,7 +273,7 @@ class _KanjiDetailPage extends StatefulWidget {
 
 class _KanjiDetailPageState extends State<_KanjiDetailPage> {
   final _scrollController = ScrollController();
-  final _queryStore = QueryStore.instance;
+  QueryStore get _queryStore => KanjiServices.of(context).queryStore;
 
   @override
   void dispose() {

@@ -285,6 +285,90 @@ class JapaneseAnalyzer {
     );
   }
 
+  /// 批量分析一组独立的日语文本 (如生词本批量导出场景)。
+  ///
+  /// 利用常驻 isolate 的批量分词能力一次性处理全部文本,
+  /// 避免大量逐条请求造成的串行 IPC 往返开销。
+  Future<List<AnalysisResult>> analyzeBatch(
+    List<String> texts, {
+    bool Function()? isCancelled,
+  }) async {
+    if (texts.isEmpty) return const [];
+    try {
+      return await _analyzeBatchInternal(texts, isCancelled);
+    } catch (e) {
+      final isExited = e.toString().contains('tokenizer isolate exited') ||
+          (e is StateError && e.message.contains('analyzer is not ready'));
+      if (isExited && !(isCancelled?.call() ?? false)) {
+        await warmUp();
+        return await _analyzeBatchInternal(texts, isCancelled);
+      }
+      rethrow;
+    }
+  }
+
+  Future<List<AnalysisResult>> _analyzeBatchInternal(
+    List<String> texts,
+    bool Function()? isCancelled,
+  ) async {
+    await warmUp();
+    if (isCancelled?.call() ?? false) return const [];
+
+    final prepared = texts.map((text) {
+      final converted = KanjiConverter.toJapaneseKanji(text);
+      final cleaned =
+          InputSanitizer.clean(converted, maxLength: kMaxInputLength);
+      final rawTrimmed = converted.trim();
+      return (
+        converted: converted,
+        cleaned: cleaned,
+        isTruncated: rawTrimmed.length > kMaxInputLength,
+      );
+    }).toList(growable: false);
+
+    final nonEmptyIndices = <int>[];
+    final nonEmptyLines = <String>[];
+    for (var i = 0; i < prepared.length; i++) {
+      if (prepared[i].cleaned.isNotEmpty) {
+        nonEmptyIndices.add(i);
+        nonEmptyLines.add(prepared[i].cleaned);
+      }
+    }
+
+    final batchTokens = nonEmptyLines.isNotEmpty
+        ? await _sendBatch(nonEmptyLines)
+        : const <List<Map<String, dynamic>>>[];
+
+    if (isCancelled?.call() ?? false) return const [];
+
+    final results = List<AnalysisResult?>.filled(prepared.length, null);
+    for (var j = 0; j < nonEmptyIndices.length; j++) {
+      final i = nonEmptyIndices[j];
+      final item = prepared[i];
+      final tokens = batchTokens[j];
+      final morphemes = tokens
+          .map(Morpheme.fromToken)
+          .where((m) => m.surface.trim().isNotEmpty)
+          .toList(growable: false);
+      results[i] = AnalysisResult(
+        source: item.cleaned,
+        morphemes: morphemes,
+        paragraphs: morphemes.isNotEmpty ? [morphemes] : const [],
+        singleKanji: _lookupSingleKanji(item.cleaned),
+        isTruncated: item.isTruncated,
+      );
+    }
+
+    for (var i = 0; i < prepared.length; i++) {
+      results[i] ??= AnalysisResult(
+        source: prepared[i].converted,
+        morphemes: const [],
+      );
+    }
+
+    return results.cast<AnalysisResult>();
+  }
+
   /// 若 [text] 恰好是单个汉字, 返回其音读/训读详情。
   ///
   /// 判定条件: 长度为 1 个字符(按 rune 计), 且该字符是汉字。
@@ -331,19 +415,39 @@ Future<void> _tokenizerMain(SendPort mainPort) async {
   }
 }
 
-/// 安全调用 kuromoji 分词。
+/// 安全调用 kuromoji 分词并保留日文句读标点。
 ///
 /// kuromoji 内部通过 `split(RegExp(r'[、。]'))` 切分句子; 若文本以标点结尾、
 /// 或包含连续标点与空白, 会产生空字符串片段传入其 ViterbiLattice,
 /// 触发其 EOS 节点指向自身的死循环并耗尽内存崩溃。
-/// 因此预先按标点与换行切分为非空片段后再行分词。
+/// 因此预先按标点与换行提取非空文本片段调用 kuromoji,
+/// 并将提取到的句读标点 (、与。) 转换为标准记号 Token, 按原顺序插回 Token 列表。
 List<Map<String, dynamic>> _tokenizeSafe(Tokenizer tokenizer, String text) {
-  final chunks =
-      text.split(RegExp(r'[、。\r\n]+')).where((s) => s.trim().isNotEmpty);
-  if (chunks.isEmpty) return const [];
+  if (text.isEmpty) return const [];
   final allTokens = <Map<String, dynamic>>[];
-  for (final chunk in chunks) {
-    allTokens.addAll(tokenizer.tokenize(chunk));
+  final matches = RegExp(r'([、。]+|[^、。\r\n]+)').allMatches(text);
+  for (final m in matches) {
+    final segment = m.group(0)!;
+    if (segment.startsWith('、') || segment.startsWith('。')) {
+      for (final rune in segment.runes) {
+        final char = String.fromCharCode(rune);
+        final isKuten = char == '。';
+        allTokens.add({
+          'surface_form': char,
+          'pos': '記号',
+          'pos_detail_1': isKuten ? '句点' : '読点',
+          'reading': char,
+          'pronunciation': char,
+          'basic_form': char,
+        });
+      }
+    } else {
+      final trimmed = segment.trim();
+      if (trimmed.isNotEmpty) {
+        allTokens.addAll(tokenizer.tokenize(trimmed));
+      }
+    }
   }
   return allTokens;
 }
+

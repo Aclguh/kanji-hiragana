@@ -9,11 +9,13 @@ import 'dart:ui' show Tristate;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/services.dart';
 import 'package:kanji_hiragana/core/kanji_filter.dart';
 import 'package:kanji_hiragana/core/kanji_homophones.dart';
 import 'package:kanji_hiragana/core/kanji_reading_dict.dart';
 import 'package:kanji_hiragana/core/kanji_words_dict.dart';
 import 'package:kanji_hiragana/core/morpheme.dart';
+import 'package:kanji_hiragana/core/query_store.dart';
 import 'package:kanji_hiragana/core/settings.dart';
 import 'package:kanji_hiragana/core/strings.dart';
 import 'package:kanji_hiragana/core/yojijukugo_dict.dart';
@@ -710,6 +712,120 @@ void main() {
         expect(find.text('四字熟語'), findsOneWidget);
         expect(yojijukugo, isNotEmpty);
         expect(find.text('日進月歩'), findsOneWidget);
+      });
+
+      testWidgets('FilterResultPage 点击网格进入详情页、切换收藏并点击常见词回调', (tester) async {
+        SharedPreferences.setMockInitialValues({});
+        await QueryStore.instance.load();
+        QueryStore.instance.clearHistory();
+        for (final f in QueryStore.instance.favorites.toList()) {
+          QueryStore.instance.toggleFavorite(f);
+        }
+
+        String? poppedWord;
+        await tester.pumpWidget(AppStringsScope(
+          strings: const ZhStrings(),
+          child: MaterialApp(
+            theme: theme,
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => ElevatedButton(
+                  onPressed: () async {
+                    poppedWord = await Navigator.of(context).push<String>(
+                      MaterialPageRoute(
+                        builder: (_) => const FilterResultPage(
+                          filter: KanjiFilter(strokesMin: 4, strokesMax: 4),
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Text('OpenFilter'),
+                ),
+              ),
+            ),
+          ),
+        ));
+
+        await tester.tap(find.text('OpenFilter'));
+        await tester.pumpAndSettle();
+
+        final cell = find.byKey(const ValueKey('kanji_cell:日'));
+        expect(cell, findsOneWidget);
+
+        await tester.tap(cell);
+        await tester.pumpAndSettle();
+
+        expect(find.text('常见词汇'), findsOneWidget);
+        expect(find.byIcon(Icons.star_border_rounded), findsOneWidget);
+
+        await tester.tap(find.byIcon(Icons.star_border_rounded));
+        await tester.pump();
+        expect(find.byIcon(Icons.star_rounded), findsOneWidget);
+        expect(QueryStore.instance.isFavorite('日'), isTrue);
+
+        // 等待 SnackBar 自动收起，避免遮挡底部词汇
+        await tester.pump(const Duration(milliseconds: 1000));
+        await tester.pumpAndSettle();
+
+        await tester.ensureVisible(find.text('日本'));
+        await tester.tap(find.text('日本'));
+        await tester.pumpAndSettle();
+
+        expect(poppedWord, '日本');
+      });
+
+      testWidgets('AnkiExportSheet 导出纯文本列表与 Anki TSV', (tester) async {
+        String? copiedText;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == 'Clipboard.setData') {
+            final args = call.arguments as Map<dynamic, dynamic>;
+            copiedText = args['text'] as String?;
+          }
+          return null;
+        });
+
+        addTearDown(() {
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(SystemChannels.platform, null);
+        });
+
+        await tester.pumpWidget(AppStringsScope(
+          strings: const ZhStrings(),
+          child: MaterialApp(
+            theme: theme,
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => ElevatedButton(
+                  onPressed: () {
+                    AnkiExportSheet.show(context, favorites: const ['日', '月']);
+                  },
+                  child: const Text('OpenSheet'),
+                ),
+              ),
+            ),
+          ),
+        ));
+
+        await tester.tap(find.text('OpenSheet'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('收藏词条导出 (2)'), findsOneWidget);
+        expect(find.text('复制 纯文本列表'), findsOneWidget);
+
+        await tester.tap(find.text('复制 纯文本列表'));
+        await tester.pumpAndSettle();
+        expect(copiedText, '日\n月');
+
+        await tester.tap(find.text('OpenSheet'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Anki 牌组格式 (TSV 制表符分隔)'), findsOneWidget);
+        await tester.tap(find.text('Anki 牌组格式 (TSV 制表符分隔)'));
+        await tester.pumpAndSettle();
+
+        expect(copiedText, contains('#separator:tab'));
+        expect(copiedText, contains('日'));
       });
     });
   }
