@@ -8,6 +8,8 @@ import '../../theme.dart';
 import '../feedback.dart';
 import 'collapse_footer.dart';
 
+final _parenPattern = RegExp(r'[()]');
+
 /// 一组读音(音读或训读)。
 class ReadingGroup extends StatefulWidget {
   final String label;
@@ -87,7 +89,7 @@ class _ReadingGroupState extends State<ReadingGroup> {
                 constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                 onPressed: () {
                   final list = widget.readings
-                      .map((r) => r.replaceAll(RegExp(r'[()]'), ''))
+                      .map((r) => r.replaceAll(_parenPattern, ''))
                       .join('、');
                   KanjiServices.of(context).tts.speak(list);
                 },
@@ -134,8 +136,6 @@ class _ReadingGroupState extends State<ReadingGroup> {
 class _ReadingChip extends StatelessWidget {
   final String reading;
   final Color color;
-
-  static final _parenPattern = RegExp(r'[()]');
 
   const _ReadingChip({required this.reading, required this.color});
 

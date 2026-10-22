@@ -339,8 +339,10 @@ bool _matchesReadingQuery(KanjiReading r, String query) {
   return false;
 }
 
+final RegExp _parensRegex = RegExp(r'[()]');
+
 /// 去掉训读里的送假名括号, 如 「まな(ぶ)」→「まなぶ」。
-String _stripOkurigana(String kun) => kun.replaceAll(RegExp(r'[()]'), '');
+String _stripOkurigana(String kun) => kun.replaceAll(_parensRegex, '');
 
 /// 判断 [r] 的中文或英文释义是否包含 [query] 子串 (不区分大小写)。
 bool _matchesMeaningQuery(KanjiReading r, String query) {

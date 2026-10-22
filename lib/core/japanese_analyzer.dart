@@ -16,6 +16,9 @@ import 'package:kuromoji/src/tokenizer.dart';
 /// 单次分析的最大字符数限制，防止超长文本造成内存膨胀与卡顿。
 const int kMaxInputLength = 4000;
 
+final RegExp _lineSplitRegex = RegExp(r'\r?\n');
+final RegExp _tokenSplitRegex = RegExp(r'([、。]+|[^、。\r\n]+)');
+
 /// isolate 消息标签 (主 -> 分词 isolate)。
 const _buildTag = 'build';
 const _tokenizeTag = 'tokenize';
@@ -235,7 +238,7 @@ class JapaneseAnalyzer {
       return AnalysisResult(source: trimmed, morphemes: const []);
     }
 
-    final rawLines = trimmed.split(RegExp(r'\r?\n'));
+    final rawLines = trimmed.split(_lineSplitRegex);
     final validLines = rawLines.map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
 
     if (validLines.length > 1) {
@@ -425,7 +428,7 @@ Future<void> _tokenizerMain(SendPort mainPort) async {
 List<Map<String, dynamic>> _tokenizeSafe(Tokenizer tokenizer, String text) {
   if (text.isEmpty) return const [];
   final allTokens = <Map<String, dynamic>>[];
-  final matches = RegExp(r'([、。]+|[^、。\r\n]+)').allMatches(text);
+  final matches = _tokenSplitRegex.allMatches(text);
   for (final m in matches) {
     final segment = m.group(0)!;
     if (segment.startsWith('、') || segment.startsWith('。')) {
