@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/japanese_analyzer.dart';
+import '../core/kanji_converter.dart';
 import '../core/kanji_reading_dict.dart';
 import '../core/kanji_services.dart';
 import '../core/morpheme.dart';
@@ -55,7 +56,8 @@ class _AnkiExportSheetState extends State<AnkiExportSheet> {
     final multiWordTexts = <String>[];
     for (var i = 0; i < trimmedFavorites.length; i++) {
       final text = trimmedFavorites[i];
-      if (kanjiReadingDict[text] == null) {
+      final converted = KanjiConverter.toJapaneseKanji(text);
+      if (kanjiReadingDict[converted] == null) {
         multiWordIndices.add(i);
         multiWordTexts.add(text);
       }
@@ -77,8 +79,9 @@ class _AnkiExportSheetState extends State<AnkiExportSheet> {
 
     for (var i = 0; i < trimmedFavorites.length; i++) {
       final trimmed = trimmedFavorites[i];
+      final converted = KanjiConverter.toJapaneseKanji(trimmed);
       // 若为单汉字, 注入丰富的音训读与释义
-      final reading = kanjiReadingDict[trimmed];
+      final reading = kanjiReadingDict[converted];
       if (reading != null) {
         final readings = [
           if (reading.onyomi.isNotEmpty)
@@ -93,7 +96,7 @@ class _AnkiExportSheetState extends State<AnkiExportSheet> {
         );
         final note = s.ankiNote(reading.strokes, reading.frequencyRank);
         buffer.writeln(
-          '${AnalysisResult.escapeTsvField(trimmed)}\t${AnalysisResult.escapeTsvField(readings)}\t\t$meanings\t$note',
+          '${AnalysisResult.escapeTsvField(converted)}\t${AnalysisResult.escapeTsvField(readings)}\t\t$meanings\t$note',
         );
       } else {
         // 多字词条: 从批量分析结果中提取假名、罗马音与词性

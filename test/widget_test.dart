@@ -798,7 +798,7 @@ void main() {
               body: Builder(
                 builder: (context) => ElevatedButton(
                   onPressed: () {
-                    AnkiExportSheet.show(context, favorites: const ['日', '月']);
+                    AnkiExportSheet.show(context, favorites: const ['日', '月', '练']);
                   },
                   child: const Text('OpenSheet'),
                 ),
@@ -810,12 +810,12 @@ void main() {
         await tester.tap(find.text('OpenSheet'));
         await tester.pumpAndSettle();
 
-        expect(find.text('收藏词条导出 (2)'), findsOneWidget);
+        expect(find.text('收藏词条导出 (3)'), findsOneWidget);
         expect(find.text('复制 纯文本列表'), findsOneWidget);
 
         await tester.tap(find.text('复制 纯文本列表'));
         await tester.pumpAndSettle();
-        expect(copiedText, '日\n月');
+        expect(copiedText, '日\n月\n练');
 
         await tester.tap(find.text('OpenSheet'));
         await tester.pumpAndSettle();
@@ -826,6 +826,7 @@ void main() {
 
         expect(copiedText, contains('#separator:tab'));
         expect(copiedText, contains('日'));
+        expect(copiedText, contains('練'));
       });
     });
   }
