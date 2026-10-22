@@ -1309,10 +1309,27 @@ void main() {
       expect(KanjiConverter.toJapaneseKanji('汉语'), '漢語');
       expect(KanjiConverter.toJapaneseKanji('机会'), '機会');
       expect(KanjiConverter.toJapaneseKanji('头发'), '頭髪');
+      expect(KanjiConverter.toJapaneseKanji('占'), '占');
+      expect(KanjiConverter.toJapaneseKanji('机'), '机');
+      expect(KanjiConverter.toJapaneseKanji('携'), '携');
+      expect(KanjiConverter.toJapaneseKanji('叶'), '叶');
+      expect(KanjiConverter.toJapaneseKanji('干'), '干');
+      expect(KanjiConverter.toJapaneseKanji('里'), '里');
+      expect(KanjiConverter.toJapaneseKanji('过滤'), '過濾');
 
       expect(KanjiConverter.hasSimplified('练习'), isTrue);
       expect(KanjiConverter.hasSimplified('練習'), isFalse);
       expect(KanjiConverter.hasSimplified(''), isFalse);
+
+      // 全字典反向安全校验
+      for (final k in kanjiReadingDict.keys) {
+        final converted = KanjiConverter.toJapaneseKanji(k);
+        expect(
+          kanjiReadingDict.containsKey(converted),
+          isTrue,
+          reason: '汉字 $k 转换后变为 $converted，但不在合法字典中',
+        );
+      }
     });
   });
 }

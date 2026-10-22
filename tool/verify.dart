@@ -461,6 +461,23 @@ Future<void> main() async {
   expectEq(KanjiConverter.toJapaneseKanji('机会'), '機会', '机会特例→機会');
   expectEq(KanjiConverter.toJapaneseKanji('𠆲'), '儣', '增补平面代理对字符安全转换 (𠆲→儣)');
   expectEq(KanjiConverter.hasSimplified('𠆲'), true, '增补平面代理对字符识别为可转换');
+  expectEq(KanjiConverter.toJapaneseKanji('占'), '占', '常用字「占」保持原样');
+  expectEq(KanjiConverter.toJapaneseKanji('机'), '机', '常用字「机」保持原样');
+  expectEq(KanjiConverter.toJapaneseKanji('携'), '携', '常用字「携」保持原样');
+  expectEq(KanjiConverter.toJapaneseKanji('叶'), '叶', '常用字「叶」保持原样');
+  expectEq(KanjiConverter.toJapaneseKanji('干'), '干', '常用字「干」保持原样');
+  expectEq(KanjiConverter.toJapaneseKanji('里'), '里', '常用字「里」保持原样');
+  expectEq(KanjiConverter.toJapaneseKanji('过滤'), '過濾', '错别字纠正「过滤」→「過濾」');
+
+  // 全量字典转换安全校验: 字典内 2999 汉字经转换后必须全部保持在字典内
+  var outOfDictCount = 0;
+  for (final k in kanjiReadingDict.keys) {
+    final converted = KanjiConverter.toJapaneseKanji(k);
+    if (!kanjiReadingDict.containsKey(converted)) {
+      outOfDictCount++;
+    }
+  }
+  expectEq(outOfDictCount, 0, '全字典汉字转换后必须保持在字典内 (0 个出界)');
 
   final rSimplified = await a.analyze('练习');
   expectEq(rSimplified.morphemes.length, 1, '简体「练习」正确分词为单个词');
