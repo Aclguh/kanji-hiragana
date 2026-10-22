@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/kanji_services.dart';
+
 import '../../core/morpheme.dart';
 import '../../core/strings.dart';
 
@@ -95,16 +95,7 @@ class FooterLine extends StatelessWidget {
         IconButton(
           tooltip: s.speak,
           iconSize: 18,
-          onPressed: () async {
-            final tts = KanjiServices.of(context).tts;
-            final ok = await tts.speak(value);
-            if (!ok && context.mounted) {
-              final available = await tts.isAvailable();
-              if (!available && context.mounted) {
-                showToast(context, s.ttsUnavailable);
-              }
-            }
-          },
+          onPressed: () => speakWithFeedback(context, value),
           icon: const Icon(Icons.volume_up_rounded, color: AppTheme.accent),
         ),
         IconButton(

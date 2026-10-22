@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/kana_romaji.dart';
-import '../../core/kanji_services.dart';
+
 import '../../core/strings.dart';
 
 import '../../theme.dart';
@@ -91,7 +91,7 @@ class _ReadingGroupState extends State<ReadingGroup> {
                   final list = widget.readings
                       .map((r) => r.replaceAll(_parenPattern, ''))
                       .join('、');
-                  KanjiServices.of(context).tts.speak(list);
+                  speakWithFeedback(context, list);
                 },
               ),
               const SizedBox(width: 4),
@@ -148,7 +148,7 @@ class _ReadingChip extends StatelessWidget {
 
     return InkWell(
       onTap: () {
-        KanjiServices.of(context).tts.speak(pure);
+        speakWithFeedback(context, pure);
         copyWithToast(context, reading, s.copiedSurface(reading));
       },
       borderRadius: BorderRadius.circular(8),

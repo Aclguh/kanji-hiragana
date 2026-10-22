@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../core/kanji_services.dart';
+
 import '../core/morpheme.dart';
 import '../core/strings.dart';
 
@@ -103,7 +103,7 @@ class AlignmentTable extends StatelessWidget {
             result.fullHiragana,
             s.copiedFullHiragana,
             onSpeak: () =>
-                KanjiServices.of(context).tts.speak(result.fullPronunciation),
+                speakWithFeedback(context, result.fullPronunciation),
           ),
           const SizedBox(height: 6),
           _summaryLine(
@@ -181,7 +181,7 @@ class _MorphemeRow extends StatelessWidget {
 
     return InkWell(
       onTap: () {
-        KanjiServices.of(context).tts.speak(m.pronunciationHiragana);
+        speakWithFeedback(context, m.pronunciationHiragana);
         copyWithToast(
           context,
           m.surface,

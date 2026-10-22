@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../core/kanji_services.dart';
+
 import '../core/morpheme.dart';
 import '../core/strings.dart';
 
@@ -192,7 +192,7 @@ class _VerticalMorphemeItem extends StatelessWidget {
       child: InkWell(
         onTap: () {
           // 点击复制并播放发音
-          KanjiServices.of(context).tts.speak(morpheme.pronunciationHiragana);
+          speakWithFeedback(context, morpheme.pronunciationHiragana);
           copyWithToast(context, morpheme.surface, s.copiedSurface(morpheme.surface));
         },
         onLongPress: () {
@@ -344,7 +344,7 @@ class _VerticalFooter extends StatelessWidget {
             color: AppTheme.accent,
             tooltip: s.speak,
             onPressed: () =>
-                KanjiServices.of(context).tts.speak(result.fullPronunciation),
+                speakWithFeedback(context, result.fullPronunciation),
           ),
           const SizedBox(width: 8),
           Expanded(
