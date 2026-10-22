@@ -640,9 +640,68 @@ void main() {
         expect(tester.takeException(), isNull);
         expect(find.text('重置'), findsOneWidget);
       });
+
+      testWidgets('振假名视图在大字号下安全排版无溢出', (tester) async {
+        final m1 = Morpheme.fromToken({
+          'surface_form': '日本語',
+          'reading': 'ニホンゴ',
+          'pos': '名詞',
+        });
+        final m2 = Morpheme.fromToken({
+          'surface_form': 'の',
+          'reading': 'ノ',
+          'pos': '助詞',
+        });
+        final res = AnalysisResult(
+          source: '日本の',
+          morphemes: [m1, m2],
+          paragraphs: [
+            [m1, m2],
+          ],
+        );
+        await tester.pumpWidget(largeFontHost(
+          FuriganaView(
+            result: res,
+            showRomaji: true,
+          ),
+          scrollable: true,
+        ));
+        expect(tester.takeException(), isNull);
+        expect(find.text('日本語'), findsOneWidget);
+        expect(find.text('にほんご'), findsOneWidget);
+      });
+
+      testWidgets('竖排视图在大字号下安全排版无溢出', (tester) async {
+        final m1 = Morpheme.fromToken({
+          'surface_form': '吾輩',
+          'reading': 'ワガハイ',
+          'pos': '名詞',
+        });
+        final res = AnalysisResult(
+          source: '吾輩',
+          morphemes: [m1],
+          paragraphs: [
+            [m1],
+          ],
+        );
+        await tester.pumpWidget(largeFontHost(
+          VerticalView(result: res, showRomaji: false),
+          scrollable: true,
+        ));
+        expect(tester.takeException(), isNull);
+        expect(find.text('吾'), findsOneWidget);
+        expect(find.text('輩'), findsOneWidget);
+      });
     });
 
     group('SingleKanji 子组件独立渲染 ($name)', () {
+      testWidgets('NoReadingNotice 独立渲染未收录提示卡片', (tester) async {
+        await tester.pumpWidget(scrollHost(const NoReadingNotice()));
+        expect(find.byType(NoReadingNotice), findsOneWidget);
+        expect(find.byIcon(Icons.info_outline_rounded), findsOneWidget);
+        expect(find.text(const ZhStrings().readingsNotFound), findsOneWidget);
+      });
+
       testWidgets('KanjiHeroCard 渲染汉字、释义与元信息', (tester) async {
         final r = kanjiReadingDict['日']!;
         await tester.pumpWidget(scrollHost(KanjiHeroCard(reading: r)));

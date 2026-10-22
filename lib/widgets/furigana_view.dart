@@ -74,8 +74,8 @@ class _FuriganaToken extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // 振假名(读音)行, 保持占位以对齐基线。
-          SizedBox(
-            height: 16,
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 16),
             child: showRuby
                 ? Text(
                     m.hiragana,
@@ -86,7 +86,7 @@ class _FuriganaToken extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                     ),
                   )
-                : null,
+                : const SizedBox(height: 16),
           ),
           const SizedBox(height: 2),
           // 原词
