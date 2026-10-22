@@ -2,10 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
-import 'core/input_sanitizer.dart';
-import 'core/japanese_analyzer.dart';
 import 'core/kanji_converter.dart';
 import 'core/kanji_filter.dart';
 import 'core/kanji_services.dart';
@@ -23,6 +20,7 @@ import 'widgets/home/export_sheet.dart';
 import 'widgets/home/floating_button.dart';
 import 'widgets/home/furigana_footer.dart';
 import 'widgets/home/hero_title.dart';
+import 'widgets/home/home_search_input.dart';
 import 'widgets/home/home_coordinator.dart';
 import 'widgets/home/home_toolbar.dart';
 import 'widgets/home/query_chips.dart';
@@ -448,7 +446,16 @@ class _HomePageState extends State<HomePage>
                   HeroTitle(t: t),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _buildInput(t),
+                    child: HomeSearchInput(
+                      controller: _controller,
+                      focusNode: _focusNode,
+                      isSearching: _isSearching,
+                      hasInput: _hasInput,
+                      progress: t,
+                      onChanged: _onChanged,
+                      onSubmit: _submitQuery,
+                      onPasted: () => setState(() {}),
+                    ),
                   ),
                   // 聚焦态展示收藏与最近查询, 展开后淡出。
                   QueryChips(t: t, onUseQuery: _useQuery),
@@ -460,74 +467,6 @@ class _HomePageState extends State<HomePage>
           },
         );
       },
-    );
-  }
-
-  Widget _buildInput(double t) {
-    final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
-    final hasInput = _hasInput;
-    return TextField(
-      controller: _controller,
-      focusNode: _focusNode,
-      onChanged: _onChanged,
-      textInputAction: TextInputAction.search,
-      onSubmitted: (_) => _submitQuery(),
-      autofocus: false,
-      maxLines: 3,
-      minLines: 1,
-      textAlign: (_isSearching || hasInput) ? TextAlign.start : TextAlign.center,
-      style: TextStyle(
-        color: colors.textPrimary,
-        fontSize: _lerp(17.0, 20.0, 1 - t),
-        height: 1.5,
-      ),
-      decoration: InputDecoration(
-        hintText: s.inputHint,
-        suffixIcon: (!_isSearching && !hasInput)
-            ? IconButton(
-                tooltip: s.paste,
-                icon: Icon(
-                  Icons.content_paste_rounded,
-                  size: 18,
-                  color: colors.textSecondary.withValues(alpha: 0.6),
-                ),
-                onPressed: () async {
-                  final data = await Clipboard.getData(Clipboard.kTextPlain);
-                  final text = data?.text?.trim();
-                  if (text != null && text.isNotEmpty) {
-                    final cleanText = InputSanitizer.clean(text);
-                    if (cleanText.isNotEmpty) {
-                      _controller.text = cleanText;
-                      _controller.selection =
-                          TextSelection.collapsed(offset: cleanText.length);
-                      setState(() {});
-                      if (text.length > kMaxInputLength && mounted) {
-                        showToast(
-                          context,
-                          AppStrings.of(context).inputExceededLimit(kMaxInputLength),
-                        );
-                      }
-                    }
-                  }
-                },
-              )
-            : IconButton(
-                tooltip: s.search,
-                icon: Icon(
-                  Icons.arrow_forward_rounded,
-                  size: 20,
-                  color: hasInput
-                      ? colors.textPrimary
-                      : colors.textSecondary.withValues(alpha: 0.4),
-                ),
-                onPressed: hasInput ? () => _submitQuery() : null,
-              ),
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: _lerp(14.0, 18.0, 1 - t),
-        ),
-      ),
     );
   }
 
