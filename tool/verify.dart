@@ -424,10 +424,24 @@ Future<void> main() async {
       'pubspec version 与 AppMeta.version 一致');
   expectEq(version?.group(2), AppMeta.buildNumber,
       'pubspec versionCode 基数与 AppMeta.buildNumber 一致');
-  // 字典范围由 core 实时统计, 此处固定当前期望: 字典换代导致范围
-  // 变化时, 先确认筛选界面提示与预期一致再更新这里的数字。
+  // 字典范围已固化为编译期常量, 此处校验其与当前字典统计完全一致:
+  // 字典换代导致范围变化时, 先确认筛选界面提示与预期一致再更新常量。
   expectEq(kStrokeRange, (1, 29), '字典笔画范围 1~29');
   expectEq(kFrequencyRange, (1, 2501), '字典频率范围 1~2501');
+  var computedMinStrokes = 0x7FFFFFFF;
+  var computedMaxStrokes = 0;
+  var computedMinFreq = 0x7FFFFFFF;
+  var computedMaxFreq = 0;
+  for (final r in kanjiReadingDict.values) {
+    if (r.strokes < computedMinStrokes) computedMinStrokes = r.strokes;
+    if (r.strokes > computedMaxStrokes) computedMaxStrokes = r.strokes;
+    if (r.frequencyRank > 0 && r.frequencyRank < kNoFrequencyRank) {
+      if (r.frequencyRank < computedMinFreq) computedMinFreq = r.frequencyRank;
+      if (r.frequencyRank > computedMaxFreq) computedMaxFreq = r.frequencyRank;
+    }
+  }
+  expectEq(kStrokeRange, (computedMinStrokes, computedMaxStrokes), '静态常量与字典笔画范围统计一致');
+  expectEq(kFrequencyRange, (computedMinFreq, computedMaxFreq), '静态常量与字典频率范围统计一致');
 
   // 包名两处同步: about 页显示的包名是手工维护的显示常量, 与
   // build.gradle.kts 的 applicationId 不一致时, 要等发布校验
