@@ -337,10 +337,12 @@ sealed class AppStrings {
   String get licenseAppCode;
   String get licenseKanjiData;
   String get licenseAnalyzer;
+  String get licenseOpenCc;
   String get creditsSection;
   String get creditAnalyzer;
   String get creditKanjiData;
   String get creditTokenizerDict;
+  String get creditOpenCc;
   String get creditFramework;
   String get offlineNotice;
 }
@@ -858,6 +860,9 @@ class ZhStrings extends AppStrings {
   String get licenseAnalyzer => '分词、读音分析与常见词表';
 
   @override
+  String get licenseOpenCc => '简中转换日文新字体映射表';
+
+  @override
   String get creditsSection => '致谢';
 
   @override
@@ -868,6 +873,9 @@ class ZhStrings extends AppStrings {
 
   @override
   String get creditTokenizerDict => '日语分词词典与常见词数据';
+
+  @override
+  String get creditOpenCc => '汉字字形转换对照表规范支持';
 
   @override
   String get creditFramework => '跨平台应用框架';
@@ -1440,6 +1448,10 @@ class EnStrings extends AppStrings {
       'Tokenization, reading analysis and common-word data';
 
   @override
+  String get licenseOpenCc =>
+      'Simplified Chinese to Japanese Shinjitai conversion mapping';
+
+  @override
   String get creditsSection => 'Credits';
 
   @override
@@ -1451,6 +1463,10 @@ class EnStrings extends AppStrings {
   @override
   String get creditTokenizerDict =>
       'Japanese tokenization dictionary and common-word data';
+
+  @override
+  String get creditOpenCc =>
+      'Chinese-to-Japanese Kanji conversion dataset support';
 
   @override
   String get creditFramework => 'Cross-platform app framework';

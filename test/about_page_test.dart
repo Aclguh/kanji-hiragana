@@ -59,6 +59,7 @@ void main() {
     expect(find.text('MIT License'), findsOneWidget);
     expect(find.text('KANJIDIC2'), findsOneWidget);
     expect(find.text('kuromoji · IPADIC'), findsOneWidget);
+    expect(find.text('OpenCC'), findsWidgets);
 
     expect(find.text(s.creditsSection), findsOneWidget);
   });

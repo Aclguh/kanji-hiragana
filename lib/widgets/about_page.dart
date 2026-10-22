@@ -84,6 +84,11 @@ class _AboutPageState extends State<AboutPage> {
                   'Apache License 2.0',
                   note: s.licenseAnalyzer,
                 ),
+                _InfoRow(
+                  'OpenCC',
+                  'Apache License 2.0',
+                  note: s.licenseOpenCc,
+                ),
               ],
             ),
             const SizedBox(height: 22),
@@ -335,6 +340,7 @@ class _ThanksCard extends StatelessWidget {
       ('kuromoji', s.creditAnalyzer),
       ('KANJIDIC2', s.creditKanjiData),
       ('Atilika IPADIC', s.creditTokenizerDict),
+      ('OpenCC', s.creditOpenCc),
       ('Flutter', s.creditFramework),
     ];
     return Container(
