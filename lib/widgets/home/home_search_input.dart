@@ -3,9 +3,9 @@ import 'package:flutter/services.dart';
 
 import '../../core/input_sanitizer.dart';
 import '../../core/japanese_analyzer.dart' show kMaxInputLength;
-import '../../core/strings.dart';
 import '../../theme.dart';
 import '../feedback.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 /// 首页搜索输入框组件，支持聚焦居中与展开顶部的平滑插值。
 class HomeSearchInput extends StatelessWidget {
@@ -35,7 +35,7 @@ class HomeSearchInput extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     return TextField(
       controller: controller,
       focusNode: focusNode,
@@ -71,10 +71,11 @@ class HomeSearchInput extends StatelessWidget {
                       controller.selection =
                           TextSelection.collapsed(offset: cleanText.length);
                       onPasted?.call();
-                      if (text.length > kMaxInputLength && context.mounted) {
+                      if (text.characters.length > kMaxInputLength &&
+                          context.mounted) {
                         showToast(
                           context,
-                          AppStrings.of(context).inputExceededLimit(kMaxInputLength),
+                          AppStringsScope.of(context).inputExceededLimit(kMaxInputLength),
                         );
                       }
                     }

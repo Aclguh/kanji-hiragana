@@ -5,28 +5,22 @@ import 'package:flutter/material.dart';
 
 import 'core/kanji_converter.dart';
 import 'core/kanji_filter.dart';
-import 'core/kanji_services.dart';
-import 'core/strings.dart';
-import 'theme.dart';
+import 'core/morpheme.dart';
 import 'widgets/about_page.dart';
-import 'widgets/alignment_table.dart';
 import 'widgets/feedback.dart';
 import 'widgets/filter_drawer.dart';
 import 'widgets/filter_result_page.dart';
-import 'widgets/furigana_view.dart';
 import 'widgets/settings_drawer.dart';
-import 'widgets/single_kanji_view.dart';
 import 'widgets/home/export_sheet.dart';
-import 'widgets/home/floating_button.dart';
-import 'widgets/home/furigana_footer.dart';
 import 'widgets/home/hero_title.dart';
+import 'widgets/home/home_chrome.dart';
+import 'widgets/home/home_result_sliver.dart';
 import 'widgets/home/home_search_input.dart';
 import 'widgets/home/home_coordinator.dart';
 import 'widgets/home/home_toolbar.dart';
 import 'widgets/home/query_chips.dart';
 import 'widgets/sliding_drawer.dart';
-import 'widgets/vector_icon.dart';
-import 'widgets/vertical_view.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 export 'widgets/home/home_coordinator.dart' show HomeErrorKind;
 export 'widgets/home/home_toolbar.dart' show ViewMode;
@@ -61,6 +55,10 @@ class _HomePageState extends State<HomePage>
   /// 用户在主界面输入文字后暂时停留在主界面，点击右箭头按钮才进入查询态；
   /// 在查询态下编辑文字也不会立即刷新，点击右箭头按钮后才刷新。
   bool _isSearching = false;
+
+  bool _showAllResults = false;
+
+  AnalysisResult? _trackedResult;
 
   /// 是否有输入内容。
   bool get _hasInput => _controller.text.trim().isNotEmpty;
@@ -106,7 +104,7 @@ class _HomePageState extends State<HomePage>
     super.didChangeDependencies();
     if (_coordinator == null) {
       final coordinator = widget.coordinator ??
-          HomeCoordinator(services: KanjiServices.of(context));
+          HomeCoordinator(services: KanjiServicesScope.of(context));
       _coordinator = coordinator;
       coordinator.addListener(_onCoordinatorChanged);
       _externalQuerySub = coordinator.onExternalQuery.listen((text) {
@@ -117,6 +115,11 @@ class _HomePageState extends State<HomePage>
   }
 
   void _onCoordinatorChanged() {
+    final result = _coordinator?.result;
+    if (!identical(result, _trackedResult)) {
+      _trackedResult = result;
+      _showAllResults = false;
+    }
     if (mounted) setState(() {});
   }
 
@@ -159,7 +162,7 @@ class _HomePageState extends State<HomePage>
         if (mounted) {
           showToast(
             context,
-            AppStrings.of(context).inputExceededLimit(limit),
+            AppStringsScope.of(context).inputExceededLimit(limit),
           );
         }
       },
@@ -198,7 +201,7 @@ class _HomePageState extends State<HomePage>
     final text = _controller.text.trim();
     if (text.isEmpty || _coordinator == null) return;
     final added = _coordinator!.toggleFavorite(text);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     showToast(context, added ? s.favoriteAdded(text) : s.favoriteRemoved(text));
   }
 
@@ -269,7 +272,7 @@ class _HomePageState extends State<HomePage>
       backgroundColor: Colors.transparent,
       appBar: _isSearching ? _buildAppBar() : null,
       body: SafeArea(
-        child: isLoading ? const _LoadingView() : _buildAnimatedBody(),
+        child: isLoading ? const HomeLoadingView() : _buildAnimatedBody(),
       ),
     );
 
@@ -313,95 +316,19 @@ class _HomePageState extends State<HomePage>
 
   /// 右下角设置按钮 + 左下角筛选按钮。
   Widget _buildFloatingButtons() {
-    final s = AppStrings.of(context);
-    return Positioned.fill(
-      child: IgnorePointer(
-        ignoring: !_buttonsVisible,
-        child: AnimatedOpacity(
-          opacity: _buttonsVisible ? 1 : 0,
-          duration: SlidingDrawer.duration,
-          child: SafeArea(
-            child: Stack(
-              children: [
-                // 左下角: 放大镜, 展开筛选抽屉 (从左侧滑出)。
-                Positioned(
-                  left: 16,
-                  bottom: 16,
-                  child: FloatingDrawerButton(
-                    type: DrawerIconType.search,
-                    tooltip: s.filterKanji,
-                    onTap: () => _toggleDrawer(OpenDrawer.filter),
-                  ),
-                ),
-                // 右下角: 齿轮, 展开设置抽屉 (从右侧滑出)。
-                Positioned(
-                  right: 16,
-                  bottom: 16,
-                  child: FloatingDrawerButton(
-                    type: DrawerIconType.settings,
-                    tooltip: s.settings,
-                    onTap: () => _toggleDrawer(OpenDrawer.settings),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+    return HomeFloatingButtons(
+      visible: _buttonsVisible,
+      onFilter: () => _toggleDrawer(OpenDrawer.filter),
+      onSettings: () => _toggleDrawer(OpenDrawer.settings),
     );
   }
 
   PreferredSizeWidget _buildAppBar() {
-    final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
-    return AppBar(
-      // 漢字 → かな · ローマ字 是日文书写体系本身的标识, 两种语言下都保留。
-      title: Row(
-        children: [
-          const Text('漢字'),
-          const SizedBox(width: 6),
-          const Icon(
-            Icons.arrow_forward_rounded,
-            size: 16,
-            color: AppTheme.accent,
-          ),
-          const SizedBox(width: 6),
-          const Text('かな'),
-          const SizedBox(width: 10),
-          Text('·', style: TextStyle(color: colors.textSecondary)),
-          const SizedBox(width: 10),
-          const Text(
-            'ローマ字',
-            style: TextStyle(
-              color: AppTheme.indigo,
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        if (_coordinator != null)
-          AnimatedBuilder(
-            animation: _coordinator!.services.queryStore,
-            builder: (context, _) {
-              final favorite = _coordinator!.isFavorite(_controller.text);
-              return IconButton(
-                tooltip: s.favoritesLabel,
-                onPressed: _toggleFavorite,
-                icon: Icon(
-                  favorite ? Icons.star_rounded : Icons.star_border_rounded,
-                  color: favorite ? AppTheme.kanjiHighlight : null,
-                ),
-              );
-            },
-          ),
-        IconButton(
-          tooltip: s.clear,
-          onPressed: _clear,
-          icon: const Icon(Icons.delete_outline_rounded),
-        ),
-      ],
+    return HomeTopBar(
+      controller: _controller,
+      queryStore: _coordinator!.services.queryStore,
+      onToggleFavorite: _toggleFavorite,
+      onClear: _clear,
     );
   }
 
@@ -429,40 +356,56 @@ class _HomePageState extends State<HomePage>
               clampedTop,
               1 - t,
             );
+            final bottomSpace =
+                MediaQuery.of(context).viewInsets.bottom +
+                (_buttonsVisible ? 88 : 24);
 
-            return SingleChildScrollView(
-              padding: EdgeInsets.only(
-                top: topSpace,
-                // 存在悬浮按钮时留出空间, 避免内容被遮挡;
-                // 输入后按钮隐藏, 底部留白随之收窄。
-                bottom:
-                    MediaQuery.of(context).viewInsets.bottom +
-                    (_buttonsVisible ? 88 : 24),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // 聚焦态在输入框上方显示标题。
-                  HeroTitle(t: t),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: HomeSearchInput(
-                      controller: _controller,
-                      focusNode: _focusNode,
-                      isSearching: _isSearching,
-                      hasInput: _hasInput,
-                      progress: t,
-                      onChanged: _onChanged,
-                      onSubmit: _submitQuery,
-                      onPasted: () => setState(() {}),
+            return CustomScrollView(
+              keyboardDismissBehavior:
+                  ScrollViewKeyboardDismissBehavior.onDrag,
+              slivers: [
+                SliverPadding(
+                  padding: EdgeInsets.only(top: topSpace),
+                  sliver: SliverList.list(
+                    children: [
+                      // 聚焦态在输入框上方显示标题。
+                      HeroTitle(t: t),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: HomeSearchInput(
+                          controller: _controller,
+                          focusNode: _focusNode,
+                          isSearching: _isSearching,
+                          hasInput: _hasInput,
+                          progress: t,
+                          onChanged: _onChanged,
+                          onSubmit: _submitQuery,
+                          onPasted: () => setState(() {}),
+                        ),
+                      ),
+                      // 聚焦态展示收藏与最近查询, 展开后淡出。
+                      QueryChips(t: t, onUseQuery: _useQuery),
+                    ],
+                  ),
+                ),
+                if (t > 0.001)
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      18 * (1 - t),
+                      16,
+                      0,
+                    ),
+                    sliver: SliverIgnorePointer(
+                      ignoring: t < 0.5,
+                      sliver: SliverOpacity(
+                        opacity: t.clamp(0.0, 1.0),
+                        sliver: _buildRevealSliver(t),
+                      ),
                     ),
                   ),
-                  // 聚焦态展示收藏与最近查询, 展开后淡出。
-                  QueryChips(t: t, onUseQuery: _useQuery),
-                  // 其余控件随动画淡入。
-                  _buildReveal(t),
-                ],
-              ),
+                SliverToBoxAdapter(child: SizedBox(height: bottomSpace)),
+              ],
             );
           },
         );
@@ -471,25 +414,18 @@ class _HomePageState extends State<HomePage>
   }
 
   /// 展开态才可见的工具栏与结果区。
-  Widget _buildReveal(double t) {
-    // 完全收起时不构建内容, 避免无谓计算。
-    if (t <= 0.001) return const SizedBox.shrink();
-
+  Widget _buildRevealSliver(double t) {
     final result = _coordinator?.result;
     // 单汉字只显示音读/训读详解, 视图切换与罗马音开关都不适用。
     final isSingleKanji = result?.isSingleKanji ?? false;
 
-    return IgnorePointer(
-      ignoring: t < 0.5,
-      child: Opacity(
-        opacity: t.clamp(0.0, 1.0),
-        child: Transform.translate(
-          offset: Offset(0, 18 * (1 - t)),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SizedBox(height: isSingleKanji ? 4 : 12),
-              if (!isSingleKanji && result != null)
+    return SliverMainAxisGroup(
+      slivers: [
+        if (!isSingleKanji && result != null)
+          SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
                 HomeToolbar(
                   viewMode: _viewMode,
                   showRomaji: _showRomaji,
@@ -498,103 +434,31 @@ class _HomePageState extends State<HomePage>
                       setState(() => _showRomaji = value),
                   onExport: () => showAnalysisExportSheet(context, result),
                 ),
-              _buildContent(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildContent() {
-    final s = AppStrings.of(context);
-    final errorKind = _coordinator?.errorKind;
-    if (errorKind != null) {
-      final detail = _coordinator?.errorDetail ?? '';
-      final msg = switch (errorKind) {
-        HomeErrorKind.dictionary => s.dictionaryInitFailed(detail),
-        HomeErrorKind.analysis => s.analysisFailed(detail),
-      };
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: _buildMessage(
-          Icons.error_outline_rounded,
-          msg,
-          color: AppTheme.accent,
-        ),
-      );
-    }
-
-    final result = _coordinator?.result;
-    if (result == null || result.isEmpty) {
-      // 输入了内容但解析尚未完成: 显示轻量占位, 避免闪烁。
-      return const SizedBox(height: 40);
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // 单汉字: 只展示音读/训读详解, 不显示对照表与注音
-          // (单个汉字没有上下文, 逐词对照与振假名在这里没有意义)。
-          if (result.isSingleKanji)
-            SingleKanjiView(reading: result.singleKanji!, onWordTap: _useQuery)
-          else if (_viewMode == ViewMode.alignment)
-            AlignmentTable(result: result, showRomaji: _showRomaji)
-          else if (_viewMode == ViewMode.furigana) ...[
-            FuriganaView(result: result, showRomaji: _showRomaji),
-            const SizedBox(height: 16),
-            FuriganaFooter(result: result),
-          ] else
-            VerticalView(result: result, showRomaji: _showRomaji),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMessage(IconData icon, String msg, {Color? color}) {
-    final colors = AppTheme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 36, color: color ?? colors.textSecondary),
-            const SizedBox(height: 12),
-            Text(
-              msg,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: colors.textSecondary, fontSize: 13),
+                if (_coordinator?.analysisInProgress ?? false)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: LinearProgressIndicator(minHeight: 2),
+                  ),
+                const SizedBox(height: 12),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        _buildContentSliver(),
+      ],
     );
   }
-}
 
-/// 词典预热中的加载态。
-class _LoadingView extends StatelessWidget {
-  const _LoadingView();
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const CircularProgressIndicator(color: AppTheme.accent),
-          const SizedBox(height: 16),
-          Text(
-            s.loadingDictionary,
-            style: TextStyle(color: colors.textSecondary),
-          ),
-        ],
-      ),
+  Widget _buildContentSliver() {
+    return HomeResultSliver(
+      result: _coordinator?.result,
+      errorKind: _coordinator?.errorKind,
+      errorDetail: _coordinator?.errorDetail,
+      viewMode: _viewMode,
+      showRomaji: _showRomaji,
+      showAllResults: _showAllResults,
+      onToggleShowAll: () =>
+          setState(() => _showAllResults = !_showAllResults),
+      onWordTap: _useQuery,
     );
   }
 }

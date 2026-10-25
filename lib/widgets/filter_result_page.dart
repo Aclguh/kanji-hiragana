@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../core/kanji_filter.dart';
 import '../core/kanji_reading_dict.dart';
-import '../core/kanji_services.dart';
 import '../core/query_store.dart';
 import '../core/strings.dart';
 import '../theme.dart';
 import 'single_kanji_view.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 /// 全屏筛选结果界面。
 ///
@@ -50,7 +50,7 @@ class _FilterResultPageState extends State<FilterResultPage> {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     return Scaffold(
       appBar: AppBar(
         title: Text(s.resultsTitle),
@@ -185,7 +185,7 @@ class _FilterResultPageState extends State<FilterResultPage> {
 
   Widget _buildEmpty() {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -248,7 +248,7 @@ class _KanjiCell extends StatelessWidget {
             ),
             const SizedBox(height: 3),
             Text(
-              AppStrings.of(context).strokesShort(reading.strokes),
+              AppStringsScope.of(context).strokesShort(reading.strokes),
               style: TextStyle(
                 color: colors.textSecondary,
                 fontSize: 9,
@@ -273,7 +273,7 @@ class _KanjiDetailPage extends StatefulWidget {
 
 class _KanjiDetailPageState extends State<_KanjiDetailPage> {
   final _scrollController = ScrollController();
-  QueryStore get _queryStore => KanjiServices.of(context).queryStore;
+  QueryStore get _queryStore => KanjiServicesScope.of(context).queryStore;
 
   @override
   void dispose() {
@@ -285,7 +285,7 @@ class _KanjiDetailPageState extends State<_KanjiDetailPage> {
   void _toggleFavorite() {
     final kanji = widget.reading.kanji;
     final added = _queryStore.toggleFavorite(kanji);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -307,7 +307,7 @@ class _KanjiDetailPageState extends State<_KanjiDetailPage> {
             builder: (context, _) {
               final favorite = _queryStore.isFavorite(widget.reading.kanji);
               return IconButton(
-                tooltip: AppStrings.of(context).favoritesLabel,
+                tooltip: AppStringsScope.of(context).favoritesLabel,
                 onPressed: _toggleFavorite,
                 icon: Icon(
                   favorite

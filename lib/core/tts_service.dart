@@ -3,12 +3,15 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-/// 离线系统 TTS 朗读服务。
+import 'speech_service.dart';
+
+/// 系统 TTS 朗读服务。
 ///
-/// 通过平台通道调用系统原生的日语音频合成引擎 (TextToSpeech),
-/// 纯离线运行、无需网络、无需额外原生依赖或权限。
-/// 在非 Android 平台或测试宿主环境下静默降级为 no-op。
-class TtsService with ChangeNotifier {
+/// 通过平台通道调用系统原生的日语音频合成引擎 (TextToSpeech)。
+/// 应用自身不发起网络请求、不申请网络权限; 系统 TTS 引擎是否联网
+/// 取决于用户在系统中选择的引擎。非 Android 平台或测试宿主环境下
+/// 静默降级为 no-op。
+class TtsService with ChangeNotifier implements SpeechService {
   static const _channel = MethodChannel('kanji_hiragana/tts');
 
   TtsService._() {
@@ -45,6 +48,7 @@ class TtsService with ChangeNotifier {
   String? get currentUtteranceId => _currentUtteranceId;
 
   /// 检查系统 TTS 引擎是否就绪。
+  @override
   Future<bool> isAvailable() async {
     try {
       final result = await _channel.invokeMethod<bool>('isAvailable');
@@ -82,6 +86,7 @@ class TtsService with ChangeNotifier {
   }
 
   /// 播放日语文本发音。
+  @override
   Future<bool> speak(String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return false;
@@ -135,6 +140,7 @@ class TtsService with ChangeNotifier {
   }
 
   /// 停止发音。
+  @override
   Future<void> stop() async {
     _timeoutTimer?.cancel();
     _timeoutTimer = null;

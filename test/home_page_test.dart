@@ -5,23 +5,23 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kanji_hiragana/core/japanese_analyzer.dart';
+import 'package:kanji_hiragana/core/kanji_services.dart';
 import 'package:kanji_hiragana/core/query_store.dart';
 import 'package:kanji_hiragana/core/settings.dart';
 import 'package:kanji_hiragana/core/strings.dart';
 import 'package:kanji_hiragana/home_page.dart';
 import 'package:kanji_hiragana/theme.dart';
 import 'package:kanji_hiragana/widgets/alignment_table.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 import 'package:kanji_hiragana/widgets/furigana_view.dart';
 import 'package:kanji_hiragana/widgets/single_kanji_view.dart';
 import 'package:kanji_hiragana/widgets/vertical_view.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/fake_services.dart';
+
 void main() {
-  setUpAll(() async {
-    // 词典与常驻 isolate 在真实异步线程完成构建与握手
-    await JapaneseAnalyzer.instance.warmUp();
-  });
+  late KanjiServices services;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
@@ -36,22 +36,22 @@ void main() {
     for (final f in QueryStore.instance.favorites.toList()) {
       QueryStore.instance.toggleFavorite(f);
     }
+    services = buildFakeServices();
   });
 
   Future<void> pumpHome(WidgetTester tester) async {
     await tester.pumpWidget(
-      AppStringsScope(
-        strings: const ZhStrings(),
-        child: MaterialApp(
-          theme: AppTheme.dark(),
-          home: const HomePage(),
+      KanjiServicesScope(
+        services: services,
+        child: AppStringsScope(
+          strings: const ZhStrings(),
+          child: MaterialApp(
+            theme: AppTheme.dark(),
+            home: const HomePage(),
+          ),
         ),
       ),
     );
-    // 给 HomePage._init() 留出就绪时间
-    await tester.runAsync(() async {
-      await Future<void>.delayed(const Duration(milliseconds: 60));
-    });
     await tester.pumpAndSettle();
   }
 
@@ -301,6 +301,29 @@ void main() {
       await tester.tap(favoriteBtn);
       await tester.pump();
       expect(QueryStore.instance.isFavorite('桜'), isFalse);
+    });
+
+    testWidgets('超长结果默认折叠并可展开', (tester) async {
+      await pumpHome(tester);
+
+      await tester.enterText(find.byType(TextField), 'あ' * 500);
+      await tester.pump();
+      await tester.tap(find.byTooltip('查询'));
+      await tester.pump();
+      await pumpUntilFound(
+        tester,
+        find.textContaining('文本较长'),
+      );
+
+      expect(find.text('显示全部'), findsOneWidget);
+      await tester.tap(find.text('显示全部'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('只看前段'), findsOneWidget);
+      expect(find.textContaining('已显示全部'), findsOneWidget);
+      await tester.tap(find.text('只看前段'));
+      await tester.pumpAndSettle();
+      expect(find.text('显示全部'), findsOneWidget);
     });
   });
 }

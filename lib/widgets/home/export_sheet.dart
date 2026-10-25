@@ -4,10 +4,11 @@ import '../../core/morpheme.dart';
 import '../../core/strings.dart';
 import '../../theme.dart';
 import '../feedback.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 /// 弹出分析结果导出底部抽屉 (支持 HTML Ruby、括号注音、Anki 牌组导出)。
 void showAnalysisExportSheet(BuildContext context, AnalysisResult result) {
-  final s = AppStrings.of(context);
+  final s = AppStringsScope.of(context);
   final colors = AppTheme.of(context);
 
   showModalBottomSheet<void>(

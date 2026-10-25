@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/kanji_reading_dict.dart';
 import '../../core/strings.dart';
 import '../../theme.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 /// 同音汉字推荐分组。
 class HomophonesGroup extends StatelessWidget {
@@ -18,7 +19,7 @@ class HomophonesGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     const color = Color(0xFF369B78);
 
     return Container(

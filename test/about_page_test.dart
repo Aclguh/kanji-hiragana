@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kanji_hiragana/core/diagnostics.dart';
 import 'package:kanji_hiragana/core/strings.dart';
 import 'package:kanji_hiragana/theme.dart';
 import 'package:kanji_hiragana/widgets/about_page.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -95,5 +97,24 @@ void main() {
 
     expect(clipboardContent, AboutPage.repoUrl);
     expect(find.text(s.repositoryCopied), findsOneWidget);
+  });
+
+  testWidgets('AboutPage 复制诊断信息且不包含查询正文', (tester) async {
+    DiagnosticsLog.instance.clear();
+    DiagnosticsLog.instance.record('analysis', StateError('boom'));
+    addTearDown(DiagnosticsLog.instance.clear);
+
+    const s = ZhStrings();
+    await tester.pumpWidget(createHost(strings: s));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text(s.exportDiagnostics));
+    await tester.tap(find.text(s.exportDiagnostics));
+    await tester.pumpAndSettle();
+
+    expect(clipboardContent, contains('StateError'));
+    expect(clipboardContent, contains('analysis'));
+    expect(clipboardContent, isNot(contains('私の查询')));
+    expect(find.text(s.diagnosticsCopied), findsOneWidget);
   });
 }

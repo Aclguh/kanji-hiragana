@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../core/kanji_services.dart';
 import '../core/settings.dart';
 import '../core/strings.dart';
 import '../theme.dart';
 import 'sliding_drawer.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 /// 设置抽屉内容: 主题切换 / 旋转屏幕 / 语言 / 关于。
 class SettingsDrawerContent extends StatelessWidget {
@@ -14,8 +14,10 @@ class SettingsDrawerContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settings = KanjiServices.of(context).settings;
-    final s = AppStrings.of(context);
+    final services = KanjiServicesScope.of(context);
+    final settings = services.settings;
+    final queryStore = services.queryStore;
+    final s = AppStringsScope.of(context);
 
     return DrawerPanel(
       side: DrawerSide.right,
@@ -25,13 +27,21 @@ class SettingsDrawerContent extends StatelessWidget {
         // loadError 可能在抽屉打开后才异步变化 (如加载在后台重试),
         // 必须监听 settings 而不是只在 build 时读一次。
         AnimatedBuilder(
-          animation: settings,
+          animation: Listenable.merge([settings, queryStore]),
           builder: (context, _) {
-            final error = settings.loadError;
+            final loadError =
+                settings.loadError ?? queryStore.loadError;
+            final saveError =
+                settings.saveError ?? queryStore.saveError;
+            final error = loadError ?? saveError;
             if (error == null) return const SizedBox.shrink();
             return Padding(
               padding: const EdgeInsets.only(bottom: 18),
-              child: _buildErrorNotice(s, error),
+              child: _buildErrorNotice(
+                s,
+                error,
+                saving: loadError == null,
+              ),
             );
           },
         ),
@@ -79,7 +89,14 @@ class SettingsDrawerContent extends StatelessWidget {
     );
   }
 
-  Widget _buildErrorNotice(AppStrings s, Object error) {
+  Widget _buildErrorNotice(
+    AppStrings s,
+    Object error, {
+    required bool saving,
+  }) {
+    final message = saving
+        ? s.settingsSaveFailed(error)
+        : s.settingsLoadFailed(error);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -98,7 +115,7 @@ class SettingsDrawerContent extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              s.settingsLoadFailed(error),
+              message,
               style: const TextStyle(
                 color: AppTheme.accent,
                 fontSize: 11,
@@ -122,7 +139,7 @@ class _ThemeModeSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     return Column(
       children: AppThemeMode.values.map((mode) {
         final selected = mode == value;

@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 import 'kanji_filter.dart';
 import 'settings.dart';
 
@@ -33,18 +31,6 @@ sealed class AppStrings {
   const AppStrings();
 
   /// 当前语言的全部文案。
-  static AppStrings of(BuildContext context) {
-    final scope =
-        context.dependOnInheritedWidgetOfExactType<AppStringsScope>();
-    assert(
-      scope != null,
-      'AppStrings.of: 未找到 AppStringsScope, 已静默回退中文。\n'
-      '测试宿主请用 AppStringsScope(strings: ...) 包裹 MaterialApp, '
-      '与 main.dart 的做法一致。',
-    );
-    return scope?.strings ?? const ZhStrings();
-  }
-
   static AppStrings forLanguage(AppLanguage language) => switch (language) {
         AppLanguage.zh => const ZhStrings(),
         AppLanguage.en => const EnStrings(),
@@ -101,6 +87,8 @@ sealed class AppStrings {
   String get copiedRuby;
   String get copiedBrackets;
   String get copiedAnki;
+  String copiedAnkiWithFailures(int count);
+  String get ankiAnalysisFailed;
   String get ttsUnavailable;
   String get ankiTagSentence;
   String get ankiTagFavorite;
@@ -118,6 +106,11 @@ sealed class AppStrings {
 
   String dictionaryInitFailed(Object error);
   String analysisFailed(Object error);
+  String settingsSaveFailed(Object error);
+  String get showAllResults;
+  String get showLessResults;
+  String longResultNotice(int shown, int total);
+  String allResultsShown(int total);
 
   /// 空态下方的「收藏」词条区标题。
   String get favoritesLabel;
@@ -334,6 +327,12 @@ sealed class AppStrings {
   String get repositoryLabel;
   String get repositoryCopied;
   String get licensesSection;
+  String get diagnosticsSection;
+  String get exportDiagnostics;
+  String get diagnosticsHint;
+  String get diagnosticsCopied;
+  String get diagnosticsEmpty;
+  String get analysisFailedGeneric;
   String get licenseAppCode;
   String get licenseKanjiData;
   String get licenseAnalyzer;
@@ -448,6 +447,12 @@ class ZhStrings extends AppStrings {
   String get copiedAnki => '已复制 Anki 牌组格式文本';
 
   @override
+  String copiedAnkiWithFailures(int count) => '已复制 Anki 牌组格式文本，其中 $count 条解析失败';
+
+  @override
+  String get ankiAnalysisFailed => '解析失败';
+
+  @override
   String get ttsUnavailable => '未检测到系统日语语音引擎，请在系统设置中安装 TTS 语音数据';
 
   @override
@@ -488,6 +493,22 @@ class ZhStrings extends AppStrings {
 
   @override
   String analysisFailed(Object error) => '解析失败: $error';
+
+  @override
+  String settingsSaveFailed(Object error) => '本地保存失败，将在下次写入时重试: $error';
+
+  @override
+  String get showAllResults => '显示全部';
+
+  @override
+  String get showLessResults => '只看前段';
+
+  @override
+  String longResultNotice(int shown, int total) =>
+      '文本较长，当前仅显示前 $shown 项，共 $total 项。';
+
+  @override
+  String allResultsShown(int total) => '已显示全部 $total 项。';
 
   @override
   String get favoritesLabel => '收藏';
@@ -851,6 +872,24 @@ class ZhStrings extends AppStrings {
   String get licensesSection => '许可';
 
   @override
+  String get diagnosticsSection => '诊断';
+
+  @override
+  String get exportDiagnostics => '复制诊断信息';
+
+  @override
+  String get diagnosticsHint => '仅包含错误类型与堆栈，不包含查询内容';
+
+  @override
+  String get diagnosticsCopied => '诊断信息已复制';
+
+  @override
+  String get diagnosticsEmpty => '暂无诊断记录';
+
+  @override
+  String get analysisFailedGeneric => '解析失败，请重试';
+
+  @override
   String get licenseAppCode => '应用代码';
 
   @override
@@ -881,7 +920,8 @@ class ZhStrings extends AppStrings {
   String get creditFramework => '跨平台应用框架';
 
   @override
-  String get offlineNotice => '本应用完全离线运行，不收集任何数据，不请求任何权限。';
+  String get offlineNotice =>
+      '本应用自身不发起网络请求、不收集数据、不申请网络权限。发音由系统 TTS 引擎处理，是否联网取决于所选的系统引擎。';
 }
 
 /// English strings.
@@ -986,6 +1026,13 @@ class EnStrings extends AppStrings {
   String get copiedAnki => 'Anki deck text copied';
 
   @override
+  String copiedAnkiWithFailures(int count) =>
+      'Anki deck text copied; $count entries could not be analyzed';
+
+  @override
+  String get ankiAnalysisFailed => 'Analysis failed';
+
+  @override
   String get ttsUnavailable =>
       'Japanese TTS engine not available. Please install speech data in system settings.';
 
@@ -1028,6 +1075,23 @@ class EnStrings extends AppStrings {
 
   @override
   String analysisFailed(Object error) => 'Analysis failed: $error';
+
+  @override
+  String settingsSaveFailed(Object error) =>
+      'Local save failed; it will be retried on the next write: $error';
+
+  @override
+  String get showAllResults => 'Show all';
+
+  @override
+  String get showLessResults => 'Show less';
+
+  @override
+  String longResultNotice(int shown, int total) =>
+      'Long input: showing the first $shown of $total items.';
+
+  @override
+  String allResultsShown(int total) => 'All $total items are shown.';
 
   @override
   String get favoritesLabel => 'Favorites';
@@ -1437,6 +1501,25 @@ class EnStrings extends AppStrings {
   String get licensesSection => 'Licenses';
 
   @override
+  String get diagnosticsSection => 'Diagnostics';
+
+  @override
+  String get exportDiagnostics => 'Copy diagnostics';
+
+  @override
+  String get diagnosticsHint =>
+      'Error types and stack traces only; query text is excluded';
+
+  @override
+  String get diagnosticsCopied => 'Diagnostics copied';
+
+  @override
+  String get diagnosticsEmpty => 'No diagnostic entries';
+
+  @override
+  String get analysisFailedGeneric => 'Analysis failed. Please try again.';
+
+  @override
   String get licenseAppCode => 'Application code';
 
   @override
@@ -1473,22 +1556,5 @@ class EnStrings extends AppStrings {
 
   @override
   String get offlineNotice =>
-      'This app runs entirely offline. It collects no data and requests no permissions.';
-}
-
-/// 把当前语言注入组件树。
-///
-/// 放在 [MaterialApp] 之上, 语言变化时整棵树重建。
-class AppStringsScope extends InheritedWidget {
-  final AppStrings strings;
-
-  const AppStringsScope({
-    super.key,
-    required this.strings,
-    required super.child,
-  });
-
-  @override
-  bool updateShouldNotify(AppStringsScope oldWidget) =>
-      oldWidget.strings.language != strings.language;
+      'This app makes no network requests, collects no data and requests no network permission. Speech is handled by the system TTS engine; whether it uses the network depends on that engine.';
 }

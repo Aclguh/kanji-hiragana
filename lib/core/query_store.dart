@@ -38,6 +38,8 @@ class QueryStore extends ChangeNotifier {
     _favorites = const [];
     _prefs = null;
     _loadError = null;
+    _saveError = null;
+    _lastWrite = Future<void>.value();
     notifyListeners();
   }
 
@@ -45,8 +47,15 @@ class QueryStore extends ChangeNotifier {
 
   Object? _loadError;
 
+  Object? _saveError;
+
+  Future<void> _lastWrite = Future<void>.value();
+
   /// 本地数据加载异常 (若加载失败)。
   Object? get loadError => _loadError;
+
+  /// 最近一次持久化异常 (若写入失败)。
+  Object? get saveError => _saveError;
 
   /// 最近查询, 新的在前。
   List<String> _history = const [];
@@ -85,6 +94,7 @@ class QueryStore extends ChangeNotifier {
         _persistFavorites();
       }
       _loadError = null;
+      _saveError = null;
     } catch (e) {
       _loadError = e;
     } finally {
@@ -157,10 +167,37 @@ class QueryStore extends ChangeNotifier {
   }
 
   void _persistHistory() {
-    _prefs?.setStringList(_kHistory, _history);
+    _lastWrite = _write(
+      (prefs) => prefs.setStringList(_kHistory, _history),
+    );
   }
 
   void _persistFavorites() {
-    _prefs?.setStringList(_kFavorites, _favorites);
+    _lastWrite = _write(
+      (prefs) => prefs.setStringList(_kFavorites, _favorites),
+    );
   }
+
+  Future<void> _write(
+    Future<bool> Function(SharedPreferences prefs) operation,
+  ) async {
+    final prefs = _prefs;
+    if (prefs == null) return;
+    try {
+      final ok = await operation(prefs);
+      if (!ok) {
+        throw StateError('SharedPreferences write returned false');
+      }
+      if (_saveError != null) {
+        _saveError = null;
+        notifyListeners();
+      }
+    } catch (e) {
+      _saveError = e;
+      notifyListeners();
+    }
+  }
+
+  /// 等待最近一次写入完成, 供应用进入后台前调用。
+  Future<void> flush() => _lastWrite;
 }

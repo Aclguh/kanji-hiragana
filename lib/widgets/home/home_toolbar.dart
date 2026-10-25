@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../core/strings.dart';
 import '../../theme.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 /// 视图模式。
 enum ViewMode {
@@ -42,7 +42,7 @@ class HomeToolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
       child: Wrap(

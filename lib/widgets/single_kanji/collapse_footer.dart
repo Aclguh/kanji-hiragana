@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/strings.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 /// 「展开 / 收起」尾块: 折叠时显示「还有 n 个」, 已展开时显示收起。
 class CollapseFooter extends StatelessWidget {
@@ -19,7 +19,7 @@ class CollapseFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     return MergeSemantics(
       child: Semantics(
         button: true,

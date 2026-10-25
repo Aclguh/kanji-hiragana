@@ -32,6 +32,9 @@ import 'package:kanji_hiragana/widgets/sliding_drawer.dart';
 import 'package:kanji_hiragana/widgets/vertical_view.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/fake_services.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
+
 void main() {
   final themes = {'dark': AppTheme.dark(), 'light': AppTheme.light()};
 
@@ -886,6 +889,59 @@ void main() {
         expect(copiedText, contains('#separator:tab'));
         expect(copiedText, contains('日'));
         expect(copiedText, contains('練'));
+      });
+
+      testWidgets('AnkiExportSheet 批量分析失败时标记条目并提示', (tester) async {
+        String? copiedText;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == 'Clipboard.setData') {
+            final args = call.arguments as Map<dynamic, dynamic>;
+            copiedText = args['text'] as String?;
+          }
+          return null;
+        });
+        addTearDown(() {
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+              .setMockMethodCallHandler(SystemChannels.platform, null);
+        });
+
+        final analyzer = FakeAnalyzer()..failBatch = true;
+        await tester.pumpWidget(
+          KanjiServicesScope(
+            services: buildFakeServices(analyzer: analyzer),
+            child: AppStringsScope(
+              strings: const ZhStrings(),
+              child: MaterialApp(
+                theme: theme,
+                home: Scaffold(
+                  body: Builder(
+                    builder: (context) => ElevatedButton(
+                      onPressed: () {
+                        AnkiExportSheet.show(
+                          context,
+                          favorites: const ['日本語'],
+                        );
+                      },
+                      child: const Text('OpenSheet'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('OpenSheet'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Anki 牌组格式 (TSV 制表符分隔)'));
+        await tester.pumpAndSettle();
+
+        expect(copiedText, contains('解析失败'));
+        expect(
+          find.textContaining('其中 1 条解析失败'),
+          findsOneWidget,
+        );
       });
     });
   }

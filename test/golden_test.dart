@@ -1,10 +1,7 @@
-// VectorIcon 的像素回归 (golden) 测试: 手绘矢量路径的几何魔法数字
-// 一旦被误改, 这里以像素级差异显式失败。
-//
-// golden 基线与宿主平台的栅格化相关, 跨平台不保证逐字节一致 ——
-// CI (Linux) 默认跳过, 需要时本地显式运行:
-//   运行:     GOLDEN=1 flutter test test/golden_test.dart
-//   更新基线: GOLDEN=1 flutter test --update-goldens test/golden_test.dart
+// golden 基线与宿主平台的栅格化相关, 因此按平台分目录存放:
+//   test/goldens/windows/...
+//   test/goldens/linux/...
+// 本地默认跳过, CI 以 GOLDEN=1 在 Linux 上强制运行。
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -14,6 +11,9 @@ import 'package:kanji_hiragana/widgets/vector_icon.dart';
 
 void main() {
   final goldenEnabled = Platform.environment['GOLDEN'] == '1';
+
+  String goldenPath(String name) =>
+      'goldens/${Platform.operatingSystem}/$name';
 
   Future<void> pumpIcon(
     WidgetTester tester,
@@ -41,7 +41,7 @@ void main() {
     await pumpIcon(tester, DrawerIconType.settings, key);
     await expectLater(
       find.byKey(key),
-      matchesGoldenFile('goldens/vector_icon_settings.png'),
+      matchesGoldenFile(goldenPath('vector_icon_settings.png')),
     );
   }, skip: !goldenEnabled);
 
@@ -50,7 +50,7 @@ void main() {
     await pumpIcon(tester, DrawerIconType.search, key);
     await expectLater(
       find.byKey(key),
-      matchesGoldenFile('goldens/vector_icon_search.png'),
+      matchesGoldenFile(goldenPath('vector_icon_search.png')),
     );
   }, skip: !goldenEnabled);
 }

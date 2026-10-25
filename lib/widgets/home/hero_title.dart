@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../core/strings.dart';
 import '../../theme.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 /// 聚焦态显示的品牌标题, 展开后淡出。
 ///
@@ -14,7 +14,7 @@ class HeroTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     final opacity = (1 - t).clamp(0.0, 1.0);
     if (opacity <= 0.001) return const SizedBox(height: 4);
 

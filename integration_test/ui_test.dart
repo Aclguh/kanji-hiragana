@@ -19,6 +19,7 @@ import 'package:kanji_hiragana/widgets/settings_drawer.dart';
 import 'package:kanji_hiragana/widgets/single_kanji_view.dart';
 import 'package:kanji_hiragana/widgets/vector_icon.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 /// 在设备 / 模拟器上驱动的界面测试。
 ///
@@ -62,7 +63,7 @@ void main() {
     await resetSettings();
     // AppStringsScope 包在 MaterialApp 外层 (与 main.dart 一致):
     // scope 要覆盖 push 出来的全屏页面 (筛选结果页 / 关于页),
-    // AppStrings.of 在缺失 scope 时 debug 断言会失败。
+    // AppStringsScope.of 在缺失 scope 时 debug 断言会失败。
     await tester.pumpWidget(
       AppStringsScope(
         strings: const ZhStrings(),

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../core/kanji_services.dart';
-import '../../core/strings.dart';
 import '../../theme.dart';
 import '../anki_export_sheet.dart';
 import '../feedback.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 /// 聚焦态显示的收藏与最近查询词条, 展开后随动画淡出。
 class QueryChips extends StatelessWidget {
@@ -25,7 +24,7 @@ class QueryChips extends StatelessWidget {
     final opacity = (1 - t).clamp(0.0, 1.0);
     if (opacity <= 0.001) return const SizedBox.shrink();
 
-    final store = KanjiServices.of(context).queryStore;
+    final store = KanjiServicesScope.of(context).queryStore;
     return AnimatedBuilder(
       animation: store,
       builder: (context, _) {
@@ -47,7 +46,7 @@ class QueryChips extends StatelessWidget {
                   _buildChipSection(
                     context,
                     icon: Icons.star_rounded,
-                    label: AppStrings.of(context).favoritesLabel,
+                    label: AppStringsScope.of(context).favoritesLabel,
                     items: favorites,
                     favorite: true,
                   ),
@@ -57,7 +56,7 @@ class QueryChips extends StatelessWidget {
                   _buildChipSection(
                     context,
                     icon: Icons.history_rounded,
-                    label: AppStrings.of(context).historyLabel,
+                    label: AppStringsScope.of(context).historyLabel,
                     items: history,
                     favorite: false,
                   ),
@@ -78,8 +77,8 @@ class QueryChips extends StatelessWidget {
     required bool favorite,
   }) {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
-    final store = KanjiServices.of(context).queryStore;
+    final s = AppStringsScope.of(context);
+    final store = KanjiServicesScope.of(context).queryStore;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(

@@ -4,6 +4,7 @@ import '../../core/kanji_filter.dart';
 import '../../core/kanji_reading_dict.dart';
 import '../../core/strings.dart';
 import '../../theme.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 /// 单汉字主卡片: 大号字形、中英释义与笔画/学年/频率/部首元信息。
 class KanjiHeroCard extends StatelessWidget {
@@ -14,7 +15,7 @@ class KanjiHeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     final meanings =
         s.language == AppLanguage.en && reading.meaningsEn.isNotEmpty
             ? reading.meaningsEn

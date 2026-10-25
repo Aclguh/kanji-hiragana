@@ -9,6 +9,7 @@ import '../core/strings.dart';
 
 import '../theme.dart';
 import 'feedback.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 /// 和风传统竖排排版模式 (纵书 / 縦書き 视图)。
 ///
@@ -31,7 +32,7 @@ class VerticalView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
 
     // 段落划分: 若无段落则退回单一段落
     final paragraphs = result.paragraphs.isNotEmpty
@@ -96,8 +97,9 @@ class VerticalView extends StatelessWidget {
 
     for (var i = 0; i < morphemes.length; i++) {
       final m = morphemes[i];
-      final len = m.surface.length;
-      final firstChar = m.surface.isNotEmpty ? m.surface[0] : '';
+      final surfaceChars = m.surface.characters;
+      final len = surfaceChars.length;
+      final firstChar = surfaceChars.isNotEmpty ? surfaceChars.first : '';
       final isStartForbidden = lineStartForbidden.contains(firstChar);
 
       if (current.isNotEmpty && currentLen + len > maxCharsPerColumn) {
@@ -123,15 +125,15 @@ class VerticalView extends StatelessWidget {
       // 且当前列已接近满列且后续还有词, 提前折至新列首
       if (current.isNotEmpty && i + 1 < morphemes.length) {
         final lastM = current.last;
-        final lastChar =
-            lastM.surface.isNotEmpty ? lastM.surface[lastM.surface.length - 1] : '';
+        final lastChars = lastM.surface.characters;
+        final lastChar = lastChars.isNotEmpty ? lastChars.last : '';
         if (lineEndForbidden.contains(lastChar) &&
             currentLen >= maxCharsPerColumn - 2) {
           if (current.length > 1) {
             current.removeLast();
             columns.add(current);
             current = [lastM];
-            currentLen = lastM.surface.length;
+            currentLen = lastM.surface.characters.length;
           }
         }
       }
@@ -182,7 +184,7 @@ class _VerticalMorphemeItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     final hasRuby = morpheme.needsAnnotation;
     final loanword = morpheme.loanword;
 
@@ -239,8 +241,7 @@ class _VerticalMorphemeItem extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        for (var i = 0; i < morpheme.surface.length; i++)
-          _buildChar(morpheme.surface[i], textColor),
+        for (final char in morpheme.surface.characters) _buildChar(char, textColor),
         if (showRomaji && morpheme.romaji.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 2),
@@ -302,9 +303,9 @@ class _VerticalMorphemeItem extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (var i = 0; i < morpheme.hiragana.length; i++)
+        for (final char in morpheme.hiragana.characters)
           Text(
-            morpheme.hiragana[i],
+            char,
             style: TextStyle(
               color: colors.textSecondary.withValues(alpha: 0.9),
               fontSize: 10,

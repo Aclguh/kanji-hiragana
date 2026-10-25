@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../core/japanese_analyzer.dart';
+import '../core/analyzer_service.dart';
 import '../core/kanji_converter.dart';
 import '../core/kanji_reading_dict.dart';
-import '../core/kanji_services.dart';
 import '../core/morpheme.dart';
 import '../core/strings.dart';
 import '../theme.dart';
 import 'feedback.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 /// 收藏夹生词本导出为 Anki / TSV 格式的弹窗。
 class AnkiExportSheet extends StatefulWidget {
@@ -30,12 +30,20 @@ class AnkiExportSheet extends StatefulWidget {
   State<AnkiExportSheet> createState() => _AnkiExportSheetState();
 }
 
+/// 生词本导出的结果。
+class _AnkiExportResult {
+  final String tsv;
+  final int failedCount;
+
+  const _AnkiExportResult({required this.tsv, required this.failedCount});
+}
+
 class _AnkiExportSheetState extends State<AnkiExportSheet> {
   bool _isExporting = false;
 
-  Future<String> _generateAnkiTsv(
+  Future<_AnkiExportResult> _generateAnkiTsv(
     AppStrings s,
-    JapaneseAnalyzer analyzer,
+    AnalyzerService analyzer,
   ) async {
     final buffer = StringBuffer();
     // 写入表头 (供 Anki 自动映射字段)
@@ -73,10 +81,11 @@ class _AnkiExportSheetState extends State<AnkiExportSheet> {
           }
         }
       } catch (_) {
-        // 分词失败时容错降级
+        // 批量分析失败时仍继续导出, 但下方会逐条标记失败并在提示中告知数量。
       }
     }
 
+    var failedCount = 0;
     for (var i = 0; i < trimmedFavorites.length; i++) {
       final trimmed = trimmedFavorites[i];
       final converted = KanjiConverter.toJapaneseKanji(trimmed);
@@ -117,13 +126,19 @@ class _AnkiExportSheetState extends State<AnkiExportSheet> {
             '${AnalysisResult.escapeTsvField(trimmed)}\t$hira\t$romaji\t$pos\t${s.ankiTagFavorite}',
           );
         } else {
+          failedCount++;
           buffer.writeln(
-            '${AnalysisResult.escapeTsvField(trimmed)}\t\t\t${s.ankiTagFavorite}\t',
+            '${AnalysisResult.escapeTsvField(trimmed)}\t\t\t'
+            '${AnalysisResult.escapeTsvField(s.ankiAnalysisFailed)}\t'
+            '${s.ankiTagFavorite}',
           );
         }
       }
     }
-    return buffer.toString().trimRight();
+    return _AnkiExportResult(
+      tsv: buffer.toString().trimRight(),
+      failedCount: failedCount,
+    );
   }
 
   String _generatePlainText() {
@@ -133,7 +148,7 @@ class _AnkiExportSheetState extends State<AnkiExportSheet> {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
 
     return Container(
       decoration: BoxDecoration(
@@ -191,11 +206,17 @@ class _AnkiExportSheetState extends State<AnkiExportSheet> {
                     ? null
                     : () async {
                         setState(() => _isExporting = true);
-                        final analyzer = KanjiServices.of(context).analyzer;
-                        final tsv = await _generateAnkiTsv(s, analyzer);
+                        final analyzer = KanjiServicesScope.of(context).analyzer;
+                        final output = await _generateAnkiTsv(s, analyzer);
                         if (!context.mounted) return;
                         Navigator.of(context).pop();
-                        copyWithToast(context, tsv, s.copiedAnki);
+                        copyWithToast(
+                          context,
+                          output.tsv,
+                          output.failedCount > 0
+                              ? s.copiedAnkiWithFailures(output.failedCount)
+                              : s.copiedAnki,
+                        );
                       },
                 child: _isExporting
                     ? Row(

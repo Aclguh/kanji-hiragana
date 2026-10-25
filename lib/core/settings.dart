@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'strings.dart';
@@ -13,13 +13,6 @@ enum AppThemeMode {
 
   /// 跟随系统。
   system;
-
-  /// 映射为 Flutter 的 [ThemeMode]。
-  ThemeMode get material => switch (this) {
-        AppThemeMode.light => ThemeMode.light,
-        AppThemeMode.dark => ThemeMode.dark,
-        AppThemeMode.system => ThemeMode.system,
-      };
 
   /// 界面显示用的名称, 随当前语言变化。
   String label(AppStrings s) => s.themeModeLabel(this);
@@ -56,10 +49,16 @@ class SettingsController extends ChangeNotifier {
     _viewModeName = 'alignment';
     _prefs = null;
     _loadError = null;
+    _saveError = null;
+    _lastWrite = Future<void>.value();
     notifyListeners();
   }
 
   SharedPreferences? _prefs;
+
+  Object? _saveError;
+
+  Future<void> _lastWrite = Future<void>.value();
 
   AppThemeMode _themeMode = AppThemeMode.system;
 
@@ -98,6 +97,9 @@ class SettingsController extends ChangeNotifier {
   /// 本地设置加载异常 (若加载失败)。
   Object? get loadError => _loadError;
 
+  /// 最近一次设置持久化异常 (若写入失败)。
+  Object? get saveError => _saveError;
+
   /// 是否已完成本地设置的加载。
   bool get isReady => _prefs != null;
 
@@ -107,6 +109,7 @@ class SettingsController extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       _prefs = prefs;
       _loadError = null;
+      _saveError = null;
       _themeMode = AppThemeMode.fromName(prefs.getString(_kThemeMode));
       _autoRotate = prefs.getBool(_kAutoRotate) ?? false;
       _language = AppLanguage.fromName(prefs.getString(_kLanguage));
@@ -123,34 +126,66 @@ class SettingsController extends ChangeNotifier {
     if (_themeMode == mode) return;
     _themeMode = mode;
     notifyListeners();
-    await _prefs?.setString(_kThemeMode, mode.name);
+    await _write((prefs) => prefs.setString(_kThemeMode, mode.name));
   }
 
   Future<void> setAutoRotate(bool value) async {
     if (_autoRotate == value) return;
     _autoRotate = value;
     notifyListeners();
-    await _prefs?.setBool(_kAutoRotate, value);
+    await _write((prefs) => prefs.setBool(_kAutoRotate, value));
   }
 
   Future<void> setLanguage(AppLanguage language) async {
     if (_language == language) return;
     _language = language;
     notifyListeners();
-    await _prefs?.setString(_kLanguage, language.name);
+    await _write((prefs) => prefs.setString(_kLanguage, language.name));
   }
 
   Future<void> setShowRomaji(bool value) async {
     if (_showRomaji == value) return;
     _showRomaji = value;
     notifyListeners();
-    await _prefs?.setBool(_kShowRomaji, value);
+    await _write((prefs) => prefs.setBool(_kShowRomaji, value));
   }
 
   Future<void> setViewModeName(String name) async {
     if (_viewModeName == name) return;
     _viewModeName = name;
     notifyListeners();
-    await _prefs?.setString(_kViewMode, name);
+    await _write((prefs) => prefs.setString(_kViewMode, name));
   }
+
+  Future<void> _write(
+    Future<bool> Function(SharedPreferences prefs) operation,
+  ) {
+    final prefs = _prefs;
+    if (prefs == null) return Future<void>.value();
+    final write = _performWrite(prefs, operation);
+    _lastWrite = write;
+    return write;
+  }
+
+  Future<void> _performWrite(
+    SharedPreferences prefs,
+    Future<bool> Function(SharedPreferences prefs) operation,
+  ) async {
+    try {
+      final ok = await operation(prefs);
+      if (!ok) {
+        throw StateError('SharedPreferences write returned false');
+      }
+      if (_saveError != null) {
+        _saveError = null;
+        notifyListeners();
+      }
+    } catch (e) {
+      _saveError = e;
+      notifyListeners();
+    }
+  }
+
+  /// 等待最近一次写入完成, 供应用进入后台前调用。
+  Future<void> flush() => _lastWrite;
 }

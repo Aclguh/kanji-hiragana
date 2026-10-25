@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_meta.dart';
+import '../core/diagnostics.dart';
 import '../core/strings.dart';
 import '../theme.dart';
 import 'feedback.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 /// 关于页面: 版本号、仓库、许可与致谢。
 class AboutPage extends StatefulWidget {
@@ -30,7 +32,7 @@ class _AboutPageState extends State<AboutPage> {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     return Scaffold(
       appBar: AppBar(title: Text(s.about)),
       body: Scrollbar(
@@ -95,6 +97,15 @@ class _AboutPageState extends State<AboutPage> {
 
             _SectionLabel(s.creditsSection),
             const _ThanksCard(),
+            const SizedBox(height: 22),
+
+            _SectionLabel(s.diagnosticsSection),
+            _LinkTile(
+              icon: Icons.bug_report_outlined,
+              title: s.exportDiagnostics,
+              value: s.diagnosticsHint,
+              onTap: () => _copyDiagnostics(context, s),
+            ),
             const SizedBox(height: 26),
 
             Center(
@@ -117,6 +128,15 @@ class _AboutPageState extends State<AboutPage> {
   static void _copy(BuildContext context, String text, String tip) {
     // 与全应用的复制交互统一 (900ms 提示, 弹出前收起旧提示)。
     copyWithToast(context, text, tip);
+  }
+
+  static void _copyDiagnostics(BuildContext context, AppStrings s) {
+    final text = DiagnosticsLog.instance.export();
+    copyWithToast(
+      context,
+      text.isEmpty ? s.diagnosticsEmpty : text,
+      text.isEmpty ? s.diagnosticsEmpty : s.diagnosticsCopied,
+    );
   }
 
   Widget _buildHeader(BuildContext context) {
@@ -154,7 +174,7 @@ class _AboutPageState extends State<AboutPage> {
         ),
         const SizedBox(height: 6),
         Text(
-          AppStrings.of(context).tagline,
+          AppStringsScope.of(context).tagline,
           style: TextStyle(color: colors.textSecondary, fontSize: 12),
         ),
       ],
@@ -335,7 +355,7 @@ class _ThanksCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     final items = <(String, String)>[
       ('kuromoji', s.creditAnalyzer),
       ('KANJIDIC2', s.creditKanjiData),

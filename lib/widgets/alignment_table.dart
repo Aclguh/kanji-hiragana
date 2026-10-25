@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 
 import '../core/morpheme.dart';
-import '../core/strings.dart';
 
 import '../theme.dart';
 import 'feedback.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 /// 对照表视图: 逐词以「汉字 / 平假名 / 罗马音」三列并排呈现对应关系,
 /// 类似翻译软件的对照排版。
@@ -13,19 +13,28 @@ class AlignmentTable extends StatelessWidget {
   final AnalysisResult result;
   final bool showRomaji;
 
+  /// 为 true 时返回 sliver, 供主界面 [CustomScrollView] 惰性构建词行。
+  ///
+  /// 默认返回普通盒模型, 保持独立组件测试与其它宿主的用法不变。
+  final bool sliver;
+
   const AlignmentTable({
     super.key,
     required this.result,
     this.showRomaji = true,
+    this.sliver = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppTheme.of(context);
     final paragraphs = result.paragraphs.isNotEmpty
         ? result.paragraphs
         : [result.morphemes];
+    return sliver ? _buildSliver(context, paragraphs) : _buildBox(context, paragraphs);
+  }
 
+  Widget _buildBox(BuildContext context, List<List<Morpheme>> paragraphs) {
+    final colors = AppTheme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -45,8 +54,7 @@ class AlignmentTable extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (final m in paragraphs[p])
-                  _MorphemeRow(morpheme: m, showRomaji: showRomaji),
+                for (final m in paragraphs[p]) _buildRow(m),
               ],
             ),
           ),
@@ -57,9 +65,49 @@ class AlignmentTable extends StatelessWidget {
     );
   }
 
+  Widget _buildSliver(
+    BuildContext context,
+    List<List<Morpheme>> paragraphs,
+  ) {
+    final colors = AppTheme.of(context);
+    return SliverMainAxisGroup(
+      slivers: [
+        SliverToBoxAdapter(child: _buildHeader(context)),
+        const SliverToBoxAdapter(child: SizedBox(height: 8)),
+        for (var p = 0; p < paragraphs.length; p++) ...[
+          if (p > 0)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: colors.border.withValues(alpha: 0.6),
+                ),
+              ),
+            ),
+          SliverList.builder(
+            itemCount: paragraphs[p].length,
+            itemBuilder: (context, index) => RepaintBoundary(
+              child: _buildRow(paragraphs[p][index]),
+            ),
+          ),
+        ],
+        const SliverToBoxAdapter(child: SizedBox(height: 16)),
+        SliverToBoxAdapter(
+          child: RepaintBoundary(child: _buildSummary(context)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRow(Morpheme morpheme) {
+    return _MorphemeRow(morpheme: morpheme, showRomaji: showRomaji);
+  }
+
   Widget _buildHeader(BuildContext context) {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     final style = TextStyle(
       color: colors.textSecondary,
       fontSize: 12,
@@ -85,7 +133,7 @@ class AlignmentTable extends StatelessWidget {
 
   Widget _buildSummary(BuildContext context) {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
@@ -127,7 +175,7 @@ class AlignmentTable extends StatelessWidget {
     VoidCallback? onSpeak,
   }) {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -185,7 +233,7 @@ class _MorphemeRow extends StatelessWidget {
         copyWithToast(
           context,
           m.surface,
-          AppStrings.of(context).copiedSurface(m.surface),
+          AppStringsScope.of(context).copiedSurface(m.surface),
         );
       },
       borderRadius: BorderRadius.circular(10),
@@ -236,7 +284,7 @@ class _MorphemeRow extends StatelessWidget {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        AppStrings.of(context).loanwordOrigin(m.loanword!.source),
+                        AppStringsScope.of(context).loanwordOrigin(m.loanword!.source),
                         style: const TextStyle(
                           color: AppTheme.accent,
                           fontSize: 9,
@@ -250,7 +298,7 @@ class _MorphemeRow extends StatelessWidget {
                   if (m.isConjugated) ...[
                     const SizedBox(height: 2),
                     Text(
-                      AppStrings.of(context).baseForm(m.basicForm),
+                      AppStringsScope.of(context).baseForm(m.basicForm),
                       style: TextStyle(
                         color: colors.textSecondary.withValues(alpha: 0.85),
                         fontSize: 10,
@@ -308,7 +356,7 @@ class _MorphemeRow extends StatelessWidget {
   Widget _posChip(BuildContext context, Morpheme m) {
     if (m.partOfSpeech.isEmpty) return const SizedBox.shrink();
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     final text = m.partOfSpeechDetail.isNotEmpty
         ? '${s.posLabel(m.partOfSpeech)} · ${s.posDetailLabel(m.partOfSpeechDetail)}'
         : s.posLabel(m.partOfSpeech);
@@ -334,7 +382,7 @@ class _MorphemeRow extends StatelessWidget {
   /// 用 Wrap 而非 Row: 英文标签较长, 窄屏下放不下时发音换行而非溢出。
   Widget _pronChip(BuildContext context, String pronunciation, bool isParticleShift) {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     final color = isParticleShift ? AppTheme.accent : colors.textSecondary;
     return Wrap(
       spacing: 4,

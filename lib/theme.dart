@@ -1,5 +1,16 @@
 import 'package:flutter/material.dart';
 
+import 'core/settings.dart';
+
+/// 把应用主题模式映射为 Flutter 的 [ThemeMode]。
+extension AppThemeModeMaterial on AppThemeMode {
+  ThemeMode get material => switch (this) {
+        AppThemeMode.light => ThemeMode.light,
+        AppThemeMode.dark => ThemeMode.dark,
+        AppThemeMode.system => ThemeMode.system,
+      };
+}
+
 /// 应用配色与主题。
 ///
 /// 提供浅色与深色两套和风配色, 通过 [themeMode] 决定实际使用哪一套。

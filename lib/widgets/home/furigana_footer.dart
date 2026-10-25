@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 
 import '../../core/morpheme.dart';
-import '../../core/strings.dart';
 
 import '../../theme.dart';
 import '../feedback.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 /// 振假名视图页脚: 全文平假名与实际发音, 支持复制与发音。
 class FuriganaFooter extends StatelessWidget {
@@ -16,7 +16,7 @@ class FuriganaFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -70,7 +70,7 @@ class FooterLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     return Row(
       children: [
         Icon(icon, size: 16, color: color),

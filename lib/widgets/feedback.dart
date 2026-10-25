@@ -3,8 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../core/kanji_services.dart';
-import '../core/strings.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 /// 显示一条轻提示 (默认 900ms 自动消失)。
 ///
@@ -47,12 +46,12 @@ void copyWithToast(BuildContext context, String text, String message) {
 
 /// 播放日语文本发音并在引擎不可用时统一提示用户。
 Future<bool> speakWithFeedback(BuildContext context, String text) async {
-  final tts = KanjiServices.of(context).tts;
+  final tts = KanjiServicesScope.of(context).tts;
   final ok = await tts.speak(text);
   if (!ok && context.mounted) {
     final available = await tts.isAvailable();
     if (!available && context.mounted) {
-      showToast(context, AppStrings.of(context).ttsUnavailable);
+      showToast(context, AppStringsScope.of(context).ttsUnavailable);
     }
   }
   return ok;

@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
-import '../core/input_sanitizer.dart';
 import '../core/kanji_filter.dart';
 import '../core/kanji_reading_dict.dart';
 import '../core/strings.dart';
 import '../theme.dart';
+import 'filter/filter_controls.dart';
 import 'radical_picker_sheet.dart';
 import 'sliding_drawer.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 /// 筛选抽屉内容: 按笔画 / 频率 / 读音构成 / 其他筛选。
 ///
@@ -104,7 +104,7 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     return DrawerPanel(
       side: DrawerSide.left,
       title: s.filterTitle,
@@ -190,25 +190,8 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
   int _total() => kanjiReadingDict.length;
 
   /// 分组标题 + 右侧的取值范围提示。
-  Widget _sectionHeader(String title, String domain) {
-    final colors = AppTheme.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(child: DrawerSectionLabel(title)),
-        Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Text(
-            domain,
-            style: TextStyle(
-              color: colors.textSecondary.withValues(alpha: 0.7),
-              fontSize: 10,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  Widget _sectionHeader(String title, String domain) =>
+      FilterSectionHeader(title: title, domain: domain);
 
   /// 重置所有条件与输入框。
   void _reset() {
@@ -226,7 +209,7 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
   Widget _buildSortChips(AppStrings s) {
     return _chipWrap(
       KanjiSort.values.map((sort) {
-        return _Chip(
+        return FilterChipButton(
           label: s.sortLabel(sort),
           selected: _filter.sort == sort,
           onTap: () => setState(() => _filter = _filter.copyWith(sort: sort)),
@@ -238,7 +221,7 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
   // ---------------------------------------------------------------- 范围输入
 
   Widget _buildStrokeRange() {
-    return _RangeFields(
+    return RangeFields(
       minController: _strokeMin,
       maxController: _strokeMax,
       invalid: _isInverted(_strokeMin, _strokeMax),
@@ -247,7 +230,7 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
   }
 
   Widget _buildFrequencyRange() {
-    return _RangeFields(
+    return RangeFields(
       minController: _freqMin,
       maxController: _freqMax,
       invalid: _isInverted(_freqMin, _freqMax),
@@ -301,7 +284,7 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
       ..._gradeRanges.map((range) {
         final (min, max) = range;
         final selected = _filter.gradeMin == min && _filter.gradeMax == max;
-        return _Chip(
+        return FilterChipButton(
           label: s.gradeChipLabel(min, max),
           selected: selected,
           onTap: () => setState(() {
@@ -311,7 +294,7 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
           }),
         );
       }),
-      _Chip(
+      FilterChipButton(
         label: s.any,
         selected: _filter.gradeMin == null && _filter.gradeMax == null,
         onTap: () =>
@@ -323,7 +306,7 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
   Widget _buildReadingChips(AppStrings s) {
     return _chipWrap(
       ReadingRequirement.values.map((r) {
-        return _Chip(
+        return FilterChipButton(
           label: s.readingLabel(r),
           selected: _filter.reading == r,
           onTap: () => setState(() => _filter = _filter.copyWith(reading: r)),
@@ -341,7 +324,7 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
       ..._commonRadicals.map((r) {
         final char = kKangxiRadicals[r - 1];
         final selected = _filter.radical == r;
-        return _Chip(
+        return FilterChipButton(
           label: char,
           selected: selected,
           onTap: () => setState(() {
@@ -352,14 +335,14 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
         );
       }),
       if (isCustom)
-        _Chip(
+        FilterChipButton(
           label: kKangxiRadicals[curRadical - 1],
           selected: true,
           onTap: () => setState(() {
             _filter = _filter.copyWith(clearRadical: true);
           }),
         ),
-      _Chip(
+      FilterChipButton(
         label: s.allRadicals,
         selected: false,
         onTap: () async {
@@ -374,7 +357,7 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
           }
         },
       ),
-      _Chip(
+      FilterChipButton(
         label: s.any,
         selected: _filter.radical == null,
         onTap: () =>
@@ -384,275 +367,40 @@ class _FilterDrawerContentState extends State<FilterDrawerContent> {
   }
 
   Widget _buildReadingSearchField(AppStrings s) {
-    final colors = AppTheme.of(context);
-    OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: BorderSide(color: c, width: w),
-    );
-
-    return TextField(
+    return FilterSearchField(
       controller: _readingQuery,
-      inputFormatters: [
-        LengthLimitingTextInputFormatter(20),
-      ],
-      onChanged: (text) {
+      hintText: s.readingSearchHint,
+      maxLength: 20,
+      onChanged: (text) => setState(() {
+        _filter = _filter.copyWith(readingQuery: text);
+      }),
+      onClear: () {
+        _readingQuery.clear();
         setState(() {
-          _filter = _filter.copyWith(
-            readingQuery: InputSanitizer.clean(text, maxLength: 20),
-          );
+          _filter = _filter.copyWith(clearReadingQuery: true);
         });
       },
-      style: TextStyle(color: colors.textPrimary, fontSize: 14),
-      decoration: InputDecoration(
-        hintText: s.readingSearchHint,
-        hintStyle: TextStyle(
-          color: colors.textSecondary.withValues(alpha: 0.55),
-          fontSize: 12,
-        ),
-        isDense: true,
-        filled: true,
-        fillColor: colors.surfaceVariant,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 10,
-          vertical: 11,
-        ),
-        suffixIcon: _readingQuery.text.isNotEmpty
-            ? IconButton(
-                icon: Icon(Icons.clear, size: 16, color: colors.textSecondary),
-                onPressed: () {
-                  _readingQuery.clear();
-                  setState(() {
-                    _filter = _filter.copyWith(clearReadingQuery: true);
-                  });
-                },
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              )
-            : null,
-        border: border(colors.border),
-        enabledBorder: border(colors.border),
-        focusedBorder: border(AppTheme.accent, 1.4),
-      ),
     );
   }
 
   Widget _buildMeaningSearchField(AppStrings s) {
-    final colors = AppTheme.of(context);
-    OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: BorderSide(color: c, width: w),
-    );
-
-    return TextField(
+    return FilterSearchField(
       controller: _meaningQuery,
-      inputFormatters: [
-        LengthLimitingTextInputFormatter(30),
-      ],
-      onChanged: (text) {
+      hintText: s.meaningSearchHint,
+      maxLength: 30,
+      onChanged: (text) => setState(() {
+        _filter = _filter.copyWith(meaningQuery: text);
+      }),
+      onClear: () {
+        _meaningQuery.clear();
         setState(() {
-          _filter = _filter.copyWith(
-            meaningQuery: InputSanitizer.clean(text, maxLength: 30),
-          );
+          _filter = _filter.copyWith(clearMeaningQuery: true);
         });
       },
-      style: TextStyle(color: colors.textPrimary, fontSize: 14),
-      decoration: InputDecoration(
-        hintText: s.meaningSearchHint,
-        hintStyle: TextStyle(
-          color: colors.textSecondary.withValues(alpha: 0.55),
-          fontSize: 12,
-        ),
-        isDense: true,
-        filled: true,
-        fillColor: colors.surfaceVariant,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 10,
-          vertical: 11,
-        ),
-        suffixIcon: _meaningQuery.text.isNotEmpty
-            ? IconButton(
-                icon: Icon(Icons.clear, size: 16, color: colors.textSecondary),
-                onPressed: () {
-                  _meaningQuery.clear();
-                  setState(() {
-                    _filter = _filter.copyWith(clearMeaningQuery: true);
-                  });
-                },
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              )
-            : null,
-        border: border(colors.border),
-        enabledBorder: border(colors.border),
-        focusedBorder: border(AppTheme.accent, 1.4),
-      ),
     );
   }
 
   Widget _chipWrap(List<Widget> chips) {
     return Wrap(spacing: 8, runSpacing: 8, children: chips);
-  }
-}
-
-/// 「下限 ~ 上限」两个数字输入框。
-///
-/// 两端都留空即表示不加限制; 取值范围由调用方在分组标题右侧说明,
-/// 这里只负责输入本身。
-class _RangeFields extends StatelessWidget {
-  final TextEditingController minController;
-  final TextEditingController maxController;
-
-  /// 下限大于上限时给出提示。
-  final bool invalid;
-  final VoidCallback onChanged;
-
-  const _RangeFields({
-    required this.minController,
-    required this.maxController,
-    required this.invalid,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            _field(context, minController, s.min),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Text(
-                '~',
-                style: TextStyle(color: colors.textSecondary, fontSize: 14),
-              ),
-            ),
-            _field(context, maxController, s.max),
-            const SizedBox(width: 10),
-            // 提示文字不参与定宽: 面板较窄的设备上会挤出 2px 溢出,
-            // 因此让它弹性收缩, 放不下时省略。
-            Flexible(
-              child: Text(
-                s.blankMeansAny,
-                style: TextStyle(
-                  color: colors.textSecondary.withValues(alpha: 0.7),
-                  fontSize: 10,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-        if (invalid) ...[
-          const SizedBox(height: 6),
-          Text(
-            s.rangeInverted,
-            style: const TextStyle(color: AppTheme.accent, fontSize: 11),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _field(
-    BuildContext context,
-    TextEditingController controller,
-    String hint,
-  ) {
-    final colors = AppTheme.of(context);
-    OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: BorderSide(color: c, width: w),
-    );
-
-    return SizedBox(
-      width: 76,
-      child: TextField(
-        controller: controller,
-        keyboardType: TextInputType.number,
-        textAlign: TextAlign.center,
-        inputFormatters: [
-          FilteringTextInputFormatter.digitsOnly,
-          LengthLimitingTextInputFormatter(5),
-        ],
-        onChanged: (_) => onChanged(),
-        style: TextStyle(color: colors.textPrimary, fontSize: 14),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: TextStyle(
-            color: colors.textSecondary.withValues(alpha: 0.55),
-            fontSize: 12,
-          ),
-          isDense: true,
-          filled: true,
-          fillColor: colors.surfaceVariant,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 8,
-            vertical: 11,
-          ),
-          border: border(colors.border),
-          enabledBorder: border(colors.border),
-          focusedBorder: border(AppTheme.accent, 1.4),
-        ),
-      ),
-    );
-  }
-}
-
-/// 可选中的胶囊按钮。
-class _Chip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _Chip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = AppTheme.of(context);
-    // MergeSemantics + Semantics: 读屏把胶囊播报为单个按钮节点,
-    // 并带选中状态; onTap 注册语义激活动作 (TalkBack 双击可用)。
-    // 不换 InkWell: 涟漪会被胶囊自绘背景遮住, 视觉零收益;
-    // 相邻胶囊仅隔 8px, 物理热区扩到 48dp 会互相重叠反而误触。
-    return MergeSemantics(
-      child: Semantics(
-        button: true,
-        selected: selected,
-        onTap: onTap,
-        child: GestureDetector(
-          onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-              color: selected
-                  ? AppTheme.accent.withValues(alpha: 0.15)
-                  : colors.surfaceVariant,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: selected ? AppTheme.accent : colors.border,
-                width: selected ? 1.4 : 1,
-              ),
-            ),
-            child: Text(
-              label,
-              style: TextStyle(
-                color: selected ? AppTheme.accent : colors.textSecondary,
-                fontSize: 13,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }

@@ -4,6 +4,7 @@ import '../../core/strings.dart';
 import '../../core/yojijukugo_dict.dart';
 import '../../theme.dart';
 import '../feedback.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 /// 四字熟语推荐分组。
 class YojijukugoGroup extends StatelessWidget {
@@ -19,7 +20,7 @@ class YojijukugoGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     const color = Color(0xFFC05621); // 暖赭色 / 和风柿色
 
     return Container(

@@ -3,11 +3,12 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 
 import 'input_sanitizer.dart';
+import 'platform_text_source.dart';
 
 /// 平台级系统交互服务。
 ///
 /// 负责处理 Android 系统级划词 (android.intent.action.PROCESS_TEXT) 调起。
-class PlatformService {
+class PlatformService implements PlatformTextSource {
   static const _channel = MethodChannel('kanji_hiragana/platform');
 
   PlatformService._() {
@@ -19,6 +20,7 @@ class PlatformService {
   final _textController = StreamController<String>.broadcast();
 
   /// 接收到外部系统划词发送过来的文本流。
+  @override
   Stream<String> get onProcessedText => _textController.stream;
 
   Future<void> _handleCall(MethodCall call) async {
@@ -34,6 +36,7 @@ class PlatformService {
   }
 
   /// 获取冷启动时由 PROCESS_TEXT 传入的初始文本。
+  @override
   Future<String?> getInitialProcessedText() async {
     try {
       final text = await _channel.invokeMethod<String>('getInitialProcessedText');

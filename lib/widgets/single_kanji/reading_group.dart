@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../core/kana_romaji.dart';
 
-import '../../core/strings.dart';
 
 import '../../theme.dart';
 import '../feedback.dart';
 import 'collapse_footer.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 final _parenPattern = RegExp(r'[()]');
 
@@ -39,7 +39,7 @@ class _ReadingGroupState extends State<ReadingGroup> {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     final overflows = widget.readings.length > widget.maxItems;
     final visible = (_expanded || !overflows)
         ? widget.readings
@@ -142,7 +142,7 @@ class _ReadingChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     final pure = reading.replaceAll(_parenPattern, '');
     final romaji = hiraganaToRomaji(pure);
 

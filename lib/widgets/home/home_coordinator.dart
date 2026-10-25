@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../core/diagnostics.dart';
 import '../../core/japanese_analyzer.dart';
 import '../../core/kanji_services.dart';
 import '../../core/morpheme.dart';
@@ -27,6 +28,9 @@ class HomeCoordinator with ChangeNotifier {
 
   bool _loading = true;
   bool get loading => _loading;
+
+  bool _analysisInProgress = false;
+  bool get analysisInProgress => _analysisInProgress;
 
   AnalysisResult? _result;
   AnalysisResult? get result => _result;
@@ -60,6 +64,7 @@ class HomeCoordinator with ChangeNotifier {
       _loading = false;
       _errorKind = HomeErrorKind.dictionary;
       _errorDetail = e;
+      DiagnosticsLog.instance.record('dictionary', e);
       notifyListeners();
     }
 
@@ -69,7 +74,13 @@ class HomeCoordinator with ChangeNotifier {
       if (initialText != null && initialText.isNotEmpty) {
         _externalQueryController.add(initialText);
       }
-    } catch (_) {}
+    } catch (e, stackTrace) {
+      DiagnosticsLog.instance.record(
+        'platform',
+        e,
+        stackTrace: stackTrace,
+      );
+    }
 
     _processTextSub = services.platform.onProcessedText.listen((text) {
       if (text.isNotEmpty) {
@@ -87,11 +98,16 @@ class HomeCoordinator with ChangeNotifier {
     final trimmed = text.trim();
     if (trimmed.isEmpty) {
       _result = null;
+      _analysisInProgress = false;
       notifyListeners();
       return;
     }
 
     final seq = ++_requestSeq;
+    _analysisInProgress = true;
+    _errorKind = null;
+    _errorDetail = null;
+    notifyListeners();
     try {
       final r = await services.analyzer.analyze(
         text,
@@ -106,6 +122,7 @@ class HomeCoordinator with ChangeNotifier {
       }
 
       _result = r;
+      _analysisInProgress = false;
       _errorKind = null;
       _errorDetail = null;
       notifyListeners();
@@ -117,12 +134,18 @@ class HomeCoordinator with ChangeNotifier {
       final previous = _lastAnalyzedText;
       _lastAnalyzedText = trimmed;
       services.queryStore.recordQuery(trimmed, previous: previous);
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (seq != _requestSeq || (isCancelled?.call() ?? false)) {
         return;
       }
+      _analysisInProgress = false;
       _errorKind = HomeErrorKind.analysis;
       _errorDetail = e;
+      DiagnosticsLog.instance.record(
+        'analysis',
+        e,
+        stackTrace: stackTrace,
+      );
       notifyListeners();
     }
   }
@@ -139,7 +162,9 @@ class HomeCoordinator with ChangeNotifier {
 
   /// 清空当前输入状态与延续标记。
   void clear() {
+    _requestSeq++;
     _lastAnalyzedText = '';
+    _analysisInProgress = false;
   }
 
   @override

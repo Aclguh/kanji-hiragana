@@ -5,6 +5,7 @@ import 'package:kanji_hiragana/core/morpheme.dart';
 import 'package:kanji_hiragana/core/strings.dart';
 import 'package:kanji_hiragana/theme.dart';
 import 'package:kanji_hiragana/widgets/home/export_sheet.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

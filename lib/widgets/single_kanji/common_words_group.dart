@@ -3,10 +3,10 @@ import 'package:flutter/services.dart';
 
 import '../../core/kana_romaji.dart';
 import '../../core/kanji_words_dict.dart';
-import '../../core/strings.dart';
 import '../../theme.dart';
 import '../feedback.dart';
 import 'collapse_footer.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 /// 常见搭配词组: 每词一行「词 | 平假名 | 罗马音」, 点按查词, 长按复制词面。
 class CommonWordsGroup extends StatefulWidget {
@@ -32,7 +32,7 @@ class _CommonWordsGroupState extends State<CommonWordsGroup> {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     final color = colors.kanjiHighlight;
     final overflows = widget.words.length > CommonWordsGroup.maxItems;
     final visible = (_expanded || !overflows)
@@ -113,7 +113,7 @@ class _WordRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.of(context);
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     final romaji = hiraganaToRomaji(word.hiragana);
     return InkWell(
       onTap: () {

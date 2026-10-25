@@ -11,6 +11,7 @@ import 'core/settings.dart';
 import 'core/strings.dart';
 import 'home_page.dart';
 import 'theme.dart';
+import 'widgets/app_scopes.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -102,6 +103,16 @@ class _KanjiAppState extends State<KanjiApp> with WidgetsBindingObserver {
     super.didChangePlatformBrightness();
     if (_settings.themeMode == AppThemeMode.system) {
       _applySystemUi(_settings);
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      unawaited(_settings.flush());
+      unawaited(QueryStore.instance.flush());
     }
   }
 

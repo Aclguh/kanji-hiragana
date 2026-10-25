@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../core/kanji_homophones.dart';
 import '../core/kanji_reading_dict.dart';
 import '../core/kanji_words_dict.dart';
-import '../core/strings.dart';
 import '../core/yojijukugo_dict.dart';
 import '../theme.dart';
 import 'single_kanji/common_words_group.dart';
@@ -12,6 +11,7 @@ import 'single_kanji/kanji_hero_card.dart';
 import 'single_kanji/no_reading_notice.dart';
 import 'single_kanji/reading_group.dart';
 import 'single_kanji/yojijukugo_group.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 export 'single_kanji/collapse_footer.dart' show CollapseFooter;
 export 'single_kanji/common_words_group.dart' show CommonWordsGroup;
@@ -36,7 +36,7 @@ class SingleKanjiView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final s = AppStrings.of(context);
+    final s = AppStringsScope.of(context);
     // 常见搭配词来自构建期生成的 IPADIC 数据; 查不到的字整段省略。
     final words = kanjiWordsDict[reading.kanji] ?? const <KanjiWord>[];
     final homophones = KanjiHomophones.findHomophones(reading);

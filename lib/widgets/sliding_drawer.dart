@@ -2,8 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../core/strings.dart';
 import '../theme.dart';
+import 'package:kanji_hiragana/widgets/app_scopes.dart';
 
 /// 抽屉停靠方向。
 enum DrawerSide {
@@ -163,7 +163,7 @@ class _SlidingDrawerState extends State<SlidingDrawer>
                           behavior: HitTestBehavior.opaque,
                           child: Semantics(
                             button: true,
-                            label: AppStrings.of(context).close,
+                            label: AppStringsScope.of(context).close,
                             onTap: () => SlidingDrawer.close(context),
                             child: ColoredBox(color: colors.scrim),
                           ),
@@ -373,7 +373,7 @@ class _DrawerPanelState extends State<DrawerPanel> {
             ),
           ),
           IconButton(
-            tooltip: AppStrings.of(context).close,
+            tooltip: AppStringsScope.of(context).close,
             onPressed: () => SlidingDrawer.close(context),
             icon: Icon(
               Icons.close_rounded,
