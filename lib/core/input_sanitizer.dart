@@ -1,3 +1,5 @@
+import 'package:characters/characters.dart';
+
 import 'japanese_analyzer.dart' show kMaxInputLength;
 
 /// 输入文本清洗与规范化工具。
@@ -38,8 +40,8 @@ class InputSanitizer {
         .replaceAll(_c0ControlRegex, '');
 
     sanitized = sanitized.trim();
-    if (sanitized.length > maxLength) {
-      sanitized = sanitized.substring(0, maxLength).trim();
+    if (sanitized.characters.length > maxLength) {
+      sanitized = sanitized.characters.take(maxLength).toString().trim();
     }
     return sanitized;
   }

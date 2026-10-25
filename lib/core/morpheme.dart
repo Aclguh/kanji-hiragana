@@ -1,6 +1,15 @@
+import 'dart:convert';
+
 import 'kana_romaji.dart';
 import 'kanji_reading_dict.dart';
 import 'loanwords_dict.dart';
+
+/// 导出 HTML 文本时的统一转义器。
+///
+/// 只转义元素内容, 不转义调用方自己拼接的 `<ruby>` / `<rt>` 标签。
+const HtmlEscape _htmlEscape = HtmlEscape(HtmlEscapeMode.element);
+
+String _escapeHtmlElement(String value) => _htmlEscape.convert(value);
 
 /// 一个分词结果, 承载「汉字 / 平假名 / 罗马音」的对应关系。
 ///
@@ -165,16 +174,18 @@ class AnalysisResult {
   /// 导出为 HTML Ruby 标注文本 (如 `<ruby>日本語<rt>にほんご</rt></ruby>`), 多段落时以换行连接。
   String get toHtmlRuby => paragraphs.isNotEmpty
       ? paragraphs.map((p) => p.map((m) {
+            final surface = _escapeHtmlElement(m.surface);
             if (m.needsAnnotation) {
-              return '<ruby>${m.surface}<rt>${m.hiragana}</rt></ruby>';
+              return '<ruby>$surface<rt>${_escapeHtmlElement(m.hiragana)}</rt></ruby>';
             }
-            return m.surface;
+            return surface;
           }).join()).join('\n')
       : morphemes.map((m) {
+          final surface = _escapeHtmlElement(m.surface);
           if (m.needsAnnotation) {
-            return '<ruby>${m.surface}<rt>${m.hiragana}</rt></ruby>';
+            return '<ruby>$surface<rt>${_escapeHtmlElement(m.hiragana)}</rt></ruby>';
           }
-          return m.surface;
+          return surface;
         }).join();
 
   /// 导出为括号注音文本 (如 `日本語(にほんご)`), 多段落时以换行连接。

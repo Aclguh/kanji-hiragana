@@ -101,6 +101,26 @@ Future<void> main() async {
     'HTML ruby 导出',
   );
   expectEq(rMulti.toBracketAnnotation, '猫(ねこ)\n犬(いぬ)', '括号注音导出');
+  final unsafeHtml = AnalysisResult(
+    source: '漢<script>&',
+    morphemes: [
+      Morpheme.fromToken({
+        'surface_form': '漢<script>&',
+        'reading': 'カン<script>&',
+        'pos': '名詞',
+      }),
+    ],
+  ).toHtmlRuby;
+  expectEq(
+    unsafeHtml.contains('<script>'),
+    false,
+    'HTML Ruby 导出转义裸标签',
+  );
+  expectEq(
+    unsafeHtml.contains('&lt;script&gt;'),
+    true,
+    'HTML Ruby 导出保留转义文本',
+  );
   expectEq(
     r1.toAnkiTsv.contains('日本\tにっぽん\tnippon'),
     true,
@@ -140,6 +160,12 @@ Future<void> main() async {
     InputSanitizer.clean('a' * 5000, maxLength: 10).length,
     10,
     'InputSanitizer 长度截断',
+  );
+  final surrogateText = 'a' * 49 + '𠮷';
+  expectEq(
+    InputSanitizer.clean(surrogateText, maxLength: 50),
+    surrogateText,
+    'InputSanitizer 按字素簇保留增补平面字符',
   );
 
   final hugeText = 'あ' * 5000;

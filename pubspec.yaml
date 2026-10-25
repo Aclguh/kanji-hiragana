@@ -12,6 +12,8 @@ dependencies:
     sdk: flutter
   # 纯 Dart 形态素分析 (Atilika IPADIC 词典内置)
   kuromoji: ^1.0.5
+  # 按字素簇处理截断与竖排拆字, 避免拆开代理对 / 组合字符
+  characters: ^1.4.1
   # 本地持久化设置 (主题模式 / 旋转开关)
   shared_preferences: ^2.3.3
 

@@ -1,8 +1,12 @@
 import 'dart:async';
 import 'dart:isolate';
 
+import 'package:characters/characters.dart';
 import 'package:kuromoji/kuromoji.dart';
 
+import 'analyzer_failure.dart';
+import 'analyzer_service.dart';
+import 'diagnostics.dart';
 import 'input_sanitizer.dart';
 import 'kana_romaji.dart';
 import 'kanji_converter.dart';
@@ -16,6 +20,11 @@ import 'package:kuromoji/src/tokenizer.dart';
 /// 单次分析的最大字符数限制，防止超长文本造成内存膨胀与卡顿。
 const int kMaxInputLength = 4000;
 
+/// 单次分词请求的默认超时时间。
+///
+/// 词典构建耗时不计入请求超时; 这里约束的是「请求已发出但 isolate 无回信」。
+const Duration kDefaultAnalysisTimeout = Duration(seconds: 15);
+
 final RegExp _lineSplitRegex = RegExp(r'\r?\n');
 final RegExp _tokenSplitRegex = RegExp(r'([、。]+|[^、。\r\n]+)');
 
@@ -23,6 +32,7 @@ final RegExp _tokenSplitRegex = RegExp(r'([、。]+|[^、。\r\n]+)');
 const _buildTag = 'build';
 const _tokenizeTag = 'tokenize';
 const _tokenizeBatchTag = 'tokenize_batch';
+const _hangTag = 'hang';
 
 /// isolate 消息标签 (分词 isolate -> 主)。
 const _resultTag = 'result';
@@ -45,7 +55,7 @@ const _exitTag = 'exit';
 /// [Morpheme.fromToken] 的提取仍在调用方 isolate 完成。
 ///
 /// 初始化耗时约 400ms(仅一次), 建议在应用启动时调用 [warmUp]。
-class JapaneseAnalyzer {
+class JapaneseAnalyzer implements AnalyzerService {
   JapaneseAnalyzer._();
 
   static final JapaneseAnalyzer instance = JapaneseAnalyzer._();
@@ -69,10 +79,14 @@ class JapaneseAnalyzer {
 
   int _nextId = 0;
 
+  /// 每次启动 isolate 的代号, 用于忽略旧 isolate 迟到的退出通知。
+  int _generation = 0;
+
   /// 是否已就绪 (与分词 isolate 握手完成且词典构建成功)。
   bool get isReady => _tokenizerPort != null;
 
   /// 预加载词典。重复调用安全(共享同一个 Future)。
+  @override
   Future<void> warmUp() {
     if (isReady) return Future.value();
     return _initializing ??= _start();
@@ -83,13 +97,23 @@ class JapaneseAnalyzer {
     final handshake = _handshake = Completer<SendPort>();
     port.listen(_onMessage);
     try {
+      final generation = ++_generation;
       final isolate = _isolate =
           await Isolate.spawn(_tokenizerMain, port.sendPort);
-      isolate.addOnExitListener(port.sendPort, response: const [_exitTag]);
+      isolate.addOnExitListener(
+        port.sendPort,
+        response: [_exitTag, generation],
+      );
       await handshake.future;
       // 触发词典构建, warmUp 的语义与直接在主 isolate 构建时一致。
-      await _send((id) => [_buildTag, id]);
+      await _send(
+        (id) => [_buildTag, id],
+        timeout: kDefaultAnalysisTimeout,
+      );
     } catch (e) {
+      final isolate = _isolate;
+      _isolate = null;
+      isolate?.kill(priority: Isolate.immediate);
       _reset();
       rethrow;
     }
@@ -97,19 +121,23 @@ class JapaneseAnalyzer {
 
   /// 发送一条请求并等待回信; [makeMessage] 用分配的请求 id 构造消息。
   Future<List<Map<String, dynamic>>> _send(
-    List<Object> Function(int id) makeMessage,
-  ) async {
+    List<Object> Function(int id) makeMessage, {
+    required Duration timeout,
+  }) async {
     final port = _tokenizerPort;
     if (port == null) {
-      throw StateError('analyzer is not ready');
+      throw const AnalyzerNotReady();
     }
     final id = _nextId++;
     final completer = Completer<dynamic>();
     _pending[id] = completer;
     port.send(makeMessage(id));
     try {
-      final result = await completer.future;
+      final result = await completer.future.timeout(timeout);
       return (result as List).cast<Map<String, dynamic>>();
+    } on TimeoutException catch (error) {
+      _pending.remove(id);
+      throw AnalyzerTimeout(timeout, error);
     } finally {
       _pending.remove(id);
     }
@@ -117,21 +145,25 @@ class JapaneseAnalyzer {
 
   /// 发送多行文本批量分词请求并等待回信。
   Future<List<List<Map<String, dynamic>>>> _sendBatch(
-    List<String> lines,
-  ) async {
+    List<String> lines, {
+    required Duration timeout,
+  }) async {
     final port = _tokenizerPort;
     if (port == null) {
-      throw StateError('analyzer is not ready');
+      throw const AnalyzerNotReady();
     }
     final id = _nextId++;
     final completer = Completer<dynamic>();
     _pending[id] = completer;
     port.send([_tokenizeBatchTag, id, lines]);
     try {
-      final result = await completer.future as List;
+      final result = await completer.future.timeout(timeout) as List;
       return result
           .map((lineTokens) => (lineTokens as List).cast<Map<String, dynamic>>())
           .toList(growable: false);
+    } on TimeoutException catch (error) {
+      _pending.remove(id);
+      throw AnalyzerTimeout(timeout, error);
     } finally {
       _pending.remove(id);
     }
@@ -148,30 +180,54 @@ class JapaneseAnalyzer {
       case _resultTag:
         _pending.remove(message[1])?.complete(message[2]);
       case _errorTag:
-        _pending.remove(message[1])
-            ?.completeError(Exception(message[2] as String));
+        _pending.remove(message[1])?.completeError(
+              AnalyzerTokenizeError(message: message[2] as String),
+            );
       case _exitTag:
-        _onIsolateExited();
+        final generation = message.length > 1 ? message[1] as int? : null;
+        _onIsolateExited(generation);
+    }
+  }
+
+  /// 让全部在途请求失败, 避免 isolate 退出后请求永久悬挂。
+  void _failPending(AnalyzerFailure failure) {
+    final pending = List.of(_pending.values);
+    _pending.clear();
+    for (final completer in pending) {
+      completer.completeError(failure);
+    }
+    final handshake = _handshake;
+    if (handshake != null && !handshake.isCompleted) {
+      handshake.completeError(failure);
     }
   }
 
   /// 分词 isolate 退出: 使全部在途请求失败并复位状态,
   /// 下次 [warmUp] 会重新 spawn。
-  void _onIsolateExited() {
-    final pending = List.of(_pending.values);
-    _pending.clear();
-    for (final completer in pending) {
-      completer.completeError(Exception('tokenizer isolate exited'));
-    }
-    final handshake = _handshake;
-    if (handshake != null && !handshake.isCompleted) {
-      handshake.completeError(Exception('tokenizer isolate exited'));
-    }
+  ///
+  /// [generation] 非空时只处理当前 isolate 的退出通知, 避免旧 isolate
+  /// 在重建过程中迟到, 把新 isolate 的状态一并清掉。
+  void _onIsolateExited([int? generation]) {
+    if (generation != null && generation != _generation) return;
+    _failPending(const AnalyzerIsolateExited());
     _reset();
   }
 
+  /// 失败后重建 isolate; 只由可重试错误调用。
+  Future<void> _recover() async {
+    final isolate = _isolate;
+    _isolate = null;
+    _failPending(const AnalyzerIsolateExited());
+    isolate?.kill(priority: Isolate.immediate);
+    _reset();
+    await warmUp();
+  }
+
   void _reset() {
+    _generation++;
     _tokenizerPort = null;
+    _isolate = null;
+    _handshake = null;
     _port?.close();
     _port = null;
     _initializing = null;
@@ -182,15 +238,23 @@ class JapaneseAnalyzer {
   /// 常驻 isolate 会让 `dart run` 这类脚本在 main 返回后仍等待其退出,
   /// 纯 Dart 脚本调用方结束后应显式调用; 应用进程本身常驻, 无需调用。
   void close() {
-    _isolate?.kill(priority: Isolate.immediate);
+    final isolate = _isolate;
     _isolate = null;
+    _failPending(const AnalyzerIsolateExited('closed'));
+    isolate?.kill(priority: Isolate.immediate);
     _reset();
   }
 
   /// 仅供测试环境模拟分词 isolate 异常崩溃与退出。
   void simulateCrashForTesting() {
+    final generation = _generation;
     _isolate?.kill(priority: Isolate.immediate);
-    _onIsolateExited();
+    _onIsolateExited(generation);
+  }
+
+  /// 仅供测试环境模拟 isolate 收到消息后不再回信 (阻塞其事件循环)。
+  void simulateHangForTesting() {
+    _tokenizerPort?.send(const [_hangTag, -1]);
   }
 
   /// 分析一段日语文本, 返回逐词的「汉字 / 平假名 / 罗马音」对应结果。
@@ -201,9 +265,11 @@ class JapaneseAnalyzer {
   /// 若提供了 [isCancelled], 在分词前与分词后会检查该判定条件;
   /// 若已被取消, 则提早返回空结果, 避免后续对象构造与无谓计算。
   /// 若遇 isolate 意外退出且未被取消, 自动重启并重试一次。
+  @override
   Future<AnalysisResult> analyze(
     String text, {
     bool Function()? isCancelled,
+    Duration timeout = kDefaultAnalysisTimeout,
   }) async {
     final converted = KanjiConverter.toJapaneseKanji(text);
     final cleaned = InputSanitizer.clean(converted, maxLength: kMaxInputLength);
@@ -212,17 +278,30 @@ class JapaneseAnalyzer {
       return AnalysisResult(source: converted, morphemes: const []);
     }
 
-    final bool isTruncated = rawTrimmed.length > kMaxInputLength;
+    final bool isTruncated = rawTrimmed.characters.length > kMaxInputLength;
     final trimmed = cleaned;
 
     try {
-      return await _analyzeInternal(trimmed, isTruncated, isCancelled);
-    } catch (e) {
-      final isExited = e.toString().contains('tokenizer isolate exited') ||
-          (e is StateError && e.message.contains('analyzer is not ready'));
-      if (isExited && !(isCancelled?.call() ?? false)) {
-        await warmUp();
-        return await _analyzeInternal(trimmed, isTruncated, isCancelled);
+      return await _analyzeInternal(
+        trimmed,
+        isTruncated,
+        isCancelled,
+        timeout,
+      );
+    } on AnalyzerFailure catch (failure, stackTrace) {
+      DiagnosticsLog.instance.record(
+        'analyzer',
+        failure,
+        stackTrace: stackTrace,
+      );
+      if (failure.retryable && !(isCancelled?.call() ?? false)) {
+        await _recover();
+        return await _analyzeInternal(
+          trimmed,
+          isTruncated,
+          isCancelled,
+          timeout,
+        );
       }
       rethrow;
     }
@@ -232,6 +311,7 @@ class JapaneseAnalyzer {
     String trimmed,
     bool isTruncated,
     bool Function()? isCancelled,
+    Duration timeout,
   ) async {
     await warmUp();
     if (isCancelled?.call() ?? false) {
@@ -242,7 +322,7 @@ class JapaneseAnalyzer {
     final validLines = rawLines.map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
 
     if (validLines.length > 1) {
-      final batchTokens = await _sendBatch(validLines);
+      final batchTokens = await _sendBatch(validLines, timeout: timeout);
       if (isCancelled?.call() ?? false) {
         return AnalysisResult(source: trimmed, morphemes: const []);
       }
@@ -268,7 +348,10 @@ class JapaneseAnalyzer {
       );
     }
 
-    final tokens = await _send((id) => [_tokenizeTag, id, trimmed]);
+    final tokens = await _send(
+      (id) => [_tokenizeTag, id, trimmed],
+      timeout: timeout,
+    );
     if (isCancelled?.call() ?? false) {
       return AnalysisResult(source: trimmed, morphemes: const []);
     }
@@ -292,19 +375,24 @@ class JapaneseAnalyzer {
   ///
   /// 利用常驻 isolate 的批量分词能力一次性处理全部文本,
   /// 避免大量逐条请求造成的串行 IPC 往返开销。
+  @override
   Future<List<AnalysisResult>> analyzeBatch(
     List<String> texts, {
     bool Function()? isCancelled,
+    Duration timeout = kDefaultAnalysisTimeout,
   }) async {
     if (texts.isEmpty) return const [];
     try {
-      return await _analyzeBatchInternal(texts, isCancelled);
-    } catch (e) {
-      final isExited = e.toString().contains('tokenizer isolate exited') ||
-          (e is StateError && e.message.contains('analyzer is not ready'));
-      if (isExited && !(isCancelled?.call() ?? false)) {
-        await warmUp();
-        return await _analyzeBatchInternal(texts, isCancelled);
+      return await _analyzeBatchInternal(texts, isCancelled, timeout);
+    } on AnalyzerFailure catch (failure, stackTrace) {
+      DiagnosticsLog.instance.record(
+        'analyzer-batch',
+        failure,
+        stackTrace: stackTrace,
+      );
+      if (failure.retryable && !(isCancelled?.call() ?? false)) {
+        await _recover();
+        return await _analyzeBatchInternal(texts, isCancelled, timeout);
       }
       rethrow;
     }
@@ -313,6 +401,7 @@ class JapaneseAnalyzer {
   Future<List<AnalysisResult>> _analyzeBatchInternal(
     List<String> texts,
     bool Function()? isCancelled,
+    Duration timeout,
   ) async {
     await warmUp();
     if (isCancelled?.call() ?? false) return const [];
@@ -325,7 +414,7 @@ class JapaneseAnalyzer {
       return (
         converted: converted,
         cleaned: cleaned,
-        isTruncated: rawTrimmed.length > kMaxInputLength,
+        isTruncated: rawTrimmed.characters.length > kMaxInputLength,
       );
     }).toList(growable: false);
 
@@ -339,7 +428,7 @@ class JapaneseAnalyzer {
     }
 
     final batchTokens = nonEmptyLines.isNotEmpty
-        ? await _sendBatch(nonEmptyLines)
+        ? await _sendBatch(nonEmptyLines, timeout: timeout)
         : const <List<Map<String, dynamic>>>[];
 
     if (isCancelled?.call() ?? false) return const [];
@@ -411,6 +500,9 @@ Future<void> _tokenizerMain(SendPort mainPort) async {
           final lines = (request[2] as List).cast<String>();
           final batch = lines.map((l) => _tokenizeSafe(tokenizer!, l)).toList();
           mainPort.send([_resultTag, id, batch]);
+        case _hangTag:
+          // 测试钩子: 永久阻塞 isolate 事件循环, 模拟无回信。
+          await Completer<void>().future;
       }
     } catch (e) {
       mainPort.send([_errorTag, id, e.toString()]);

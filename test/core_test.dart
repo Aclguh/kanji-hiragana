@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kanji_hiragana/core/analyzer_failure.dart';
+import 'package:kanji_hiragana/core/diagnostics.dart';
 import 'package:kanji_hiragana/core/input_sanitizer.dart';
 import 'package:kanji_hiragana/core/japanese_analyzer.dart';
 import 'package:kanji_hiragana/core/kana_romaji.dart';
@@ -731,6 +733,25 @@ void main() {
       expect(res.toBracketAnnotation, '私(わたし)は\n猫(ねこ)');
     });
 
+    test('HTML Ruby 转义文本中的标签与 & 字符', () {
+      final dangerous = Morpheme.fromToken({
+        'surface_form': '漢<script>&',
+        'reading': 'カン<script>&',
+        'pos': '名詞',
+      });
+      final res = AnalysisResult(
+        source: '漢<script>&',
+        morphemes: [dangerous],
+      );
+
+      final html = res.toHtmlRuby;
+      expect(html, contains('&lt;script&gt;'));
+      expect(html, contains('&amp;'));
+      expect(html, isNot(contains('<script>')));
+      expect(html, startsWith('<ruby>'));
+      expect(html, endsWith('</ruby>'));
+    });
+
     test('空 token 与缺省字段安全回退', () {
       final mEmpty = Morpheme.fromToken({});
       expect(mEmpty.surface, isEmpty);
@@ -1207,6 +1228,19 @@ void main() {
       expect(analyzer.isReady, isTrue);
     });
 
+    test('ROBUST-02: isolate 无回信时请求超时并自动重建', () async {
+      final analyzer = JapaneseAnalyzer.instance;
+      await analyzer.warmUp();
+      analyzer.simulateHangForTesting();
+
+      final result = await analyzer.analyze(
+        '日本語',
+        timeout: const Duration(milliseconds: 300),
+      );
+      expect(result.fullHiragana, 'にほんご');
+      expect(analyzer.isReady, isTrue);
+    });
+
     test('PERF-02: 4000 字符长文本分词、分段及截断边界验证', () async {
       final analyzer = JapaneseAnalyzer.instance;
       // 构造超过 4000 字符的超长多段落文本 (测试截断边界与长文本分词鲁棒性)
@@ -1240,6 +1274,18 @@ void main() {
       // 长度超限截断
       final long = 'a' * 5000;
       expect(InputSanitizer.clean(long, maxLength: 50).length, 50);
+    });
+
+    test('SEC-01: 字素簇截断不拆开代理对', () {
+      final rare = 'a' * 49 + '𠮷';
+      final kept = InputSanitizer.clean(rare, maxLength: 50);
+      expect(kept, rare);
+      expect(kept.runes.last, '𠮷'.runes.first);
+
+      final cut = InputSanitizer.clean('a' * 50 + '𠮷', maxLength: 50);
+      expect(cut, 'a' * 50);
+      expect(cut.codeUnits.any((unit) => unit >= 0xD800 && unit <= 0xDBFF),
+          isFalse);
     });
 
     test('SEC-02: TSV Formula Injection 防御测试', () {
@@ -1330,6 +1376,44 @@ void main() {
           reason: '汉字 $k 转换后变为 $converted，但不在合法字典中',
         );
       }
+    });
+  });
+
+  group('本地诊断日志', () {
+    setUp(() => DiagnosticsLog.instance.clear());
+    tearDown(() => DiagnosticsLog.instance.clear());
+
+    test('分析失败类型可区分是否可重试', () {
+      expect(const AnalyzerNotReady().retryable, isTrue);
+      expect(const AnalyzerIsolateExited().retryable, isTrue);
+      final timeout = AnalyzerTimeout(const Duration(milliseconds: 10));
+      expect(timeout.retryable, isTrue);
+      expect(timeout.message, contains('10ms'));
+      expect(
+        const AnalyzerTokenizeError(message: 'bad input').retryable,
+        isFalse,
+      );
+    });
+
+    test('记录模块、错误类型与堆栈并可导出', () {
+      DiagnosticsLog.instance.record(
+        'analysis',
+        StateError('boom'),
+        stackTrace: StackTrace.fromString('#0 test'),
+      );
+      final text = DiagnosticsLog.instance.export();
+      expect(text, contains('[analysis] StateError'));
+      expect(text, contains('boom'));
+      expect(text, contains('#0 test'));
+    });
+
+    test('超过容量时只保留最近 100 条', () {
+      for (var i = 0; i < 105; i++) {
+        DiagnosticsLog.instance.record('module', Exception('e$i'));
+      }
+      expect(DiagnosticsLog.instance.entries.length, 100);
+      expect(DiagnosticsLog.instance.export(), contains('e104'));
+      expect(DiagnosticsLog.instance.export(), isNot(contains('e0\n')));
     });
   });
 }
