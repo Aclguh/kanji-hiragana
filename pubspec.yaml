@@ -15,7 +15,7 @@ dependencies:
   # 按字素簇处理截断与竖排拆字, 避免拆开代理对 / 组合字符
   characters: ^1.4.1
   # 本地持久化设置 (主题模式 / 旋转开关)
-  shared_preferences: ^2.3.3
+  shared_preferences: ^2.5.6
 
 dev_dependencies:
   flutter_test:
