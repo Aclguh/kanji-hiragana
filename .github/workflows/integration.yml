@@ -31,13 +31,9 @@ jobs:
             | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Remove preinstalled cmdline-tools
-        # android-emulator-runner 2.9.0 用 `sudo mkdir` 安装 cmdline-tools,
-        # 镜像预置的同名目录会让它直接失败。先清空由 action 自行安装。
-        run: sudo rm -rf "$ANDROID_HOME/cmdline-tools"
       - run: flutter pub get
       - name: Run integration tests on emulator
-        uses: ReactiveCircus/android-emulator-runner@e93c997dcab69054e999e3924af3d21c4a736e13 # v2.9.0
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: 34
           target: google_apis
