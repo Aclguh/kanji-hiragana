@@ -272,6 +272,13 @@ void main() {
       expect(store.history, contains('大阪'));
     });
 
+    test('flush 等待最近写入完成且无保存错误', () async {
+      final store = QueryStore.instance;
+      store.recordQuery('落盘检查');
+      await store.flush();
+      expect(store.saveError, isNull);
+    });
+
     // 直接以字面键名断言 mock preferences 的落盘内容 (而非注入后再读回):
     // setter 写错键名时, 「注入 → load」式往返测试依然全绿, 数据实际丢失。
     test('收藏写入真实持久化键 query.favorites', () async {
