@@ -6,7 +6,7 @@
 
 **Type Japanese kanji, instantly see the hiragana and romaji.**
 
-A fully offline Flutter app for Android that lines up kanji, kana and romaji word by word
+An offline-first Flutter app for Android that lines up kanji, kana and romaji word by word
 — like a translator's side-by-side view. Type a single kanji and it also looks up its
 on'yomi and kun'yomi.
 
@@ -34,7 +34,7 @@ on'yomi and kun'yomi.
     part-of-speech tags and loanword origin badges, plus summary footer to copy full kana and romaji
   - **Furigana**: textbook-style ruby, reading above the kanji and romaji below
   - **Vertical (縦書き)**: traditional Japanese vertical writing layout, right-to-left horizontal paging scroll, 90-degree rotated long vowel mark `ー`, readings aligned along the right side of kanji
-- **Pure offline native Japanese TTS audio**: integrated with Android native `TextToSpeech` engine via platform channels, supporting word-by-word tap-to-speak and full sentence reading, with zero network permissions and zero third-party dependencies
+- **System-native speech (TTS)**: uses the Android `TextToSpeech` engine for word-by-word and sentence playback; the app itself requests no network permission. If the selected system voice engine uses the network, the text is handled by that system service
 - **Katakana loanword origins**: offline dictionary of loanword origins and etymology languages (e.g. コーヒー notes Dutch koffie, アルバイト notes German Arbeit, パン notes Portuguese pão) displayed via intuitive badges
 - **Four-character idioms (四字熟語 / Yojijukugo)**: curated dictionary of four-character idioms with automated reverse lookup from single kanji details
 - **214 Kangxi radical lookup table**: complete 214 Kangxi radical sheet mapped across 1..17 strokes, dynamically counting matching kanji in the database, tap to filter
@@ -63,8 +63,7 @@ on'yomi and kun'yomi.
 - **Simplified Chinese to Japanese Shinjitai conversion**: enter Simplified Chinese characters (e.g. 练习 automatically converts to 練習, 单 to 単, 发 to 発) and seamlessly look up words or kanji details
 - **Confirm-to-search interaction**: entering text stays on the main screen with a right-arrow button; tap the arrow to enter the search interface. Modifying text inside the search view does not immediately reload, refreshing only when the arrow button is tapped
 - **Focus-first main screen**: opens with a single centred input box, then animates into the full interface upon searching
-- **Fully offline**: the dictionary ships with the app — no network calls, no permissions,
-  no ads
+- **Offline app logic**: the dictionary ships with the app — the app makes no network calls, requests no extra permissions, and has no ads
 
 ## Screenshots
 
@@ -122,7 +121,7 @@ flutter build apk --release --split-per-abi
    - **A single kanji** → additionally its on'yomi, kun'yomi, meanings, four-character idioms, and common words
 3. Modifying text inside the search view does not interrupt reading; tap the right arrow to refresh
 4. Switch between **Table**, **Furigana**, and **Vertical** at the top
-5. Tap any word to hear native offline pronunciation and copy it, or use the top-right action to copy the full kana
+5. Tap any word to hear system-native pronunciation and copy it, or use the top-right action to copy the full kana
 6. Tap the **star** in the app bar to favorite the current query; when the keyboard is
    dismissed, the empty state shows **Recent / Favorites** chips — tap one to look it
    up again (long-press removes a chip; history can be cleared at once; starred vocabulary can be exported as an Anki deck)
@@ -142,14 +141,14 @@ flutter build apk --release --split-per-abi
 | 214 Kangxi radicals | Complete 214 Kangxi radical table with 1..17 stroke mappings, see `lib/core/radical_dict.dart` |
 | Katakana loanwords | Curated loanword dictionary with origin language codes, see `lib/core/loanwords_dict.dart` |
 | Four-character idioms | Curated yojijukugo dictionary and single-kanji reverse index, see `lib/core/yojijukugo_dict.dart` |
-| Offline speech (TTS) | Android native `TextToSpeech` platform channel, see `lib/core/tts_service.dart` |
+| System speech (TTS) | Android native `TextToSpeech` platform channel, see `lib/core/tts_service.dart`; network use depends on the selected system engine |
 | Cross-app text query | Android `ACTION_PROCESS_TEXT` intent platform channel, see `lib/core/platform_service.dart` |
 | Katakana → hiragana | Code-point offset (`0x30A1 - 0x3041`) |
 | Hiragana → romaji | Hand-written modified Hepburn romanisation |
 | Settings & history | [`shared_preferences`](https://pub.dev/packages/shared_preferences) persistence (theme / language / view state / query history & favorites) |
 | Icons | Hand-drawn vector paths via `CustomPainter` (gear / magnifier) — no icon font, no emoji |
 | State and UI | Flutter Material 3, with light and dark Japanese-style themes, supporting Table, Furigana, and Vertical views |
-| Localization | `AppStrings` sealed class with `ZhStrings` / `EnStrings`, injected through an `InheritedWidget` |
+| Localization | `AppStrings` sealed class with `ZhStrings` / `EnStrings`, injected through `AppStringsScope` |
 
 ### Why two tracks for readings
 
@@ -200,20 +199,30 @@ lib/
   core/
     kana_romaji.dart         Kana ↔ romaji conversion (the core algorithm)
     morpheme.dart            Word and analysis-result models (two-track readings & Anki export)
-    japanese_analyzer.dart   Morphological analysis service (singleton, offline)
+    japanese_analyzer.dart   Morphological analysis (persistent isolate, timeout & recovery)
+    analyzer_service.dart    Analyzer interface for test injection
+    analyzer_failure.dart    Typed analysis failures
+    diagnostics.dart         Local ring-buffer diagnostics (no query text)
+    speech_service.dart      Speech service interface
+    platform_text_source.dart Cross-app text source interface
     kanji_reading_dict.dart  [GENERATED] on'yomi / kun'yomi for 2999 kanji
     kanji_words_dict.dart    [GENERATED] common words per kanji (extracted from IPADIC)
     kanji_converter.dart     Simplified Chinese to Japanese Shinjitai kanji conversion
     radical_dict.dart        214 Kangxi radicals and stroke index table
     loanwords_dict.dart      Katakana loanwords dictionary and origin language tags
     yojijukugo_dict.dart     Curated four-character idioms dictionary and reverse index
-    tts_service.dart         Offline native TTS speech client service
+    tts_service.dart         System TTS speech client service
     platform_service.dart    Android cross-app PROCESS_TEXT intent platform service
     kanji_filter.dart        Filter model and matching logic
     query_store.dart         Persisted query history & favorites
     settings.dart            Persisted theme / auto-rotate / language / view state
-    strings.dart             zh + en UI strings (AppStrings sealed class + InheritedWidget)
+    strings.dart             zh + en UI strings (AppStrings sealed class)
   widgets/
+    app_scopes.dart          String and service scope injection
+    filter/filter_controls.dart Filter fields, ranges and chips
+    home/home_coordinator.dart Home business coordinator
+    home/home_chrome.dart    Top bar, floating buttons, long-result notice, state views
+    home/home_result_sliver.dart Lazy result sliver
     alignment_table.dart     Three-column table view
     furigana_view.dart       Furigana (ruby) view
     vertical_view.dart       Traditional Japanese vertical writing view (RTL horizontal progression)
@@ -227,12 +236,15 @@ lib/
     about_page.dart          About page (version / repository / licenses / credits)
     vector_icon.dart         Hand-drawn vector icons (gear / magnifier)
 test/
-  core_test.dart             Unit tests (incl. QueryStore, radicals, loanwords, idioms, and Anki export)
+  core_test.dart             Core unit tests (incl. Unicode, HTML escaping, diagnostics and recovery)
   widget_test.dart           Host-side widget tests for heavy widgets (filter, drawer, vertical, radicals, Anki, single kanji)
+  golden_test.dart           Platform-specific Golden visual regression
+  support/fake_services.dart Analyzer / speech / text-source test doubles
 integration_test/
   ui_test.dart               On-device UI tests (core user journeys & bilingual support)
 tool/
-  verify.dart                Standalone verification (140 assertions, runs with dart run)
+  verify.dart                Standalone verification (assertion count comes from its output)
+  check_coverage.dart        Overall and per-module coverage gates
   gen_kanji_dict.py          KANJIDIC2 → Dart data generator
   gen_kanji_words.py         kuromoji-embedded IPADIC → common-word data generator
   gen_icon.py                App icon generator (needs Pillow, see requirements.txt)
@@ -248,13 +260,16 @@ flutter pub get
 # Static analysis
 flutter analyze
 
-# Logic verification (no flutter_test needed, runs anywhere, 140 assertions)
+# Logic verification (no flutter_test needed, runs anywhere)
 dart run tool/verify.dart
 
-# Unit + widget tests (98 tests, no device needed)
+# Unit + widget tests (no device needed)
 flutter test
 
-# On-device UI tests (requires a connected device, 30 tests, final gate)
+# Golden visual regression (platform baselines under test/goldens/)
+GOLDEN=1 flutter test test/golden_test.dart
+
+# On-device UI tests (requires a connected device, final gate)
 flutter test integration_test/ui_test.dart -d <device-id>
 
 # Run over USB

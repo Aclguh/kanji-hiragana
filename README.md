@@ -6,7 +6,7 @@
 
 **输入日语汉字，即时看到对应的平假名与罗马音。**
 
-一个完全离线的 Flutter 安卓应用，像翻译软件那样逐词对照汉字、假名与罗马音，
+一个离线优先的 Flutter 安卓应用，像翻译软件那样逐词对照汉字、假名与罗马音，
 输入单个汉字时还能查它的音读与训读。
 
 [![Flutter](https://img.shields.io/badge/Flutter-3.47-02569B?logo=flutter)](https://flutter.dev)
@@ -31,7 +31,7 @@
   - **对照表**：逐词并排三列（汉字 / 平假名 / 罗马音），带**词性一级与细分类二级标签**与外来语源词徽标，底部摘要栏支持一键复制全文平假名与罗马音
   - **注音**：类似日语教材的振假名（Furigana），读音标在汉字上方
   - **纵书（縦書き）**：和风传统文库本竖排排版，右向左横向翻页滚动，长音符「ー」90度旋转，读音紧贴汉字右侧
-- **纯离线原生发音（TTS）**：集成系统原生 TextToSpeech 语音引擎，支持逐词点按发音与整句连读，无网络权限且零第三方依赖
+- **系统原生发音（TTS）**：调用系统 TextToSpeech 引擎，支持逐词点按发音与整句连读；应用自身不申请网络权限。若系统选择的语音引擎需要联网，文本将由该系统服务处理
 - **片假名外来语词源标注**：离线收录高频外来语词源原型与出处语言（如「コーヒー」标注荷文 koffie、「アルバイト」标注德文 Arbeit、「パン」标注葡文 pão），词条徽标直观展示
 - **四字熟语（四字成语）反查**：常用四字熟语词典，单汉字详情页自动建立反向关联并展示含义与读音
 - **康熙 214 部首检字表**：内嵌完整 214 部首表与笔画映射，按 1..17 画聚合分组，实时统计每个部首收录的汉字数量，点按直接筛选
@@ -54,7 +54,7 @@
 - **中文简体自动转日文新字体**：支持直接输入简体汉字（如「练习」自动规范化为「練習」、「单」转为「単」、「发」转为「発」），自动适配日本常用汉字新字体进行形态素分词与单字详情检索
 - **确认式搜索交互**：输入内容时停留在主界面，输入框右侧显示「右箭头」按钮，点击后再展开查询结果；在查询界面内修改文本不立即刷新，点击右箭头确认后刷新
 - **聚焦式主界面**：打开时只有一个居中的输入框，点击查询后动画展开完整界面
-- **完全离线**：词典随应用打包，无任何网络请求、无额外权限、无广告
+- **应用逻辑完全离线**：词典随应用打包，不发起网络请求、不额外申请权限、无广告
 
 ## 截图
 
@@ -126,7 +126,7 @@ flutter build apk --release --split-per-abi
 | 康熙 214 部首 | 完整 214 部首字形与 1..17 笔画索引表，见 `lib/core/radical_dict.dart` |
 | 片假名外来语 | 常见外来语原型与语种溯源词典，见 `lib/core/loanwords_dict.dart` |
 | 四字熟语 | 精选四字熟语词典与汉字反向索引，见 `lib/core/yojijukugo_dict.dart` |
-| 离线发音 (TTS) | Android 原生 `TextToSpeech` 引擎平台通道直调，见 `lib/core/tts_service.dart` |
+| 系统发音 (TTS) | Android 原生 `TextToSpeech` 引擎平台通道直调，见 `lib/core/tts_service.dart`；引擎是否联网由系统决定 |
 | 跨应用查词 | Android `ACTION_PROCESS_TEXT` intent 平台通道直调，见 `lib/core/platform_service.dart` |
 | 片假名 → 平假名 | 码位偏移转换（`0x30A1 - 0x3041`） |
 | 平假名 → 罗马音 | 自实现改良式 Hepburn 拼写 |
@@ -176,20 +176,30 @@ lib/
   core/
     kana_romaji.dart         假名 ↔ 罗马音转换（核心算法）
     morpheme.dart            词模型与解析结果模型（双轨读音与 Anki 导出）
-    japanese_analyzer.dart   形态素分析服务（单例，离线）
+    japanese_analyzer.dart   形态素分析（常驻 isolate，含超时与自愈）
+    analyzer_service.dart    形态素分析接口（便于测试注入）
+    analyzer_failure.dart    类型化分析失败
+    diagnostics.dart         本地环形诊断日志（不含查询正文）
+    speech_service.dart      系统语音朗读接口
+    platform_text_source.dart 系统划词文本源接口
     kanji_reading_dict.dart  [自动生成] 2999 汉字的音读 / 训读
     kanji_words_dict.dart    [自动生成] 汉字的常见搭配词（IPADIC 提取）
     kanji_converter.dart     简体中文到日文新字体字形转换与特例词典
     radical_dict.dart        康熙 214 部首与笔画映射表
     loanwords_dict.dart      片假名外来语词源原型与出处字典
     yojijukugo_dict.dart     常用四字熟语字典与单字反向索引
-    tts_service.dart         离线原生 TTS 语音播放服务
+    tts_service.dart         系统 TTS 语音播放服务
     platform_service.dart    Android 跨应用划词系统通道服务
     kanji_filter.dart        汉字筛选条件模型与匹配逻辑
     query_store.dart         查询历史与收藏的持久化控制
-    settings.dart            主题模式 / 旋转开关 / 语言 / 视图状态的持久化控制
-    strings.dart             中英双语界面文案（AppStrings 密封类 + InheritedWidget）
+    settings.dart            主题模式 / 旋转开关 / 语言 / 视图状态持久化
+    strings.dart             中英双语界面文案（AppStrings 密封类）
   widgets/
+    app_scopes.dart          文案与服务的作用域注入
+    filter/filter_controls.dart 筛选输入框、范围与胶囊控件
+    home/home_coordinator.dart 主界面业务调度
+    home/home_chrome.dart    顶栏、悬浮按钮、长结果提示与状态视图
+    home/home_result_sliver.dart 惰性结果区
     alignment_table.dart     三列对照表视图
     furigana_view.dart       振假名注音视图
     vertical_view.dart       和风传统竖排纵书视图（RTL 横向推进）
@@ -203,12 +213,15 @@ lib/
     about_page.dart          关于页（版本 / 仓库 / 许可 / 致谢）
     vector_icon.dart         手绘矢量图标（齿轮 / 放大镜）
 test/
-  core_test.dart             单元测试（含 QueryStore、部首、外来语、四字熟语与 Anki 导出）
+  core_test.dart             核心逻辑单元测试（含 Unicode、HTML 转义、诊断与自愈）
   widget_test.dart           重组件宿主机 widget 测试（筛选 / 抽屉 / 纵书 / 部首 / Anki / 单字详解）
+  golden_test.dart           按平台分目录的 Golden 视觉回归
+  support/fake_services.dart 分析器 / 语音 / 划词测试替身
 integration_test/
   ui_test.dart               真机 UI 测试（覆盖核心用户链路与多语言）
 tool/
-  verify.dart                独立验证脚本（140 项断言，dart run 即可跑）
+  verify.dart                独立验证脚本（断言数以脚本输出为准）
+  check_coverage.dart        总覆盖率与核心模块阈值门禁
   gen_kanji_dict.py          KANJIDIC2 → Dart 数据生成脚本
   gen_kanji_words.py         kuromoji 内嵌 IPADIC → 常见词数据生成脚本
   gen_icon.py                应用图标生成脚本（依赖 Pillow，见 requirements.txt）
@@ -224,13 +237,16 @@ flutter pub get
 # 静态检查
 flutter analyze
 
-# 逻辑验证（不依赖 flutter_test，任何环境都能跑，140 项断言）
+# 逻辑验证（不依赖 flutter_test，任何环境都能跑）
 dart run tool/verify.dart
 
-# 单元测试 + 组件测试（98 项测试，无需设备）
+# 单元测试 + 组件测试（无需设备）
 flutter test
 
-# 真机 UI 测试（需连接设备，30 项测试，最终门槛）
+# Golden 视觉回归（平台基线见 test/goldens/）
+GOLDEN=1 flutter test test/golden_test.dart
+
+# 真机 UI 测试（需连接设备，最终门槛）
 flutter test integration_test/ui_test.dart -d <device-id>
 
 # USB 调试直连运行
