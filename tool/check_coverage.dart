@@ -1,8 +1,23 @@
 // 测试覆盖率质量门禁检查脚本
-// 解析 coverage/lcov.info，验证核心代码行覆盖率是否达到质量红线 (>= 75%)。
+// 解析 coverage/lcov.info，验证核心代码行覆盖率是否达到质量红线。
 // 用法: dart run tool/check_coverage.dart [minCoveragePercent]
 
 import 'dart:io';
+
+/// 关键模块的最低行覆盖率。
+///
+/// 先以当前基线为起点做回归门禁, 随测试补齐逐步上调; 不追求一次到位
+/// 导致 CI 长期红灯。
+const Map<String, double> coreThresholds = {
+  'lib/core/japanese_analyzer.dart': 65.0,
+  'lib/core/morpheme.dart': 90.0,
+  'lib/core/kanji_filter.dart': 95.0,
+  'lib/core/query_store.dart': 90.0,
+  'lib/core/settings.dart': 85.0,
+  'lib/core/input_sanitizer.dart': 85.0,
+  'lib/core/tts_service.dart': 65.0,
+  'lib/widgets/home/home_coordinator.dart': 60.0,
+};
 
 void main(List<String> args) {
   final lcovFile = File('coverage/lcov.info');
@@ -61,11 +76,41 @@ void main(List<String> args) {
   print('业务代码覆盖率     : ${coveragePct.toStringAsFixed(2)}%');
   print('========================================');
 
+  var failed = false;
+  print('核心模块覆盖率:');
+  for (final entry in coreThresholds.entries) {
+    final actual = _lookupFileCoverage(fileStats, entry.key);
+    if (actual == null) {
+      print('  SKIP ${entry.key}: 未出现在覆盖率报告中');
+      continue;
+    }
+    final status = actual >= entry.value ? 'PASS' : 'FAIL';
+    if (status == 'FAIL') failed = true;
+    print(
+      '  $status ${entry.key}: '
+      '${actual.toStringAsFixed(2)}% (要求 ${entry.value.toStringAsFixed(1)}%)',
+    );
+  }
+  print('========================================');
+
   if (coveragePct < minCoverage) {
     print('FAIL: 覆盖率 ${coveragePct.toStringAsFixed(2)}% 低于目标门槛 ${minCoverage.toStringAsFixed(1)}%！');
     exit(1);
-  } else {
-    print('PASS: 覆盖率检查通过！');
-    exit(0);
   }
+  if (failed) {
+    print('FAIL: 存在核心模块低于各自阈值。');
+    exit(1);
+  }
+  print('PASS: 覆盖率检查通过！');
+  exit(0);
+}
+
+double? _lookupFileCoverage(Map<String, double> stats, String expected) {
+  final normalized = expected.replaceAll(r'\', '/');
+  for (final entry in stats.entries) {
+    if (entry.key == normalized || entry.key.endsWith('/$normalized')) {
+      return entry.value;
+    }
+  }
+  return null;
 }
