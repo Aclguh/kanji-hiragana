@@ -764,14 +764,16 @@ class ZhStrings extends AppStrings {
   String filterChipStrokes(int? min, int? max) {
     if (min != null && max != null) return '$min~$max 画';
     if (min != null) return '≥$min 画';
-    return '≤${max!} 画';
+    if (max != null) return '≤$max 画';
+    return '';
   }
 
   @override
   String filterChipFrequency(int? min, int? max) {
     if (min != null && max != null) return '频率 $min~$max';
     if (min != null) return '频率 ≥$min';
-    return '频率 ≤${max!}';
+    if (max != null) return '频率 ≤$max';
+    return '';
   }
 
   @override
@@ -1390,14 +1392,16 @@ class EnStrings extends AppStrings {
   String filterChipStrokes(int? min, int? max) {
     if (min != null && max != null) return '$min~$max str.';
     if (min != null) return '≥$min str.';
-    return '≤${max!} str.';
+    if (max != null) return '≤$max str.';
+    return '';
   }
 
   @override
   String filterChipFrequency(int? min, int? max) {
     if (min != null && max != null) return 'Freq. $min~$max';
     if (min != null) return 'Freq. ≥$min';
-    return 'Freq. ≤${max!}';
+    if (max != null) return 'Freq. ≤$max';
+    return '';
   }
 
   @override

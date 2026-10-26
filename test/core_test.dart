@@ -1039,6 +1039,223 @@ void main() {
       expect(zh.loanwordOrigin('Dutch'), contains('Dutch'));
       expect(en.loanwordOrigin('Dutch'), contains('Dutch'));
     });
+
+    test('全量文案契约与全字段双语非空校验', () {
+      for (final lang in AppLanguage.values) {
+        expect(lang.label.isNotEmpty, isTrue);
+        final s = AppStrings.forLanguage(lang);
+
+        // 校验全部静态 getters
+        expect(s.appTitle.isNotEmpty, isTrue, reason: 'appTitle in $lang');
+        expect(s.close.isNotEmpty, isTrue, reason: 'close in $lang');
+        expect(s.copy.isNotEmpty, isTrue, reason: 'copy in $lang');
+        expect(s.tagline.isNotEmpty, isTrue, reason: 'tagline in $lang');
+        expect(s.inputHint.isNotEmpty, isTrue, reason: 'inputHint in $lang');
+        expect(s.loadingDictionary.isNotEmpty, isTrue, reason: 'loadingDictionary in $lang');
+        expect(s.clear.isNotEmpty, isTrue, reason: 'clear in $lang');
+        expect(s.search.isNotEmpty, isTrue, reason: 'search in $lang');
+        expect(s.filterKanji.isNotEmpty, isTrue, reason: 'filterKanji in $lang');
+        expect(s.settings.isNotEmpty, isTrue, reason: 'settings in $lang');
+        expect(s.viewAlignment.isNotEmpty, isTrue, reason: 'viewAlignment in $lang');
+        expect(s.viewFurigana.isNotEmpty, isTrue, reason: 'viewFurigana in $lang');
+        expect(s.viewVertical.isNotEmpty, isTrue, reason: 'viewVertical in $lang');
+        expect(s.romajiToggle.isNotEmpty, isTrue, reason: 'romajiToggle in $lang');
+        expect(s.speak.isNotEmpty, isTrue, reason: 'speak in $lang');
+        expect(s.speaking.isNotEmpty, isTrue, reason: 'speaking in $lang');
+        expect(s.paste.isNotEmpty, isTrue, reason: 'paste in $lang');
+        expect(s.export.isNotEmpty, isTrue, reason: 'export in $lang');
+        expect(s.exportRuby.isNotEmpty, isTrue, reason: 'exportRuby in $lang');
+        expect(s.exportBrackets.isNotEmpty, isTrue, reason: 'exportBrackets in $lang');
+        expect(s.exportAnki.isNotEmpty, isTrue, reason: 'exportAnki in $lang');
+        expect(s.exportFavorites.isNotEmpty, isTrue, reason: 'exportFavorites in $lang');
+        expect(s.favoritesExportTitle.isNotEmpty, isTrue, reason: 'favoritesExportTitle in $lang');
+        expect(s.exportPlainText.isNotEmpty, isTrue, reason: 'exportPlainText in $lang');
+        expect(s.exporting.isNotEmpty, isTrue, reason: 'exporting in $lang');
+        expect(s.copiedRuby.isNotEmpty, isTrue, reason: 'copiedRuby in $lang');
+        expect(s.copiedBrackets.isNotEmpty, isTrue, reason: 'copiedBrackets in $lang');
+        expect(s.copiedAnki.isNotEmpty, isTrue, reason: 'copiedAnki in $lang');
+        expect(s.ankiAnalysisFailed.isNotEmpty, isTrue, reason: 'ankiAnalysisFailed in $lang');
+        expect(s.ttsUnavailable.isNotEmpty, isTrue, reason: 'ttsUnavailable in $lang');
+        expect(s.ankiTagSentence.isNotEmpty, isTrue, reason: 'ankiTagSentence in $lang');
+        expect(s.ankiTagFavorite.isNotEmpty, isTrue, reason: 'ankiTagFavorite in $lang');
+        expect(s.labelHiragana.isNotEmpty, isTrue, reason: 'labelHiragana in $lang');
+        expect(s.labelPronunciation.isNotEmpty, isTrue, reason: 'labelPronunciation in $lang');
+        expect(s.copiedFullHiragana.isNotEmpty, isTrue, reason: 'copiedFullHiragana in $lang');
+        expect(s.copiedFullRomaji.isNotEmpty, isTrue, reason: 'copiedFullRomaji in $lang');
+        expect(s.copiedPronunciation.isNotEmpty, isTrue, reason: 'copiedPronunciation in $lang');
+        expect(s.showAllResults.isNotEmpty, isTrue, reason: 'showAllResults in $lang');
+        expect(s.showLessResults.isNotEmpty, isTrue, reason: 'showLessResults in $lang');
+        expect(s.favoritesLabel.isNotEmpty, isTrue, reason: 'favoritesLabel in $lang');
+        expect(s.historyLabel.isNotEmpty, isTrue, reason: 'historyLabel in $lang');
+        expect(s.clearHistory.isNotEmpty, isTrue, reason: 'clearHistory in $lang');
+        expect(s.historyCleared.isNotEmpty, isTrue, reason: 'historyCleared in $lang');
+        expect(s.columnKanji.isNotEmpty, isTrue, reason: 'columnKanji in $lang');
+        expect(s.columnHiragana.isNotEmpty, isTrue, reason: 'columnHiragana in $lang');
+        expect(s.columnRomaji.isNotEmpty, isTrue, reason: 'columnRomaji in $lang');
+        expect(s.fullHiragana.isNotEmpty, isTrue, reason: 'fullHiragana in $lang');
+        expect(s.fullRomaji.isNotEmpty, isTrue, reason: 'fullRomaji in $lang');
+        expect(s.pronunciationShiftLabel.isNotEmpty, isTrue, reason: 'pronunciationShiftLabel in $lang');
+        expect(s.loanwordLabel.isNotEmpty, isTrue, reason: 'loanwordLabel in $lang');
+        expect(s.onyomiHeading.isNotEmpty, isTrue, reason: 'onyomiHeading in $lang');
+        expect(s.kunyomiHeading.isNotEmpty, isTrue, reason: 'kunyomiHeading in $lang');
+        expect(s.onyomiHint.isNotEmpty, isTrue, reason: 'onyomiHint in $lang');
+        expect(s.kunyomiHint.isNotEmpty, isTrue, reason: 'kunyomiHint in $lang');
+        expect(s.onyomiBadge.isNotEmpty, isTrue, reason: 'onyomiBadge in $lang');
+        expect(s.kunyomiBadge.isNotEmpty, isTrue, reason: 'kunyomiBadge in $lang');
+        expect(s.labelStrokes.isNotEmpty, isTrue, reason: 'labelStrokes in $lang');
+        expect(s.labelGrade.isNotEmpty, isTrue, reason: 'labelGrade in $lang');
+        expect(s.labelFrequency.isNotEmpty, isTrue, reason: 'labelFrequency in $lang');
+        expect(s.labelRadical.isNotEmpty, isTrue, reason: 'labelRadical in $lang');
+        expect(s.frequencyUnranked.isNotEmpty, isTrue, reason: 'frequencyUnranked in $lang');
+        expect(s.gradeCommon.isNotEmpty, isTrue, reason: 'gradeCommon in $lang');
+        expect(s.gradeNameUse.isNotEmpty, isTrue, reason: 'gradeNameUse in $lang');
+        expect(s.gradeOther.isNotEmpty, isTrue, reason: 'gradeOther in $lang');
+        expect(s.collapse.isNotEmpty, isTrue, reason: 'collapse in $lang');
+        expect(s.readingsNotFound.isNotEmpty, isTrue, reason: 'readingsNotFound in $lang');
+        expect(s.commonWordsHeading.isNotEmpty, isTrue, reason: 'commonWordsHeading in $lang');
+        expect(s.homophoneHeading.isNotEmpty, isTrue, reason: 'homophoneHeading in $lang');
+        expect(s.homophoneHint.isNotEmpty, isTrue, reason: 'homophoneHint in $lang');
+        expect(s.yojijukugoHeading.isNotEmpty, isTrue, reason: 'yojijukugoHeading in $lang');
+        expect(s.yojijukugoHint.isNotEmpty, isTrue, reason: 'yojijukugoHint in $lang');
+        expect(s.filterTitle.isNotEmpty, isTrue, reason: 'filterTitle in $lang');
+        expect(s.reset.isNotEmpty, isTrue, reason: 'reset in $lang');
+        expect(s.viewResults.isNotEmpty, isTrue, reason: 'viewResults in $lang');
+        expect(s.sectionSort.isNotEmpty, isTrue, reason: 'sectionSort in $lang');
+        expect(s.sectionStrokes.isNotEmpty, isTrue, reason: 'sectionStrokes in $lang');
+        expect(s.sectionFrequency.isNotEmpty, isTrue, reason: 'sectionFrequency in $lang');
+        expect(s.sectionRadical.isNotEmpty, isTrue, reason: 'sectionRadical in $lang');
+        expect(s.allRadicals.isNotEmpty, isTrue, reason: 'allRadicals in $lang');
+        expect(s.radicalPickerTitle.isNotEmpty, isTrue, reason: 'radicalPickerTitle in $lang');
+        expect(s.radicalPickerSubtitle.isNotEmpty, isTrue, reason: 'radicalPickerSubtitle in $lang');
+        expect(s.sectionReadings.isNotEmpty, isTrue, reason: 'sectionReadings in $lang');
+        expect(s.sectionReadingSearch.isNotEmpty, isTrue, reason: 'sectionReadingSearch in $lang');
+        expect(s.readingSearchHint.isNotEmpty, isTrue, reason: 'readingSearchHint in $lang');
+        expect(s.sectionMeaningSearch.isNotEmpty, isTrue, reason: 'sectionMeaningSearch in $lang');
+        expect(s.meaningSearchHint.isNotEmpty, isTrue, reason: 'meaningSearchHint in $lang');
+        expect(s.sectionOther.isNotEmpty, isTrue, reason: 'sectionOther in $lang');
+        expect(s.any.isNotEmpty, isTrue, reason: 'any in $lang');
+        expect(s.min.isNotEmpty, isTrue, reason: 'min in $lang');
+        expect(s.max.isNotEmpty, isTrue, reason: 'max in $lang');
+        expect(s.blankMeansAny.isNotEmpty, isTrue, reason: 'blankMeansAny in $lang');
+        expect(s.rangeInverted.isNotEmpty, isTrue, reason: 'rangeInverted in $lang');
+        expect(s.grade1.isNotEmpty, isTrue, reason: 'grade1 in $lang');
+        expect(s.grade2.isNotEmpty, isTrue, reason: 'grade2 in $lang');
+        expect(s.grade3.isNotEmpty, isTrue, reason: 'grade3 in $lang');
+        expect(s.grade4.isNotEmpty, isTrue, reason: 'grade4 in $lang');
+        expect(s.grade5.isNotEmpty, isTrue, reason: 'grade5 in $lang');
+        expect(s.grade6.isNotEmpty, isTrue, reason: 'grade6 in $lang');
+        expect(s.gradeCommonChip.isNotEmpty, isTrue, reason: 'gradeCommonChip in $lang');
+        expect(s.gradeNameChip.isNotEmpty, isTrue, reason: 'gradeNameChip in $lang');
+        expect(s.resultsTitle.isNotEmpty, isTrue, reason: 'resultsTitle in $lang');
+        expect(s.noResultsTitle.isNotEmpty, isTrue, reason: 'noResultsTitle in $lang');
+        expect(s.noResultsHint.isNotEmpty, isTrue, reason: 'noResultsHint in $lang');
+        expect(s.settingsSubtitle.isNotEmpty, isTrue, reason: 'settingsSubtitle in $lang');
+        expect(s.sectionAppearance.isNotEmpty, isTrue, reason: 'sectionAppearance in $lang');
+        expect(s.sectionScreen.isNotEmpty, isTrue, reason: 'sectionScreen in $lang');
+        expect(s.sectionLanguage.isNotEmpty, isTrue, reason: 'sectionLanguage in $lang');
+        expect(s.sectionOtherSettings.isNotEmpty, isTrue, reason: 'sectionOtherSettings in $lang');
+        expect(s.theme.isNotEmpty, isTrue, reason: 'theme in $lang');
+        expect(s.autoRotate.isNotEmpty, isTrue, reason: 'autoRotate in $lang');
+        expect(s.autoRotateOn.isNotEmpty, isTrue, reason: 'autoRotateOn in $lang');
+        expect(s.autoRotateOff.isNotEmpty, isTrue, reason: 'autoRotateOff in $lang');
+        expect(s.about.isNotEmpty, isTrue, reason: 'about in $lang');
+        expect(s.aboutSubtitle.isNotEmpty, isTrue, reason: 'aboutSubtitle in $lang');
+        expect(s.versionLabel.isNotEmpty, isTrue, reason: 'versionLabel in $lang');
+        expect(s.buildLabel.isNotEmpty, isTrue, reason: 'buildLabel in $lang');
+        expect(s.packageLabel.isNotEmpty, isTrue, reason: 'packageLabel in $lang');
+        expect(s.repositoryLabel.isNotEmpty, isTrue, reason: 'repositoryLabel in $lang');
+        expect(s.repositoryCopied.isNotEmpty, isTrue, reason: 'repositoryCopied in $lang');
+        expect(s.licensesSection.isNotEmpty, isTrue, reason: 'licensesSection in $lang');
+        expect(s.diagnosticsSection.isNotEmpty, isTrue, reason: 'diagnosticsSection in $lang');
+        expect(s.exportDiagnostics.isNotEmpty, isTrue, reason: 'exportDiagnostics in $lang');
+        expect(s.diagnosticsHint.isNotEmpty, isTrue, reason: 'diagnosticsHint in $lang');
+        expect(s.diagnosticsCopied.isNotEmpty, isTrue, reason: 'diagnosticsCopied in $lang');
+        expect(s.diagnosticsEmpty.isNotEmpty, isTrue, reason: 'diagnosticsEmpty in $lang');
+        expect(s.analysisFailedGeneric.isNotEmpty, isTrue, reason: 'analysisFailedGeneric in $lang');
+        expect(s.licenseAppCode.isNotEmpty, isTrue, reason: 'licenseAppCode in $lang');
+        expect(s.licenseKanjiData.isNotEmpty, isTrue, reason: 'licenseKanjiData in $lang');
+        expect(s.licenseAnalyzer.isNotEmpty, isTrue, reason: 'licenseAnalyzer in $lang');
+        expect(s.licenseOpenCc.isNotEmpty, isTrue, reason: 'licenseOpenCc in $lang');
+        expect(s.creditsSection.isNotEmpty, isTrue, reason: 'creditsSection in $lang');
+        expect(s.creditAnalyzer.isNotEmpty, isTrue, reason: 'creditAnalyzer in $lang');
+        expect(s.creditKanjiData.isNotEmpty, isTrue, reason: 'creditKanjiData in $lang');
+        expect(s.creditTokenizerDict.isNotEmpty, isTrue, reason: 'creditTokenizerDict in $lang');
+        expect(s.creditOpenCc.isNotEmpty, isTrue, reason: 'creditOpenCc in $lang');
+        expect(s.creditFramework.isNotEmpty, isTrue, reason: 'creditFramework in $lang');
+        expect(s.offlineNotice.isNotEmpty, isTrue, reason: 'offlineNotice in $lang');
+
+        // 校验全部参数化方法各分支
+        expect(s.inputExceededLimit(100).isNotEmpty, isTrue);
+        expect(s.favoritesExportHint(5).isNotEmpty, isTrue);
+        expect(s.copiedAnkiWithFailures(2).isNotEmpty, isTrue);
+        expect(s.ankiBaseFormPrefix('食べる').isNotEmpty, isTrue);
+        expect(s.ankiOnyomiPrefix('にち').isNotEmpty, isTrue);
+        expect(s.ankiKunyomiPrefix('ひ').isNotEmpty, isTrue);
+        expect(s.ankiNote(4, 10).isNotEmpty, isTrue);
+        expect(s.dictionaryInitFailed('mock error').isNotEmpty, isTrue);
+        expect(s.analysisFailed('mock error').isNotEmpty, isTrue);
+        expect(s.settingsSaveFailed('mock error').isNotEmpty, isTrue);
+        expect(s.settingsLoadFailed('mock error').isNotEmpty, isTrue);
+        expect(s.longResultNotice(50, 100).isNotEmpty, isTrue);
+        expect(s.allResultsShown(100).isNotEmpty, isTrue);
+        expect(s.favoriteAdded('東京').isNotEmpty, isTrue);
+        expect(s.favoriteRemoved('東京').isNotEmpty, isTrue);
+        expect(s.historyRemoved('東京').isNotEmpty, isTrue);
+        expect(s.copiedSurface('東京').isNotEmpty, isTrue);
+        expect(s.baseForm('行く').isNotEmpty, isTrue);
+        expect(s.loanwordOrigin('英语').isNotEmpty, isTrue);
+        expect(s.collapseHidden(3).isNotEmpty, isTrue);
+        expect(s.commonWordsBadge(12).isNotEmpty, isTrue);
+        expect(s.homophoneBadge(4).isNotEmpty, isTrue);
+        expect(s.yojijukugoBadge(7).isNotEmpty, isTrue);
+        expect(s.radicalStrokesGroup(3).isNotEmpty, isTrue);
+        expect(s.filterCount(88).isNotEmpty, isTrue);
+        expect(s.filterChipReading('こう').isNotEmpty, isTrue);
+        expect(s.filterChipMeaning('sun').isNotEmpty, isTrue);
+        expect(s.filterChipRadical('水').isNotEmpty, isTrue);
+        expect(s.resultCount(15).isNotEmpty, isTrue);
+        expect(s.strokesShort(5).isNotEmpty, isTrue);
+        expect(s.noRankExcluded(624).isNotEmpty, isTrue);
+        expect(s.aboutTitle('1.2.0').isNotEmpty, isTrue);
+
+        // 学年各分支
+        for (final g in [1, 2, 3, 4, 5, 6, 8, 9, 10]) {
+          expect(s.gradeNumbered(g).isNotEmpty, isTrue);
+        }
+
+        // 笔画范围分支 (双端 / 单端 / 全空)
+        expect(s.filterChipStrokes(3, 8).isNotEmpty, isTrue);
+        expect(s.filterChipStrokes(3, null).isNotEmpty, isTrue);
+        expect(s.filterChipStrokes(null, 8).isNotEmpty, isTrue);
+        expect(s.filterChipStrokes(null, null), '');
+
+        // 频率范围分支 (双端 / 单端 / 全空)
+        expect(s.filterChipFrequency(1, 100).isNotEmpty, isTrue);
+        expect(s.filterChipFrequency(1, null).isNotEmpty, isTrue);
+        expect(s.filterChipFrequency(null, 100).isNotEmpty, isTrue);
+        expect(s.filterChipFrequency(null, null), '');
+
+        // 枚举查表
+        for (final sort in KanjiSort.values) {
+          expect(s.sortLabel(sort).isNotEmpty, isTrue);
+        }
+        for (final req in ReadingRequirement.values) {
+          expect(s.readingLabel(req).isNotEmpty, isTrue);
+        }
+        for (final mode in AppThemeMode.values) {
+          expect(s.themeModeLabel(mode).isNotEmpty, isTrue);
+        }
+
+        // 常见与未知词性
+        for (final pos in ['名詞', '動詞', '助動詞', '副詞', '記号', '未知词性']) {
+          expect(s.posLabel(pos).isNotEmpty, isTrue);
+        }
+        for (final det in ['一般', '固有名詞', '自立', '数', '地域', '未知细分']) {
+          expect(s.posDetailLabel(det).isNotEmpty, isTrue);
+        }
+      }
+    });
+
   });
 
   group('康熙部首字典 (radical_dict)', () {
@@ -1412,6 +1629,17 @@ void main() {
       expect(text, contains('[analysis] StateError'));
       expect(text, contains('boom'));
       expect(text, contains('#0 test'));
+    });
+
+    test('对包含引号文本与中日文字符串的异常消息自动脱敏', () {
+      DiagnosticsLog.instance.record(
+        'analysis',
+        const FormatException('failed on \'秘密の日本語\' and \'user_token_123\''),
+      );
+      final text = DiagnosticsLog.instance.export();
+      expect(text, isNot(contains('秘密の日本語')));
+      expect(text, isNot(contains('user_token_123')));
+      expect(text, contains('[REDACTED]'));
     });
 
     test('超过容量时只保留最近 100 条', () {
