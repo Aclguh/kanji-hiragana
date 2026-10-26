@@ -446,9 +446,14 @@ Future<void> main() async {
     r'^version:\s*(\d+\.\d+\.\d+)\+(\d+)\s*$',
     multiLine: true,
   ).firstMatch(pubspec);
-  expectEq(version?.group(1), AppMeta.version,
+  final pubspecSemver = version?.group(1);
+  final pubspecBuild = version?.group(2);
+  if (pubspecSemver != AppMeta.version || pubspecBuild != AppMeta.buildNumber) {
+    print('  [提示] 版本号不一致! 可运行: dart run tool/bump_version.dart \+');
+  }
+  expectEq(pubspecSemver, AppMeta.version,
       'pubspec version 与 AppMeta.version 一致');
-  expectEq(version?.group(2), AppMeta.buildNumber,
+  expectEq(pubspecBuild, AppMeta.buildNumber,
       'pubspec versionCode 基数与 AppMeta.buildNumber 一致');
   // 字典范围已固化为编译期常量, 此处校验其与当前字典统计完全一致:
   // 字典换代导致范围变化时, 先确认筛选界面提示与预期一致再更新常量。

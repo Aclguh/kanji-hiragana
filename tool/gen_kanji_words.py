@@ -215,9 +215,22 @@ def load_kanjidic2() -> dict:
 
 def collect_words(data_dir: Path) -> dict:
     """解码 IPADIC 二进制词典, 返回 {词面: (平假名读音, 是否专有名词, 词性)}。"""
-    tid_buf = load_embedded_gzip(data_dir / 'tid.dat.dart')
-    pos_buf = load_embedded_gzip(data_dir / 'tid_pos.dat.dart')
-    map_buf = load_embedded_gzip(data_dir / 'tid_map.dat.dart')
+    tid_path = data_dir / 'tid.dat.dart'
+    pos_path = data_dir / 'tid_pos.dat.dart'
+    map_path = data_dir / 'tid_map.dat.dart'
+    for p in (tid_path, pos_path, map_path):
+        if not p.is_file():
+            sys.exit(f'kuromoji 内嵌词典文件缺失: {p}')
+
+    tid_buf = load_embedded_gzip(tid_path)
+    pos_buf = load_embedded_gzip(pos_path)
+    map_buf = load_embedded_gzip(map_path)
+
+    # 结构完整性校验: 确保解码后的词典明文达到最低容量基线, 防范上游包内嵌格式变异
+    if len(tid_buf) < 10000 or len(pos_buf) < 1000 or len(map_buf) < 10000:
+        sys.exit(
+            f'kuromoji IPADIC 词典结构异常 (tid={len(tid_buf)}, pos={len(pos_buf)}, map={len(map_buf)})，'
+            '上游包可能破坏了二进制内嵌规范，请核对。')
 
     # tid_map.dat: [count][key][valuesSize][values...] (小端 int32),
     # 枚举全部 token id, 无需遍历 double-array trie。
