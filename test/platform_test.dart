@@ -157,6 +157,63 @@ void main() {
       final received = await textFuture;
       expect(received, '京都');
     });
+
+    test('getInitialProcessedText 原生异常与空内容优雅降级', () async {
+      // 1. 原生返回 null
+      messenger.setMockMethodCallHandler(platformChannel, (call) async => null);
+      expect(await PlatformService.instance.getInitialProcessedText(), isNull);
+
+      // 2. 原生返回纯空白
+      messenger.setMockMethodCallHandler(platformChannel, (call) async => '   ');
+      expect(await PlatformService.instance.getInitialProcessedText(), isNull);
+
+      // 3. 原生抛出 PlatformException
+      messenger.setMockMethodCallHandler(platformChannel, (call) async {
+        throw PlatformException(code: 'ERROR', message: 'failed');
+      });
+      expect(await PlatformService.instance.getInitialProcessedText(), isNull);
+    });
+
+    test('onProcessText 忽略空内容与未知方法名', () async {
+      bool receivedAny = false;
+      final sub = PlatformService.instance.onProcessedText.listen((_) {
+        receivedAny = true;
+      });
+
+      // 模拟未知方法名
+      final unknownMessage = const StandardMethodCodec().encodeMethodCall(
+        const MethodCall('unknownMethod', 'test'),
+      );
+      await messenger.handlePlatformMessage(
+        'kanji_hiragana/platform',
+        unknownMessage,
+        (_) {},
+      );
+
+      // 模拟 null 参数
+      final nullMessage = const StandardMethodCodec().encodeMethodCall(
+        const MethodCall('onProcessText', null),
+      );
+      await messenger.handlePlatformMessage(
+        'kanji_hiragana/platform',
+        nullMessage,
+        (_) {},
+      );
+
+      // 模拟全空白字符
+      final emptyMessage = const StandardMethodCodec().encodeMethodCall(
+        const MethodCall('onProcessText', '   '),
+      );
+      await messenger.handlePlatformMessage(
+        'kanji_hiragana/platform',
+        emptyMessage,
+        (_) {},
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(receivedAny, isFalse);
+      await sub.cancel();
+    });
   });
 
   group('多语言文案覆盖测试 (ZhStrings & EnStrings)', () {
