@@ -36,10 +36,12 @@ class QueryStore extends ChangeNotifier {
   void resetForTesting() {
     _history = const [];
     _favorites = const [];
+    _favoriteSet = const {};
     _prefs = null;
     _loadError = null;
     _saveError = null;
     _lastWrite = Future<void>.value();
+    _writeQueue = Future<void>.value();
     notifyListeners();
   }
 
@@ -50,6 +52,7 @@ class QueryStore extends ChangeNotifier {
   Object? _saveError;
 
   Future<void> _lastWrite = Future<void>.value();
+  Future<void> _writeQueue = Future<void>.value();
 
   /// 本地数据加载异常 (若加载失败)。
   Object? get loadError => _loadError;
@@ -63,6 +66,9 @@ class QueryStore extends ChangeNotifier {
   /// 收藏的查询, 新的在前。
   List<String> _favorites = const [];
 
+  /// 收藏的集合索引 (提供 O(1) 效率的 isFavorite 查找)。
+  Set<String> _favoriteSet = const {};
+
   /// 是否已完成本地加载。
   bool get isReady => _prefs != null;
 
@@ -71,7 +77,7 @@ class QueryStore extends ChangeNotifier {
   List<String> get favorites => List.unmodifiable(_favorites);
 
   /// 该文本是否已收藏。
-  bool isFavorite(String text) => _favorites.contains(sanitizeText(text));
+  bool isFavorite(String text) => _favoriteSet.contains(sanitizeText(text));
 
   /// 从本地读取。应在 runApp 之前 await 完成。
   ///
@@ -93,6 +99,7 @@ class QueryStore extends ChangeNotifier {
         _favorites = _favorites.sublist(0, maxFavorites);
         _persistFavorites();
       }
+      _favoriteSet = Set<String>.of(_favorites);
       _loadError = null;
       _saveError = null;
     } catch (e) {
@@ -136,8 +143,9 @@ class QueryStore extends ChangeNotifier {
     final trimmed = sanitizeText(text);
     if (trimmed.isEmpty) return isFavorite(trimmed);
 
-    if (_favorites.contains(trimmed)) {
+    if (_favoriteSet.contains(trimmed)) {
       _favorites = _favorites.where((e) => e != trimmed).toList();
+      _favoriteSet = Set<String>.of(_favorites);
       notifyListeners();
       _persistFavorites();
       return false;
@@ -146,6 +154,7 @@ class QueryStore extends ChangeNotifier {
     if (_favorites.length > maxFavorites) {
       _favorites = _favorites.sublist(0, maxFavorites);
     }
+    _favoriteSet = Set<String>.of(_favorites);
     notifyListeners();
     _persistFavorites();
     return true;
@@ -180,22 +189,28 @@ class QueryStore extends ChangeNotifier {
 
   Future<void> _write(
     Future<bool> Function(SharedPreferences prefs) operation,
-  ) async {
+  ) {
     final prefs = _prefs;
-    if (prefs == null) return;
-    try {
-      final ok = await operation(prefs);
-      if (!ok) {
-        throw StateError('SharedPreferences write returned false');
-      }
-      if (_saveError != null) {
-        _saveError = null;
+    if (prefs == null) return Future<void>.value();
+    // 立即发起 operation 确保同步写入步骤 (如 SharedPreferences 内存 Map 更新) 即刻生效
+    final opFuture = operation(prefs);
+    final writeFuture = _writeQueue = _writeQueue.then((_) async {
+      try {
+        final ok = await opFuture;
+        if (!ok) {
+          throw StateError('SharedPreferences write returned false');
+        }
+        if (_saveError != null) {
+          _saveError = null;
+          notifyListeners();
+        }
+      } catch (e) {
+        _saveError = e;
         notifyListeners();
       }
-    } catch (e) {
-      _saveError = e;
-      notifyListeners();
-    }
+    });
+    _lastWrite = writeFuture;
+    return writeFuture;
   }
 
   /// 等待最近一次写入完成, 供应用进入后台前调用。
