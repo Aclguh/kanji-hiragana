@@ -46,18 +46,42 @@ class DiagnosticsLog {
 
   bool get isEmpty => _entries.isEmpty;
 
+  /// 匹配连续中日文字符串 (长度>=3), 自动脱敏为 [REDACTED_TEXT]。
+  static final RegExp _cjkRegex = RegExp(
+    r'[぀-ヿ㐀-䶿一-鿿豈-﫿]{3,}',
+  );
+
+  /// 匹配引号内的文本片段并脱敏, 避免异常信息中携带具体输入。
+  static final RegExp _quotedRegex = RegExp(r"""['"][^'"]{2,}['"]""");
+
+  /// 针对异常信息进行敏感内容自动脱敏。
+  static String sanitizeMessage(String raw) {
+    if (raw.isEmpty) return raw;
+    var sanitized = raw.replaceAllMapped(
+      _quotedRegex,
+      (_) => '"[REDACTED]"',
+    );
+    sanitized = sanitized.replaceAllMapped(
+      _cjkRegex,
+      (_) => '[REDACTED_TEXT]',
+    );
+    return sanitized;
+  }
+
   void record(
     String module,
     Object error, {
     StackTrace? stackTrace,
     String? message,
   }) {
+    final rawMsg = message ?? error.toString();
+    final cleanMsg = sanitizeMessage(rawMsg);
     _entries.add(
       DiagnosticEntry(
         time: DateTime.now(),
         module: module,
         errorType: error.runtimeType.toString(),
-        message: message ?? error.toString(),
+        message: cleanMsg,
         stackTrace: stackTrace?.toString(),
       ),
     );
@@ -68,9 +92,14 @@ class DiagnosticsLog {
 
   void clear() => _entries.clear();
 
-  /// 导出为纯文本。导出时不包含任何用户输入。
+  /// 导出为纯文本。导出时附带防泄密头部且内容已自动脱敏。
   String export() {
     if (_entries.isEmpty) return '';
-    return _entries.map((e) => e.toText()).join('\n');
+    final buffer = StringBuffer()
+      ..writeln('=== Kanji-Hiragana Diagnostics Log ===')
+      ..writeln('Notice: User text and sensitive tokens are automatically redacted.')
+      ..writeln('--------------------------------------')
+      ..writeln(_entries.map((e) => e.toText()).join('\n'));
+    return buffer.toString();
   }
 }
