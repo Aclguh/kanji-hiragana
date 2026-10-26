@@ -61,11 +61,19 @@ class MainActivity : FlutterActivity(), TextToSpeech.OnInitListener {
         ttsChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, TTS_CHANNEL).apply {
             setMethodCallHandler { call, result ->
                 when (call.method) {
-                    "isAvailable" -> result.success(ttsReady)
+                    "isAvailable" -> {
+                        if (!ttsReady && tts != null) {
+                            checkTtsLanguage()
+                        }
+                        result.success(ttsReady)
+                    }
                     "speak" -> {
                         val text = call.argument<String>("text") ?: ""
                         val utteranceId = call.argument<String>("utteranceId")
                             ?: "KANJI_TTS_${System.currentTimeMillis()}"
+                        if (!ttsReady && tts != null) {
+                            checkTtsLanguage()
+                        }
                         if (ttsReady && text.isNotEmpty()) {
                             tts?.stop()
                             tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
@@ -84,10 +92,15 @@ class MainActivity : FlutterActivity(), TextToSpeech.OnInitListener {
         }
     }
 
+    private fun checkTtsLanguage(): Boolean {
+        val result = tts?.setLanguage(Locale.JAPANESE)
+        ttsReady = result != null && result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED
+        return ttsReady
+    }
+
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            val result = tts?.setLanguage(Locale.JAPANESE)
-            ttsReady = result != TextToSpeech.LANG_MISSING_DATA && result != TextToSpeech.LANG_NOT_SUPPORTED
+            checkTtsLanguage()
             tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                 override fun onStart(utteranceId: String?) {
                     runOnUiThread { ttsChannel?.invokeMethod("onSpeakStart", utteranceId) }
