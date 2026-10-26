@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -13,6 +12,7 @@ import 'widgets/filter_result_page.dart';
 import 'widgets/settings_drawer.dart';
 import 'widgets/home/export_sheet.dart';
 import 'widgets/home/hero_title.dart';
+import 'widgets/home/home_animated_body.dart';
 import 'widgets/home/home_chrome.dart';
 import 'widgets/home/home_result_sliver.dart';
 import 'widgets/home/home_search_input.dart';
@@ -20,7 +20,7 @@ import 'widgets/home/home_coordinator.dart';
 import 'widgets/home/home_toolbar.dart';
 import 'widgets/home/query_chips.dart';
 import 'widgets/sliding_drawer.dart';
-import 'package:kanji_hiragana/widgets/app_scopes.dart';
+import 'widgets/app_scopes.dart';
 
 export 'widgets/home/home_coordinator.dart' show HomeErrorKind;
 export 'widgets/home/home_toolbar.dart' show ViewMode;
@@ -337,79 +337,22 @@ class _HomePageState extends State<HomePage>
   /// - 聚焦态: 输入框垂直居中, 其余控件透明度为 0 且不可交互。
   /// - 展开态: 输入框移到顶部, 工具栏与结果区淡入、上滑展开。
   Widget _buildAnimatedBody() {
-    return AnimatedBuilder(
+    return HomeAnimatedBody(
       animation: _anim,
-      builder: (context, _) {
-        final t = Curves.easeOutCubic.transform(_anim.value);
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            // 聚焦态: 让「标题 + 输入框」整体在视觉上居中。
-            // 估算该组内容高度(标题约 92 + 输入框约 58 + 间距 24)。
-            const focusBlockHeight = 174.0;
-            final centeredTop = (constraints.maxHeight - focusBlockHeight) / 2;
-            final maxLimit = constraints.maxHeight * 0.42;
-            final clampedTop = maxLimit < 24.0
-                ? math.max(0.0, centeredTop)
-                : centeredTop.clamp(24.0, maxLimit);
-            final topSpace = _lerp(
-              12.0,
-              clampedTop,
-              1 - t,
-            );
-            final bottomSpace =
-                MediaQuery.of(context).viewInsets.bottom +
-                (_buttonsVisible ? 88 : 24);
-
-            return CustomScrollView(
-              keyboardDismissBehavior:
-                  ScrollViewKeyboardDismissBehavior.onDrag,
-              slivers: [
-                SliverPadding(
-                  padding: EdgeInsets.only(top: topSpace),
-                  sliver: SliverList.list(
-                    children: [
-                      // 聚焦态在输入框上方显示标题。
-                      HeroTitle(t: t),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: HomeSearchInput(
-                          controller: _controller,
-                          focusNode: _focusNode,
-                          isSearching: _isSearching,
-                          hasInput: _hasInput,
-                          progress: t,
-                          onChanged: _onChanged,
-                          onSubmit: _submitQuery,
-                          onPasted: () => setState(() {}),
-                        ),
-                      ),
-                      // 聚焦态展示收藏与最近查询, 展开后淡出。
-                      QueryChips(t: t, onUseQuery: _useQuery),
-                    ],
-                  ),
-                ),
-                if (t > 0.001)
-                  SliverPadding(
-                    padding: EdgeInsets.fromLTRB(
-                      16,
-                      18 * (1 - t),
-                      16,
-                      0,
-                    ),
-                    sliver: SliverIgnorePointer(
-                      ignoring: t < 0.5,
-                      sliver: SliverOpacity(
-                        opacity: t.clamp(0.0, 1.0),
-                        sliver: _buildRevealSliver(t),
-                      ),
-                    ),
-                  ),
-                SliverToBoxAdapter(child: SizedBox(height: bottomSpace)),
-              ],
-            );
-          },
-        );
-      },
+      buttonsVisible: _buttonsVisible,
+      heroTitle: (t) => HeroTitle(t: t),
+      searchInput: (t) => HomeSearchInput(
+        controller: _controller,
+        focusNode: _focusNode,
+        isSearching: _isSearching,
+        hasInput: _hasInput,
+        progress: t,
+        onChanged: _onChanged,
+        onSubmit: _submitQuery,
+        onPasted: () => setState(() {}),
+      ),
+      queryChips: (t) => QueryChips(t: t, onUseQuery: _useQuery),
+      revealSliver: _buildRevealSliver,
     );
   }
 
@@ -463,4 +406,3 @@ class _HomePageState extends State<HomePage>
   }
 }
 
-double _lerp(double a, double b, double t) => a + (b - a) * t;
