@@ -104,6 +104,14 @@ class KanjiFilter {
       meaningQuery.isEmpty &&
       radical == null;
 
+  /// 预规范化读音反查词 (片假名折叠为平假名, 避免遍历时重复转换)。
+  String get normalizedReadingQuery =>
+      readingQuery.isEmpty ? '' : katakanaToHiragana(readingQuery);
+
+  /// 预规范化含义查询词 (两端去空白并转为小写, 避免遍历时重复小写化)。
+  String get normalizedMeaningQuery =>
+      meaningQuery.isEmpty ? '' : meaningQuery.trim().toLowerCase();
+
   /// 生效的条件数量 (用于在界面上提示)。
   int get activeCount {
     var n = 0;
@@ -185,11 +193,12 @@ class KanjiFilter {
     }
 
     if (readingQuery.isNotEmpty) {
-      if (!_matchesReadingQuery(r, readingQuery)) return false;
+      if (!_matchesNormalizedReading(r, normalizedReadingQuery)) return false;
     }
 
     if (meaningQuery.isNotEmpty) {
-      if (!_matchesMeaningQuery(r, meaningQuery)) return false;
+      final q = normalizedMeaningQuery;
+      if (q.isNotEmpty && !_matchesNormalizedMeaning(r, q)) return false;
     }
 
     return true;
@@ -203,6 +212,18 @@ class KanjiFilter {
       s: List<KanjiReading>.unmodifiable(
         kanjiReadingDict.values.toList()..sort(comparator(s)),
       ),
+  };
+
+  /// 针对全量字典预先剥离送假名括号的训读主体列表 (懒加载初始化, 避免遍历时频繁正则替换)。
+  static final Map<KanjiReading, List<String>> _cleanKunyomi = {
+    for (final r in kanjiReadingDict.values)
+      r: List<String>.unmodifiable(r.kunyomi.map(_stripOkurigana)),
+  };
+
+  /// 针对全量字典预先小写化的英文释义列表 (懒加载初始化, 避免遍历时频繁小写化)。
+  static final Map<KanjiReading, List<String>> _lowerMeaningsEn = {
+    for (final r in kanjiReadingDict.values)
+      r: List<String>.unmodifiable(r.meaningsEn.map((m) => m.toLowerCase())),
   };
 
   /// 获取按指定规则排好序的全量汉字只读列表。
@@ -248,12 +269,67 @@ class KanjiFilter {
   /// 若未提供 [source] 或传入全量字典 [kanjiReadingDict.values]，
   /// 会直接在对应预排列表中执行条件过滤，避免每次重复排序。
   /// 若传入自定义数据源，则对筛选后的子集执行排序。
-  List<KanjiReading> apply([Iterable<KanjiReading>? source]) {
-    if (source == null || _isDictionarySource(source)) {
-      return _presortedAll[sort]!.where(matches).toList();
+  /// 内部快速判定, 接收外部已规范化的查询词以避免循环内重复计算。
+  bool _fastMatches(
+    KanjiReading r, {
+    required String qReading,
+    required String qMeaning,
+  }) {
+    if (radical != null && r.radical != radical) return false;
+    if (gradeMin != null && r.grade < gradeMin!) return false;
+    if (gradeMax != null && r.grade > gradeMax!) return false;
+    if (strokesMin != null && r.strokes < strokesMin!) return false;
+    if (strokesMax != null && r.strokes > strokesMax!) return false;
+
+    if (frequencyMin != null || frequencyMax != null) {
+      final rank = r.frequencyRank;
+      if (rank >= kNoFrequencyRank) return false;
+      if (frequencyMin != null && rank < frequencyMin!) return false;
+      if (frequencyMax != null && rank > frequencyMax!) return false;
     }
-    final out = source.where(matches).toList();
-    out.sort(comparator(sort));
+
+    switch (reading) {
+      case ReadingRequirement.any:
+        break;
+      case ReadingRequirement.onyomiOnly:
+        if (!r.hasOnyomi || r.hasKunyomi) return false;
+      case ReadingRequirement.kunyomiOnly:
+        if (!r.hasKunyomi || r.hasOnyomi) return false;
+      case ReadingRequirement.both:
+        if (!r.hasOnyomi || !r.hasKunyomi) return false;
+    }
+
+    if (qReading.isNotEmpty && !_matchesNormalizedReading(r, qReading)) {
+      return false;
+    }
+
+    if (qMeaning.isNotEmpty && !_matchesNormalizedMeaning(r, qMeaning)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /// 应用筛选与排序。
+  ///
+  /// 若未提供 [source] 或传入全量字典 [kanjiReadingDict.values]，
+  /// 会直接在对应预排列表中执行条件过滤，避免每次重复排序。
+  /// 若传入自定义数据源，则对筛选后的子集执行排序。
+  List<KanjiReading> apply([Iterable<KanjiReading>? source]) {
+    final qReading = normalizedReadingQuery;
+    final qMeaning = normalizedMeaningQuery;
+    final targetSource =
+        (source == null || _isDictionarySource(source))
+            ? _presortedAll[sort]!
+            : source;
+
+    final out = targetSource
+        .where((r) => _fastMatches(r, qReading: qReading, qMeaning: qMeaning))
+        .toList();
+
+    if (source != null && !_isDictionarySource(source)) {
+      out.sort(comparator(sort));
+    }
     return out;
   }
 
@@ -261,6 +337,8 @@ class KanjiFilter {
   FilterResult applyWithStats([Iterable<KanjiReading>? source]) {
     final hasFreqFilter = frequencyMin != null || frequencyMax != null;
     final withoutFreq = hasFreqFilter ? copyWith(clearFrequency: true) : null;
+    final qReading = normalizedReadingQuery;
+    final qMeaning = normalizedMeaningQuery;
     var excludedCount = 0;
 
     final targetSource =
@@ -270,11 +348,11 @@ class KanjiFilter {
 
     final out = <KanjiReading>[];
     for (final r in targetSource) {
-      if (matches(r)) {
+      if (_fastMatches(r, qReading: qReading, qMeaning: qMeaning)) {
         out.add(r);
       } else if (hasFreqFilter &&
           r.frequencyRank >= kNoFrequencyRank &&
-          withoutFreq!.matches(r)) {
+          withoutFreq!._fastMatches(r, qReading: qReading, qMeaning: qMeaning)) {
         excludedCount++;
       }
     }
@@ -301,18 +379,15 @@ class FilterResult {
   });
 }
 
-/// 判断 [r] 的音读或训读中是否有包含 [query] 子串的条目。
-///
-/// - [query] 若含片假名会先折叠为平假名。
-/// - 训读中的送假名括号 (如「まな(ぶ)」) 在比对前剥离,
-///   只留假名主体参与匹配; 这样输入「まな」即可命中「学」。
-bool _matchesReadingQuery(KanjiReading r, String query) {
-  final q = katakanaToHiragana(query);
+/// 快速判定已规范化的平假名读音 [q] 是否匹配 [r] 的音读或训读。
+bool _matchesNormalizedReading(KanjiReading r, String q) {
   for (final on in r.onyomi) {
     if (on.contains(q)) return true;
   }
-  for (final kun in r.kunyomi) {
-    if (_stripOkurigana(kun).contains(q)) return true;
+  final cleanKun =
+      KanjiFilter._cleanKunyomi[r] ?? r.kunyomi.map(_stripOkurigana);
+  for (final kun in cleanKun) {
+    if (kun.contains(q)) return true;
   }
   return false;
 }
@@ -322,15 +397,15 @@ final RegExp _parensRegex = RegExp(r'[()]');
 /// 去掉训读里的送假名括号, 如 「まな(ぶ)」→「まなぶ」。
 String _stripOkurigana(String kun) => kun.replaceAll(_parensRegex, '');
 
-/// 判断 [r] 的中文或英文释义是否包含 [query] 子串 (不区分大小写)。
-bool _matchesMeaningQuery(KanjiReading r, String query) {
-  final q = query.trim().toLowerCase();
-  if (q.isEmpty) return true;
+/// 快速判定已规范化小写的含义 [q] 是否匹配 [r] 的中文或英文释义。
+bool _matchesNormalizedMeaning(KanjiReading r, String q) {
   for (final m in r.meanings) {
     if (m.toLowerCase().contains(q)) return true;
   }
-  for (final m in r.meaningsEn) {
-    if (m.toLowerCase().contains(q)) return true;
+  final lowerEn =
+      KanjiFilter._lowerMeaningsEn[r] ?? r.meaningsEn.map((m) => m.toLowerCase());
+  for (final m in lowerEn) {
+    if (m.contains(q)) return true;
   }
   return false;
 }
