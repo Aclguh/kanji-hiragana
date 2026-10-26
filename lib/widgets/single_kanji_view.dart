@@ -11,7 +11,7 @@ import 'single_kanji/kanji_hero_card.dart';
 import 'single_kanji/no_reading_notice.dart';
 import 'single_kanji/reading_group.dart';
 import 'single_kanji/yojijukugo_group.dart';
-import 'package:kanji_hiragana/widgets/app_scopes.dart';
+import 'app_scopes.dart';
 
 export 'single_kanji/collapse_footer.dart' show CollapseFooter;
 export 'single_kanji/common_words_group.dart' show CommonWordsGroup;

@@ -5,7 +5,7 @@ import '../../core/input_sanitizer.dart';
 import '../../core/japanese_analyzer.dart' show kMaxInputLength;
 import '../../theme.dart';
 import '../feedback.dart';
-import 'package:kanji_hiragana/widgets/app_scopes.dart';
+import '../app_scopes.dart';
 
 /// 首页搜索输入框组件，支持聚焦居中与展开顶部的平滑插值。
 class HomeSearchInput extends StatelessWidget {

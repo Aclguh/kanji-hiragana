@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/kanji_reading_dict.dart';
 import '../core/radical_dict.dart';
 import '../theme.dart';
-import 'package:kanji_hiragana/widgets/app_scopes.dart';
+import 'app_scopes.dart';
 
 /// 康熙 214 部首检字表弹窗。
 ///

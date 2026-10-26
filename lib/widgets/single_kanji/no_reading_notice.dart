@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme.dart';
-import 'package:kanji_hiragana/widgets/app_scopes.dart';
+import '../app_scopes.dart';
 
 /// 查不到音训读时的提示卡片。
 class NoReadingNotice extends StatelessWidget {

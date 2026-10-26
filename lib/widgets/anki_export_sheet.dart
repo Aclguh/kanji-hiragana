@@ -7,7 +7,7 @@ import '../core/morpheme.dart';
 import '../core/strings.dart';
 import '../theme.dart';
 import 'feedback.dart';
-import 'package:kanji_hiragana/widgets/app_scopes.dart';
+import 'app_scopes.dart';
 
 /// 收藏夹生词本导出为 Anki / TSV 格式的弹窗。
 class AnkiExportSheet extends StatefulWidget {

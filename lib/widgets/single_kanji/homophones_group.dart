@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/kanji_reading_dict.dart';
 import '../../core/strings.dart';
 import '../../theme.dart';
-import 'package:kanji_hiragana/widgets/app_scopes.dart';
+import '../app_scopes.dart';
 
 /// 同音汉字推荐分组。
 class HomophonesGroup extends StatelessWidget {

@@ -4,7 +4,7 @@ import '../core/settings.dart';
 import '../core/strings.dart';
 import '../theme.dart';
 import 'sliding_drawer.dart';
-import 'package:kanji_hiragana/widgets/app_scopes.dart';
+import 'app_scopes.dart';
 
 /// 设置抽屉内容: 主题切换 / 旋转屏幕 / 语言 / 关于。
 class SettingsDrawerContent extends StatelessWidget {

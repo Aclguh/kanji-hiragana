@@ -7,7 +7,7 @@ import '../theme.dart';
 import 'filter/filter_controls.dart';
 import 'radical_picker_sheet.dart';
 import 'sliding_drawer.dart';
-import 'package:kanji_hiragana/widgets/app_scopes.dart';
+import 'app_scopes.dart';
 
 /// 筛选抽屉内容: 按笔画 / 频率 / 读音构成 / 其他筛选。
 ///

@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import '../../theme.dart';
 import '../anki_export_sheet.dart';
 import '../feedback.dart';
-import 'package:kanji_hiragana/widgets/app_scopes.dart';
+import '../app_scopes.dart';
 
 /// 聚焦态显示的收藏与最近查询词条, 展开后随动画淡出。
 class QueryChips extends StatelessWidget {

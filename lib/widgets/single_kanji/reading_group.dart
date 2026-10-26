@@ -6,7 +6,7 @@ import '../../core/kana_romaji.dart';
 import '../../theme.dart';
 import '../feedback.dart';
 import 'collapse_footer.dart';
-import 'package:kanji_hiragana/widgets/app_scopes.dart';
+import '../app_scopes.dart';
 
 final _parenPattern = RegExp(r'[()]');
 

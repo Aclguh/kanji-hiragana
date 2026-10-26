@@ -5,7 +5,7 @@ import '../core/morpheme.dart';
 
 import '../theme.dart';
 import 'feedback.dart';
-import 'package:kanji_hiragana/widgets/app_scopes.dart';
+import 'app_scopes.dart';
 
 /// 对照表视图: 逐词以「汉字 / 平假名 / 罗马音」三列并排呈现对应关系,
 /// 类似翻译软件的对照排版。

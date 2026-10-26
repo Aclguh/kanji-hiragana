@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:kanji_hiragana/widgets/app_scopes.dart';
+import '../app_scopes.dart';
 
 /// 「展开 / 收起」尾块: 折叠时显示「还有 n 个」, 已展开时显示收起。
 class CollapseFooter extends StatelessWidget {

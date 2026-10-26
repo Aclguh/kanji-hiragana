@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme.dart';
-import 'package:kanji_hiragana/widgets/app_scopes.dart';
+import '../app_scopes.dart';
 
 /// 聚焦态显示的品牌标题, 展开后淡出。
 ///

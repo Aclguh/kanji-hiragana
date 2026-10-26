@@ -5,7 +5,7 @@ import '../../core/morpheme.dart';
 
 import '../../theme.dart';
 import '../feedback.dart';
-import 'package:kanji_hiragana/widgets/app_scopes.dart';
+import '../app_scopes.dart';
 
 /// 振假名视图页脚: 全文平假名与实际发音, 支持复制与发音。
 class FuriganaFooter extends StatelessWidget {

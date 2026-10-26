@@ -4,7 +4,7 @@ import '../../core/strings.dart';
 import '../../core/yojijukugo_dict.dart';
 import '../../theme.dart';
 import '../feedback.dart';
-import 'package:kanji_hiragana/widgets/app_scopes.dart';
+import '../app_scopes.dart';
 
 /// 四字熟语推荐分组。
 class YojijukugoGroup extends StatelessWidget {
