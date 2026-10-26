@@ -9,7 +9,7 @@ import '../core/strings.dart';
 
 import '../theme.dart';
 import 'feedback.dart';
-import 'package:kanji_hiragana/widgets/app_scopes.dart';
+import 'app_scopes.dart';
 
 /// 和风传统竖排排版模式 (纵书 / 縦書き 视图)。
 ///
@@ -60,7 +60,9 @@ class VerticalView extends StatelessWidget {
               children: [
                 for (var i = 0; i < paragraphs.length; i++) ...[
                   if (i > 0) const SizedBox(width: 24),
-                  _buildParagraph(context, paragraphs[i]),
+                  RepaintBoundary(
+                    child: _buildParagraph(context, paragraphs[i]),
+                  ),
                 ],
               ],
             ),

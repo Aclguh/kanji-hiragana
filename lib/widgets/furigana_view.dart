@@ -35,22 +35,54 @@ class FuriganaView extends StatelessWidget {
         children: [
           for (var p = 0; p < paragraphs.length; p++) ...[
             if (p > 0) const SizedBox(height: 18),
-            RepaintBoundary(
-              child: Wrap(
-                // 逐词换行, 保证「汉字-读音」始终成组不被拆散。
-                spacing: 2,
-                runSpacing: 18,
-                crossAxisAlignment: WrapCrossAlignment.end,
-                children: paragraphs[p]
-                    .map((m) =>
-                        _FuriganaToken(morpheme: m, showRomaji: showRomaji))
-                    .toList(),
-              ),
-            ),
+            // 长段落支持分块布局, 避免单个超大 Wrap (数百个 RenderBox) 引发测量峰值
+            ..._buildParagraphWraps(paragraphs[p]),
           ],
         ],
       ),
     );
+  }
+
+  /// 将单个段落按合理批次分块构建 Wrap, 降低超长段落下的单个布局节点树深度。
+  List<Widget> _buildParagraphWraps(List<Morpheme> morphemes) {
+    const chunkSize = 50;
+    if (morphemes.length <= chunkSize) {
+      return [
+        RepaintBoundary(
+          child: Wrap(
+            spacing: 2,
+            runSpacing: 18,
+            crossAxisAlignment: WrapCrossAlignment.end,
+            children: morphemes
+                .map((m) =>
+                    _FuriganaToken(morpheme: m, showRomaji: showRomaji))
+                .toList(),
+          ),
+        ),
+      ];
+    }
+
+    final wraps = <Widget>[];
+    for (var i = 0; i < morphemes.length; i += chunkSize) {
+      final end = (i + chunkSize < morphemes.length)
+          ? i + chunkSize
+          : morphemes.length;
+      final chunk = morphemes.sublist(i, end);
+      wraps.add(
+        RepaintBoundary(
+          child: Wrap(
+            spacing: 2,
+            runSpacing: 18,
+            crossAxisAlignment: WrapCrossAlignment.end,
+            children: chunk
+                .map((m) =>
+                    _FuriganaToken(morpheme: m, showRomaji: showRomaji))
+                .toList(),
+          ),
+        ),
+      );
+    }
+    return wraps;
   }
 }
 
