@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
-import 'package:kanji_hiragana/widgets/app_scopes.dart';
+import 'app_scopes.dart';
 
 /// 抽屉停靠方向。
 enum DrawerSide {
@@ -318,6 +318,7 @@ class _DrawerPanelState extends State<DrawerPanel> {
                       // 懒加载会让折叠线以下的输入框时有时无 (随屏幕高度变化)。
                       child: SingleChildScrollView(
                         controller: _scrollController,
+                        primary: false,
                         padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,

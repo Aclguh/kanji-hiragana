@@ -6,7 +6,7 @@ import '../core/query_store.dart';
 import '../core/strings.dart';
 import '../theme.dart';
 import 'single_kanji_view.dart';
-import 'package:kanji_hiragana/widgets/app_scopes.dart';
+import 'app_scopes.dart';
 
 /// 全屏筛选结果界面。
 ///
@@ -96,6 +96,7 @@ class _FilterResultPageState extends State<FilterResultPage> {
                     radius: const Radius.circular(3),
                     child: GridView.builder(
                       controller: _scrollController,
+                      primary: false,
                       padding: const EdgeInsets.fromLTRB(16, 8, 24, 32),
                       gridDelegate:
                           const SliverGridDelegateWithMaxCrossAxisExtent(

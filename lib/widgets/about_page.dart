@@ -5,7 +5,7 @@ import '../core/diagnostics.dart';
 import '../core/strings.dart';
 import '../theme.dart';
 import 'feedback.dart';
-import 'package:kanji_hiragana/widgets/app_scopes.dart';
+import 'app_scopes.dart';
 
 /// 关于页面: 版本号、仓库、许可与致谢。
 class AboutPage extends StatefulWidget {
@@ -42,6 +42,7 @@ class _AboutPageState extends State<AboutPage> {
         radius: const Radius.circular(3),
         child: SingleChildScrollView(
           controller: _scrollController,
+          primary: false,
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
