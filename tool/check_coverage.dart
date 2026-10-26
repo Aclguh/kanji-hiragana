@@ -16,6 +16,11 @@ const Map<String, double> coreThresholds = {
   'lib/core/settings.dart': 85.0,
   'lib/core/input_sanitizer.dart': 85.0,
   'lib/core/tts_service.dart': 65.0,
+  'lib/core/kanji_converter.dart': 90.0,
+  'lib/core/kana_romaji.dart': 95.0,
+  'lib/core/diagnostics.dart': 90.0,
+  'lib/core/kanji_homophones.dart': 95.0,
+  'lib/core/platform_service.dart': 95.0,
   'lib/widgets/home/home_coordinator.dart': 60.0,
 };
 
