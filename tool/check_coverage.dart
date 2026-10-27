@@ -9,7 +9,7 @@ import 'dart:io';
 /// 先以当前基线为起点做回归门禁, 随测试补齐逐步上调; 不追求一次到位
 /// 导致 CI 长期红灯。
 const Map<String, double> coreThresholds = {
-  'lib/core/japanese_analyzer.dart': 65.0,
+  'lib/core/japanese_analyzer.dart': 80.0,
   'lib/core/morpheme.dart': 90.0,
   'lib/core/kanji_filter.dart': 95.0,
   'lib/core/query_store.dart': 90.0,

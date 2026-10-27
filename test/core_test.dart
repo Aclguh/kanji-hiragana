@@ -1484,6 +1484,50 @@ void main() {
       expect(analyzer.isReady, isTrue);
     });
 
+    test('ROBUST-03: analyze 在已取消时不执行分词或丢弃结果', () async {
+      final analyzer = JapaneseAnalyzer.instance;
+      await analyzer.warmUp();
+
+      // 提前取消
+      final res1 = await analyzer.analyze('日本語', isCancelled: () => true);
+      expect(res1.morphemes, isEmpty);
+
+      // 分析多行文本时取消
+      final res2 = await analyzer.analyze('日本語\n東京', isCancelled: () => true);
+      expect(res2.morphemes, isEmpty);
+    });
+
+    test('ROBUST-04: analyzeBatch 在 isolate 崩溃时自动自愈并重试成功', () async {
+      final analyzer = JapaneseAnalyzer.instance;
+      await analyzer.warmUp();
+
+      analyzer.simulateCrashForTesting();
+      expect(analyzer.isReady, isFalse);
+
+      final results = await analyzer.analyzeBatch(['日本語', '桜']);
+      expect(results.length, 2);
+      expect(results[0].fullHiragana, 'にほんご');
+      expect(results[1].fullHiragana, 'さくら');
+      expect(analyzer.isReady, isTrue);
+    });
+
+    test('ROBUST-05: analyzeBatch 混合空行与取消状态边界测试', () async {
+      final analyzer = JapaneseAnalyzer.instance;
+      await analyzer.warmUp();
+
+      // 混合空字符串与空白
+      final results = await analyzer.analyzeBatch(['', '   ', '富士山', '']);
+      expect(results.length, 4);
+      expect(results[0].morphemes, isEmpty);
+      expect(results[1].morphemes, isEmpty);
+      expect(results[2].fullHiragana, 'ふじさん');
+      expect(results[3].morphemes, isEmpty);
+
+      // isCancelled 检查
+      final cancelled = await analyzer.analyzeBatch(['富士山'], isCancelled: () => true);
+      expect(cancelled, isEmpty);
+    });
+
     test('PERF-02: 4000 字符长文本分词、分段及截断边界验证', () async {
       final analyzer = JapaneseAnalyzer.instance;
       // 构造超过 4000 字符的超长多段落文本 (测试截断边界与长文本分词鲁棒性)
