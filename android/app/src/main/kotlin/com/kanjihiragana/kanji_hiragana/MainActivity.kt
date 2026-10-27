@@ -13,6 +13,9 @@ class MainActivity : FlutterActivity(), TextToSpeech.OnInitListener {
     private val PLATFORM_CHANNEL = "kanji_hiragana/platform"
     private val TTS_CHANNEL = "kanji_hiragana/tts"
 
+    // 与 Dart 侧 kMaxInputLength (4000) 统一截断阈值，防止跨平台 IPC 冗余传输与内存开销
+    private val MAX_PROCESS_TEXT_LENGTH = 4000
+
     private var initialProcessedText: String? = null
     private var platformChannel: MethodChannel? = null
     private var ttsChannel: MethodChannel? = null
@@ -35,7 +38,7 @@ class MainActivity : FlutterActivity(), TextToSpeech.OnInitListener {
         if (intent?.action == Intent.ACTION_PROCESS_TEXT) {
             val text = intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()
             if (!text.isNullOrEmpty()) {
-                val safeText = text.take(10000)
+                val safeText = text.take(MAX_PROCESS_TEXT_LENGTH)
                 initialProcessedText = safeText
                 platformChannel?.invokeMethod("onProcessText", safeText)
             }
