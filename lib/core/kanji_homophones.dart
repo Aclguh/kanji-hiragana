@@ -9,6 +9,12 @@ class KanjiHomophones {
 
   static final RegExp _parensRegex = RegExp(r'[()]');
 
+  /// 预热同音字倒排索引，促使静态表在后台提前加载与排序完成。
+  static void warmUp() {
+    _onyomiIndex;
+    _kunyomiIndex;
+  }
+
   /// 音读倒排索引 (平假名 -> 汉字列表，按使用频率升序排序)。
   static final Map<String, List<KanjiReading>> _onyomiIndex = () {
     final map = <String, List<KanjiReading>>{};

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'core/japanese_analyzer.dart';
+import 'core/kanji_homophones.dart';
 import 'core/kanji_services.dart';
 import 'core/query_store.dart';
 import 'core/settings.dart';
@@ -22,8 +23,9 @@ Future<void> main() async {
 
   _applySystemUi(SettingsController.instance);
 
-  // 后台预热词典, 与首帧渲染并行, 减少等待感。
+  // 后台预热分词词典与同音字索引, 与首帧渲染并行, 减少等待感。
   unawaited(JapaneseAnalyzer.instance.warmUp());
+  KanjiHomophones.warmUp();
 
   runApp(const KanjiApp());
 }

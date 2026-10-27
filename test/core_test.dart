@@ -1429,6 +1429,9 @@ void main() {
     });
 
     test('ARCH-03 & CODE-02: KanjiHomophones 同音词反向索引与音训推荐', () {
+      // 验证 warmUp 可重复安全调用且触发倒排表就绪
+      KanjiHomophones.warmUp();
+
       final flower = kanjiReadingDict['花']!;
       final homophones = KanjiHomophones.findHomophones(flower);
       expect(homophones, isNotEmpty);
