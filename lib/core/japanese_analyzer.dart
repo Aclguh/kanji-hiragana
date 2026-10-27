@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:isolate';
 
 import 'package:characters/characters.dart';
-import 'package:kuromoji/kuromoji.dart';
 
 import 'analyzer_failure.dart';
 import 'analyzer_service.dart';
@@ -11,11 +10,8 @@ import 'input_sanitizer.dart';
 import 'kana_romaji.dart';
 import 'kanji_converter.dart';
 import 'kanji_reading_dict.dart';
+import 'kuromoji_engine.dart';
 import 'morpheme.dart';
-
-// kuromoji 未从公共入口导出 Tokenizer 类型, 因此这里显式引入其实现库。
-// ignore: implementation_imports
-import 'package:kuromoji/src/tokenizer.dart';
 
 /// 单次分析的最大字符数限制，防止超长文本造成内存膨胀与卡顿。
 const int kMaxInputLength = 4000;
@@ -41,7 +37,7 @@ const _exitTag = 'exit';
 
 /// 日语形态素分析服务。
 ///
-/// kuromoji 的 [Tokenizer] 与其词典驻留在一个**常驻 isolate** 中。
+/// [KuromojiEngine] 与其词典驻留在一个**常驻 isolate** 中。
 /// tokenize 是 CPU 密集调用, 留在主 isolate 会在长文本输入时阻塞 UI 帧;
 /// 词典构建约 400ms 且对象不可跨 isolate 共享, 因此构建一次后常驻,
 /// 而非每次请求重建。
@@ -481,24 +477,24 @@ class JapaneseAnalyzer implements AnalyzerService {
 Future<void> _tokenizerMain(SendPort mainPort) async {
   final port = ReceivePort();
   mainPort.send(port.sendPort);
-  Tokenizer? tokenizer;
+  final engine = KuromojiEngine();
   await for (final message in port) {
     final request = message as List<Object?>;
     final id = request[1] as int;
     try {
       switch (request[0]) {
         case _buildTag:
-          tokenizer ??= await TokenizerBuilder().build();
+          await engine.build();
           mainPort.send([_resultTag, id, const <Map<String, dynamic>>[]]);
         case _tokenizeTag:
-          tokenizer ??= await TokenizerBuilder().build();
+          await engine.build();
           mainPort.send(
-            [_resultTag, id, _tokenizeSafe(tokenizer, request[2] as String)],
+            [_resultTag, id, _tokenizeSafe(engine, request[2] as String)],
           );
         case _tokenizeBatchTag:
-          tokenizer ??= await TokenizerBuilder().build();
+          await engine.build();
           final lines = (request[2] as List).cast<String>();
-          final batch = lines.map((l) => _tokenizeSafe(tokenizer!, l)).toList();
+          final batch = lines.map((l) => _tokenizeSafe(engine, l)).toList();
           mainPort.send([_resultTag, id, batch]);
         case _hangTag:
           // 测试钩子: 永久阻塞 isolate 事件循环, 模拟无回信。
@@ -517,7 +513,7 @@ Future<void> _tokenizerMain(SendPort mainPort) async {
 /// 触发其 EOS 节点指向自身的死循环并耗尽内存崩溃。
 /// 因此预先按标点与换行提取非空文本片段调用 kuromoji,
 /// 并将提取到的句读标点 (、与。) 转换为标准记号 Token, 按原顺序插回 Token 列表。
-List<Map<String, dynamic>> _tokenizeSafe(Tokenizer tokenizer, String text) {
+List<Map<String, dynamic>> _tokenizeSafe(KuromojiEngine engine, String text) {
   if (text.isEmpty) return const [];
   final allTokens = <Map<String, dynamic>>[];
   final matches = _tokenSplitRegex.allMatches(text);
@@ -539,7 +535,7 @@ List<Map<String, dynamic>> _tokenizeSafe(Tokenizer tokenizer, String text) {
     } else {
       final trimmed = segment.trim();
       if (trimmed.isNotEmpty) {
-        allTokens.addAll(tokenizer.tokenize(trimmed));
+        allTokens.addAll(engine.tokenize(trimmed));
       }
     }
   }

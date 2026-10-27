@@ -10,6 +10,7 @@ import 'dart:io';
 /// 导致 CI 长期红灯。
 const Map<String, double> coreThresholds = {
   'lib/core/japanese_analyzer.dart': 80.0,
+  'lib/core/kuromoji_engine.dart': 85.0,
   'lib/core/morpheme.dart': 90.0,
   'lib/core/kanji_filter.dart': 95.0,
   'lib/core/query_store.dart': 90.0,

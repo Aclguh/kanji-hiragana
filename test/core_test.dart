@@ -10,6 +10,7 @@ import 'package:kanji_hiragana/core/kanji_homophones.dart';
 import 'package:kanji_hiragana/core/kanji_reading_dict.dart';
 import 'package:kanji_hiragana/core/kanji_services.dart';
 import 'package:kanji_hiragana/core/kanji_words_dict.dart';
+import 'package:kanji_hiragana/core/kuromoji_engine.dart';
 import 'package:kanji_hiragana/core/loanwords_dict.dart';
 import 'package:kanji_hiragana/core/morpheme.dart';
 import 'package:kanji_hiragana/core/platform_service.dart';
@@ -1715,6 +1716,24 @@ void main() {
       expect(DiagnosticsLog.instance.entries.length, 100);
       expect(DiagnosticsLog.instance.export(), contains('e104'));
       expect(DiagnosticsLog.instance.export(), isNot(contains('e0\n')));
+    });
+  });
+
+  group('KuromojiEngine 词典引擎封装', () {
+    test('初始未构建状态下 tokenize 抛出 StateError', () {
+      final engine = KuromojiEngine();
+      expect(engine.isInitialized, isFalse);
+      expect(() => engine.tokenize('テスト'), throwsStateError);
+    });
+
+    test('build() 成功初始化并正常切分词条', () async {
+      final engine = KuromojiEngine();
+      await engine.build();
+      expect(engine.isInitialized, isTrue);
+
+      final tokens = engine.tokenize('日本語');
+      expect(tokens, isNotEmpty);
+      expect(tokens.first['surface_form'], isNotNull);
     });
   });
 }
