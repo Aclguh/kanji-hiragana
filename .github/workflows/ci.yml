@@ -39,6 +39,8 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
+      - name: Dependency and supply chain audit
+        run: dart run tool/audit_deps.dart
       - run: flutter analyze --fatal-warnings
       - run: flutter test --coverage
       - run: dart run tool/check_coverage.dart
