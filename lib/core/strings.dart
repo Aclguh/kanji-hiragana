@@ -3,6 +3,7 @@ import 'settings.dart';
 
 part 'strings/strings_zh.dart';
 part 'strings/strings_en.dart';
+part 'strings/strings_ja.dart';
 
 /// 界面语言。
 enum AppLanguage {
@@ -10,12 +11,16 @@ enum AppLanguage {
   zh,
 
   /// English。
-  en;
+  en,
+
+  /// 日本語。
+  ja;
 
   /// 在语言选择器中显示的名称 (各语言用自身写法, 不随界面语言变化)。
   String get label => switch (this) {
         AppLanguage.zh => '中文',
         AppLanguage.en => 'English',
+        AppLanguage.ja => '日本語',
       };
 
   static AppLanguage fromName(String? name) {
@@ -28,7 +33,7 @@ enum AppLanguage {
 
 /// 界面文案。
 ///
-/// 用密封类 + 两个子类而非 Map: 漏译某个字段会直接编译报错,
+/// 用密封类 + 多个子类而非 Map: 漏译某个字段会直接编译报错,
 /// 也便于按语言通读整份文案。
 sealed class AppStrings {
   const AppStrings();
@@ -37,6 +42,7 @@ sealed class AppStrings {
   static AppStrings forLanguage(AppLanguage language) => switch (language) {
         AppLanguage.zh => const ZhStrings(),
         AppLanguage.en => const EnStrings(),
+        AppLanguage.ja => const JaStrings(),
       };
 
   /// 该文案集对应的语言。

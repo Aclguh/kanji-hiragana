@@ -216,90 +216,124 @@ void main() {
     });
   });
 
-  group('多语言文案覆盖测试 (ZhStrings & EnStrings)', () {
-    test('遍历检验中英文案对称性与非空断言', () {
+  group('多语言文案覆盖测试 (ZhStrings, EnStrings & JaStrings)', () {
+    test('遍历检验中英日文案对称性与非空断言', () {
       const zh = ZhStrings();
       const en = EnStrings();
+      const ja = JaStrings();
 
       expect(zh.language, AppLanguage.zh);
       expect(en.language, AppLanguage.en);
+      expect(ja.language, AppLanguage.ja);
 
       // 通用
       expect(zh.appTitle.isNotEmpty, isTrue);
       expect(en.appTitle.isNotEmpty, isTrue);
+      expect(ja.appTitle.isNotEmpty, isTrue);
       expect(zh.close.isNotEmpty, isTrue);
       expect(en.close.isNotEmpty, isTrue);
+      expect(ja.close.isNotEmpty, isTrue);
       expect(zh.copy.isNotEmpty, isTrue);
       expect(en.copy.isNotEmpty, isTrue);
+      expect(ja.copy.isNotEmpty, isTrue);
 
       // 主界面
       expect(zh.inputHint.isNotEmpty, isTrue);
       expect(en.inputHint.isNotEmpty, isTrue);
+      expect(ja.inputHint.isNotEmpty, isTrue);
       expect(zh.clear.isNotEmpty, isTrue);
       expect(en.clear.isNotEmpty, isTrue);
+      expect(ja.clear.isNotEmpty, isTrue);
       expect(zh.filterKanji.isNotEmpty, isTrue);
       expect(en.filterKanji.isNotEmpty, isTrue);
+      expect(ja.filterKanji.isNotEmpty, isTrue);
       expect(zh.settings.isNotEmpty, isTrue);
       expect(en.settings.isNotEmpty, isTrue);
+      expect(ja.settings.isNotEmpty, isTrue);
       expect(zh.viewAlignment.isNotEmpty, isTrue);
       expect(en.viewAlignment.isNotEmpty, isTrue);
+      expect(ja.viewAlignment.isNotEmpty, isTrue);
       expect(zh.viewFurigana.isNotEmpty, isTrue);
       expect(en.viewFurigana.isNotEmpty, isTrue);
+      expect(ja.viewFurigana.isNotEmpty, isTrue);
       expect(zh.viewVertical.isNotEmpty, isTrue);
       expect(en.viewVertical.isNotEmpty, isTrue);
+      expect(ja.viewVertical.isNotEmpty, isTrue);
       expect(zh.romajiToggle.isNotEmpty, isTrue);
       expect(en.romajiToggle.isNotEmpty, isTrue);
+      expect(ja.romajiToggle.isNotEmpty, isTrue);
       expect(zh.speak.isNotEmpty, isTrue);
       expect(en.speak.isNotEmpty, isTrue);
+      expect(ja.speak.isNotEmpty, isTrue);
       expect(zh.speaking.isNotEmpty, isTrue);
       expect(en.speaking.isNotEmpty, isTrue);
+      expect(ja.speaking.isNotEmpty, isTrue);
       expect(zh.paste.isNotEmpty, isTrue);
       expect(en.paste.isNotEmpty, isTrue);
+      expect(ja.paste.isNotEmpty, isTrue);
 
       // 导出与 Anki
       expect(zh.export.isNotEmpty, isTrue);
       expect(en.export.isNotEmpty, isTrue);
+      expect(ja.export.isNotEmpty, isTrue);
       expect(zh.exportRuby.isNotEmpty, isTrue);
       expect(en.exportRuby.isNotEmpty, isTrue);
+      expect(ja.exportRuby.isNotEmpty, isTrue);
       expect(zh.exportBrackets.isNotEmpty, isTrue);
       expect(en.exportBrackets.isNotEmpty, isTrue);
+      expect(ja.exportBrackets.isNotEmpty, isTrue);
       expect(zh.exportAnki.isNotEmpty, isTrue);
       expect(en.exportAnki.isNotEmpty, isTrue);
+      expect(ja.exportAnki.isNotEmpty, isTrue);
       expect(zh.exportFavorites.isNotEmpty, isTrue);
       expect(en.exportFavorites.isNotEmpty, isTrue);
+      expect(ja.exportFavorites.isNotEmpty, isTrue);
       expect(zh.ttsUnavailable.isNotEmpty, isTrue);
       expect(en.ttsUnavailable.isNotEmpty, isTrue);
+      expect(ja.ttsUnavailable.isNotEmpty, isTrue);
       expect(zh.ankiTagSentence.isNotEmpty, isTrue);
       expect(en.ankiTagSentence.isNotEmpty, isTrue);
+      expect(ja.ankiTagSentence.isNotEmpty, isTrue);
       expect(zh.ankiTagFavorite.isNotEmpty, isTrue);
       expect(en.ankiTagFavorite.isNotEmpty, isTrue);
+      expect(ja.ankiTagFavorite.isNotEmpty, isTrue);
       expect(zh.ankiBaseFormPrefix('食べる').isNotEmpty, isTrue);
       expect(en.ankiBaseFormPrefix('食べる').isNotEmpty, isTrue);
+      expect(ja.ankiBaseFormPrefix('食べる').isNotEmpty, isTrue);
       expect(zh.ankiOnyomiPrefix('こう').isNotEmpty, isTrue);
       expect(en.ankiOnyomiPrefix('こう').isNotEmpty, isTrue);
+      expect(ja.ankiOnyomiPrefix('こう').isNotEmpty, isTrue);
       expect(zh.ankiKunyomiPrefix('ひ').isNotEmpty, isTrue);
       expect(en.ankiKunyomiPrefix('ひ').isNotEmpty, isTrue);
+      expect(ja.ankiKunyomiPrefix('ひ').isNotEmpty, isTrue);
       expect(zh.ankiNote(4, 100).isNotEmpty, isTrue);
       expect(en.ankiNote(4, 100).isNotEmpty, isTrue);
+      expect(ja.ankiNote(4, 100).isNotEmpty, isTrue);
 
       // 词性
       final poses = ['名詞', '動詞', '助動詞', '形容詞', '副詞', '助詞', '連体詞', '接続詞', '感動詞'];
       for (final pos in poses) {
         expect(zh.posLabel(pos).isNotEmpty, isTrue);
         expect(en.posLabel(pos).isNotEmpty, isTrue);
+        expect(ja.posLabel(pos).isNotEmpty, isTrue);
       }
 
       // 筛选与设置
       expect(zh.filterTitle.isNotEmpty, isTrue);
       expect(en.filterTitle.isNotEmpty, isTrue);
+      expect(ja.filterTitle.isNotEmpty, isTrue);
       expect(zh.reset.isNotEmpty, isTrue);
       expect(en.reset.isNotEmpty, isTrue);
+      expect(ja.reset.isNotEmpty, isTrue);
       expect(zh.settings.isNotEmpty, isTrue);
       expect(en.settings.isNotEmpty, isTrue);
+      expect(ja.settings.isNotEmpty, isTrue);
       expect(zh.settingsSubtitle.isNotEmpty, isTrue);
       expect(en.settingsSubtitle.isNotEmpty, isTrue);
+      expect(ja.settingsSubtitle.isNotEmpty, isTrue);
       expect(zh.aboutTitle('1.0.0').isNotEmpty, isTrue);
       expect(en.aboutTitle('1.0.0').isNotEmpty, isTrue);
+      expect(ja.aboutTitle('1.0.0').isNotEmpty, isTrue);
     });
 
     test('FAULT-01: 原生平台通道抛出 PlatformException 时优雅降级', () async {
