@@ -51,6 +51,7 @@ class SettingsController extends ChangeNotifier {
     _loadError = null;
     _saveError = null;
     _lastWrite = Future<void>.value();
+    _writeQueue = Future<void>.value();
     notifyListeners();
   }
 
@@ -59,6 +60,7 @@ class SettingsController extends ChangeNotifier {
   Object? _saveError;
 
   Future<void> _lastWrite = Future<void>.value();
+  Future<void> _writeQueue = Future<void>.value();
 
   AppThemeMode _themeMode = AppThemeMode.system;
 
@@ -162,28 +164,24 @@ class SettingsController extends ChangeNotifier {
   ) {
     final prefs = _prefs;
     if (prefs == null) return Future<void>.value();
-    final write = _performWrite(prefs, operation);
-    _lastWrite = write;
-    return write;
-  }
-
-  Future<void> _performWrite(
-    SharedPreferences prefs,
-    Future<bool> Function(SharedPreferences prefs) operation,
-  ) async {
-    try {
-      final ok = await operation(prefs);
-      if (!ok) {
-        throw StateError('SharedPreferences write returned false');
-      }
-      if (_saveError != null) {
-        _saveError = null;
+    final opFuture = operation(prefs);
+    final writeFuture = _writeQueue = _writeQueue.then((_) async {
+      try {
+        final ok = await opFuture;
+        if (!ok) {
+          throw StateError('SharedPreferences write returned false');
+        }
+        if (_saveError != null) {
+          _saveError = null;
+          notifyListeners();
+        }
+      } catch (e) {
+        _saveError = e;
         notifyListeners();
       }
-    } catch (e) {
-      _saveError = e;
-      notifyListeners();
-    }
+    });
+    _lastWrite = writeFuture;
+    return writeFuture;
   }
 
   /// 等待最近一次写入完成, 供应用进入后台前调用。

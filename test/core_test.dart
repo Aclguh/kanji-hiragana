@@ -842,6 +842,25 @@ void main() {
       final s = SettingsController.instance;
       expect(s.loadError, isNull);
     });
+
+    test('并发写入队列与 flush 保证按序落盘', () async {
+      final s = SettingsController.instance;
+      // 连续发起多个设置变更 (不逐个 await)
+      final future1 = s.setThemeMode(AppThemeMode.dark);
+      final future2 = s.setAutoRotate(true);
+      final future3 = s.setLanguage(AppLanguage.en);
+      final future4 = s.setShowRomaji(false);
+
+      await Future.wait([future1, future2, future3, future4]);
+      await s.flush();
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('settings.theme_mode'), 'dark');
+      expect(prefs.getBool('settings.auto_rotate'), isTrue);
+      expect(prefs.getString('settings.language'), 'en');
+      expect(prefs.getBool('settings.show_romaji'), isFalse);
+      expect(s.saveError, isNull);
+    });
   });
 
   group('查询存储与收藏 (QueryStore)', () {
