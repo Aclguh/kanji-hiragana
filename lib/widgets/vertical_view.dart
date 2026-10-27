@@ -60,9 +60,7 @@ class VerticalView extends StatelessWidget {
               children: [
                 for (var i = 0; i < paragraphs.length; i++) ...[
                   if (i > 0) const SizedBox(width: 24),
-                  RepaintBoundary(
-                    child: _buildParagraph(context, paragraphs[i]),
-                  ),
+                  _buildParagraph(context, paragraphs[i]),
                 ],
               ],
             ),
@@ -146,24 +144,47 @@ class VerticalView extends StatelessWidget {
     return columns;
   }
 
+  /// 每一纵列组分块容纳的最大列数。
+  /// 将大量纵列分块渲染并隔离 RepaintBoundary，避免长文本时单个 Row 节点过深，
+  /// 同时平衡合成层 (Compositing Layers) 数量。
+  static const int columnsPerChunk = 8;
+
   Widget _buildParagraph(BuildContext context, List<Morpheme> morphemes) {
     final columns = _splitIntoColumns(morphemes);
+    if (columns.isEmpty) return const SizedBox.shrink();
+
+    final chunks = <List<List<Morpheme>>>[];
+    for (var i = 0; i < columns.length; i += columnsPerChunk) {
+      final end = math.min(i + columnsPerChunk, columns.length);
+      chunks.add(columns.sublist(i, end));
+    }
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       textDirection: TextDirection.rtl,
       children: [
-        for (var c = 0; c < columns.length; c++) ...[
-          if (c > 0) const SizedBox(width: 14),
+        for (var k = 0; k < chunks.length; k++) ...[
+          if (k > 0) const SizedBox(width: 14),
           RepaintBoundary(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              textDirection: TextDirection.rtl,
               children: [
-                for (final m in columns[c])
-                  _VerticalMorphemeItem(
-                    morpheme: m,
-                    showRomaji: showRomaji,
+                for (var c = 0; c < chunks[k].length; c++) ...[
+                  if (c > 0) const SizedBox(width: 14),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      for (final m in chunks[k][c])
+                        _VerticalMorphemeItem(
+                          morpheme: m,
+                          showRomaji: showRomaji,
+                        ),
+                    ],
                   ),
+                ],
               ],
             ),
           ),

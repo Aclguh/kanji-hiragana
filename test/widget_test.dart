@@ -552,6 +552,29 @@ void main() {
 
         expect(find.text('。'), findsOneWidget);
       });
+
+      testWidgets('超长段落多分块分组隔离正常排版', (tester) async {
+        final morphemes = List.generate(
+          20,
+          (i) => Morpheme.fromToken({
+            'surface_form': '吾輩は猫である${i.toString().padLeft(2, '0')}',
+            'reading': 'ワガハイハネコデアル',
+            'pos': '名詞',
+          }),
+        );
+        final res = AnalysisResult(
+          source: morphemes.map((m) => m.surface).join(),
+          morphemes: morphemes,
+          paragraphs: [morphemes],
+        );
+        await tester.pumpWidget(scrollHost(VerticalView(
+          result: res,
+          showRomaji: false,
+        )));
+
+        expect(find.byType(VerticalView), findsOneWidget);
+        expect(find.text('吾'), findsWidgets);
+      });
     });
 
     group('RadicalPickerSheet 部首检字表 ($name)', () {
