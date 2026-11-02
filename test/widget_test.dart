@@ -35,6 +35,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/fake_services.dart';
 import 'package:kanji_hiragana/widgets/app_scopes.dart';
+import 'package:kanji_hiragana/widgets/feedback.dart';
 
 void main() {
   final themes = {'dark': AppTheme.dark(), 'light': AppTheme.light()};
@@ -972,6 +973,40 @@ void main() {
           ),
           isTrue,
         );
+      });
+
+      testWidgets('speakWithFeedback 播放成功与不可用时弹出 Toast', (tester) async {
+        final fakeSpeech = FakeSpeechService();
+        await tester.pumpWidget(
+          KanjiServicesScope(
+            services: buildFakeServices(speech: fakeSpeech),
+            child: AppStringsScope(
+              strings: const ZhStrings(),
+              child: MaterialApp(
+                theme: theme,
+                home: Scaffold(
+                  body: Builder(
+                    builder: (context) => ElevatedButton(
+                      onPressed: () => speakWithFeedback(context, '日本'),
+                      child: const Text('SpeakBtn'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        // 正常播放
+        await tester.tap(find.text('SpeakBtn'));
+        await tester.pumpAndSettle();
+        expect(fakeSpeech.lastSpoken, '日本');
+
+        // 不可用时提示
+        fakeSpeech.available = false;
+        await tester.tap(find.text('SpeakBtn'));
+        await tester.pumpAndSettle();
+        expect(find.text(const ZhStrings().ttsUnavailable), findsOneWidget);
       });
     });
   }

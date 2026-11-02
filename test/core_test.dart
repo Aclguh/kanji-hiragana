@@ -1240,10 +1240,15 @@ void main() {
         expect(s.noRankExcluded(624).isNotEmpty, isTrue);
         expect(s.aboutTitle('1.2.0').isNotEmpty, isTrue);
 
-        // 学年各分支
+        // 学年各分支 (单一学年与胶囊标签区间格式化)
         for (final g in [1, 2, 3, 4, 5, 6, 8, 9, 10]) {
           expect(s.gradeNumbered(g).isNotEmpty, isTrue);
+          expect(s.gradeChipLabel(g, g).isNotEmpty, isTrue);
         }
+        expect(s.gradeChipLabel(1, 6).isNotEmpty, isTrue);
+        expect(s.gradeChipLabel(1, 8).isNotEmpty, isTrue);
+        expect(s.gradeChipLabel(1, 10).isNotEmpty, isTrue);
+        expect(s.gradeChipLabel(2, 5).isNotEmpty, isTrue);
 
         // 笔画范围分支 (双端 / 单端 / 全空)
         expect(s.filterChipStrokes(3, 8).isNotEmpty, isTrue);
