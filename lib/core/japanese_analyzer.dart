@@ -132,7 +132,6 @@ class JapaneseAnalyzer implements AnalyzerService {
       final result = await completer.future.timeout(timeout);
       return (result as List).cast<Map<String, dynamic>>();
     } on TimeoutException catch (error) {
-      _pending.remove(id);
       throw AnalyzerTimeout(timeout, error);
     } finally {
       _pending.remove(id);
@@ -158,7 +157,6 @@ class JapaneseAnalyzer implements AnalyzerService {
           .map((lineTokens) => (lineTokens as List).cast<Map<String, dynamic>>())
           .toList(growable: false);
     } on TimeoutException catch (error) {
-      _pending.remove(id);
       throw AnalyzerTimeout(timeout, error);
     } finally {
       _pending.remove(id);
