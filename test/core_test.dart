@@ -24,6 +24,8 @@ import 'package:kanji_hiragana/widgets/home/home_coordinator.dart';
 import 'package:kanji_hiragana/widgets/home/home_toolbar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'support/fake_services.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -1608,12 +1610,14 @@ void main() {
       await coordinator.init();
       expect(coordinator.loading, isFalse);
       expect(coordinator.errorKind, isNull);
+      expect(coordinator.requestSeq, 0);
 
       // 立即触发分词
       await coordinator.runAnalysis('桜');
       expect(coordinator.result, isNotNull);
       expect(coordinator.result!.singleKanji, isNotNull);
       expect(coordinator.lastAnalyzedText, '桜');
+      expect(coordinator.requestSeq, 1);
 
       // 收藏切换
       expect(coordinator.isFavorite('桜'), isFalse);
@@ -1624,6 +1628,117 @@ void main() {
 
       // 清空
       coordinator.clear();
+      expect(coordinator.lastAnalyzedText, '');
+      expect(coordinator.requestSeq, 2);
+
+      coordinator.dispose();
+    });
+
+    test('ARCH-01: HomeCoordinator 词典预热失败捕获与上报', () async {
+      final fakeAnalyzer = FakeAnalyzer()..failWarmUp = true;
+      final services = buildFakeServices(analyzer: fakeAnalyzer);
+      final coordinator = HomeCoordinator(services: services);
+
+      await coordinator.init();
+      expect(coordinator.loading, isFalse);
+      expect(coordinator.errorKind, HomeErrorKind.dictionary);
+      expect(coordinator.errorDetail, isNotNull);
+      expect(
+        DiagnosticsLog.instance.entries.any((e) => e.module == 'dictionary'),
+        isTrue,
+      );
+      coordinator.dispose();
+    });
+
+    test('ARCH-01: HomeCoordinator 平台划词初始值与流式广播转发', () async {
+      final fakePlatform = FakePlatformTextSource()..initialText = '東京';
+      final services = buildFakeServices(platform: fakePlatform);
+      final coordinator = HomeCoordinator(services: services);
+      final received = <String>[];
+      final sub = coordinator.onExternalQuery.listen(received.add);
+
+      await coordinator.init();
+      await Future<void>.delayed(Duration.zero);
+      expect(received, ['東京']);
+
+      fakePlatform.emit('京都');
+      await Future<void>.delayed(Duration.zero);
+      expect(received, ['東京', '京都']);
+
+      await sub.cancel();
+      coordinator.dispose();
+    });
+
+    test('ARCH-01: HomeCoordinator 平台获取初始划词异常容错', () async {
+      final fakePlatform = FakePlatformTextSource()..throwOnInitial = true;
+      final services = buildFakeServices(platform: fakePlatform);
+      final coordinator = HomeCoordinator(services: services);
+
+      await coordinator.init();
+      expect(
+        DiagnosticsLog.instance.entries.any((e) => e.module == 'platform'),
+        isTrue,
+      );
+      coordinator.dispose();
+    });
+
+    test('ARCH-01: HomeCoordinator 空输入重置与超长截断回调', () async {
+      final fakeAnalyzer = FakeAnalyzer()..truncateResult = true;
+      final services = buildFakeServices(analyzer: fakeAnalyzer);
+      final coordinator = HomeCoordinator(services: services);
+      await coordinator.init();
+
+      int? truncatedLimit;
+      await coordinator.runAnalysis(
+        '超长输入',
+        onTruncated: (limit) => truncatedLimit = limit,
+      );
+      expect(truncatedLimit, kMaxInputLength);
+      expect(coordinator.result, isNotNull);
+
+      // 空白文本重置结果
+      await coordinator.runAnalysis('   ');
+      expect(coordinator.result, isNull);
+      expect(coordinator.analysisInProgress, isFalse);
+
+      coordinator.dispose();
+    });
+
+    test('ARCH-01: HomeCoordinator 异步竞态取消与异常处理', () async {
+      final fakeAnalyzer = FakeAnalyzer()
+        ..delay = const Duration(milliseconds: 30);
+      final services = buildFakeServices(analyzer: fakeAnalyzer);
+      final coordinator = HomeCoordinator(services: services);
+      await coordinator.init();
+
+      // 1. isCancelled
+      bool cancel = false;
+      final f1 = coordinator.runAnalysis('日本語', isCancelled: () => cancel);
+      cancel = true;
+      await f1;
+      expect(coordinator.result, isNull);
+
+      // 2. 新请求抢占
+      final f2 = coordinator.runAnalysis('第一条请求');
+      final f3 = coordinator.runAnalysis('第二条请求');
+      await Future.wait([f2, f3]);
+      expect(coordinator.lastAnalyzedText, '第二条请求');
+
+      // 3. 正常抛出分析异常
+      fakeAnalyzer.failAnalyze = true;
+      await coordinator.runAnalysis('失败测试');
+      expect(coordinator.errorKind, HomeErrorKind.analysis);
+      expect(coordinator.errorDetail, isNotNull);
+      expect(coordinator.analysisInProgress, isFalse);
+      expect(
+        DiagnosticsLog.instance.entries.any((e) => e.module == 'analysis'),
+        isTrue,
+      );
+
+      // 4. 异常发生时已被取消或抢占
+      coordinator.clear();
+      const cancelFail = true;
+      await coordinator.runAnalysis('取消的失败测试', isCancelled: () => cancelFail);
       expect(coordinator.lastAnalyzedText, '');
 
       coordinator.dispose();
