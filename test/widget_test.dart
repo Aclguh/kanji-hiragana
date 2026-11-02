@@ -10,6 +10,7 @@ import 'dart:ui' show Tristate;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/services.dart';
+import 'package:kanji_hiragana/core/diagnostics.dart';
 import 'package:kanji_hiragana/core/kanji_filter.dart';
 import 'package:kanji_hiragana/core/kanji_homophones.dart';
 import 'package:kanji_hiragana/core/kanji_reading_dict.dart';
@@ -964,6 +965,12 @@ void main() {
         expect(
           find.textContaining('其中 1 条解析失败'),
           findsOneWidget,
+        );
+        expect(
+          DiagnosticsLog.instance.entries.any(
+            (entry) => entry.module == 'anki_export_batch',
+          ),
+          isTrue,
         );
       });
     });
