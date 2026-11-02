@@ -13,10 +13,17 @@ import 'package:kanji_hiragana/core/speech_service.dart';
 class FakeAnalyzer implements AnalyzerService {
   int warmUpCalls = 0;
   bool failBatch = false;
+  bool failWarmUp = false;
+  bool failAnalyze = false;
+  bool truncateResult = false;
+  Duration delay = Duration.zero;
 
   @override
   Future<void> warmUp() async {
     warmUpCalls++;
+    if (failWarmUp) {
+      throw StateError('fake warmup failure');
+    }
   }
 
   @override
@@ -28,8 +35,26 @@ class FakeAnalyzer implements AnalyzerService {
     if (isCancelled?.call() ?? false) {
       return AnalysisResult(source: text, morphemes: const []);
     }
-    await Future<void>.delayed(Duration.zero);
-    return resultFor(text);
+    if (delay > Duration.zero) {
+      await Future<void>.delayed(delay);
+    }
+    if (isCancelled?.call() ?? false) {
+      return AnalysisResult(source: text, morphemes: const []);
+    }
+    if (failAnalyze) {
+      throw StateError('fake analyze failure');
+    }
+    final r = resultFor(text);
+    if (truncateResult) {
+      return AnalysisResult(
+        source: r.source,
+        morphemes: r.morphemes,
+        paragraphs: r.paragraphs,
+        singleKanji: r.singleKanji,
+        isTruncated: true,
+      );
+    }
+    return r;
   }
 
   @override
@@ -151,12 +176,18 @@ class FakeSpeechService implements SpeechService {
 class FakePlatformTextSource implements PlatformTextSource {
   final _controller = StreamController<String>.broadcast();
   String? initialText;
+  bool throwOnInitial = false;
 
   @override
   Stream<String> get onProcessedText => _controller.stream;
 
   @override
-  Future<String?> getInitialProcessedText() async => initialText;
+  Future<String?> getInitialProcessedText() async {
+    if (throwOnInitial) {
+      throw StateError('fake platform initial error');
+    }
+    return initialText;
+  }
 
   void emit(String text) => _controller.add(text);
 

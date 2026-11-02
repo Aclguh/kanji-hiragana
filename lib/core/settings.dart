@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'diagnostics.dart';
 import 'strings.dart';
 
 /// 主题模式。
@@ -117,8 +118,13 @@ class SettingsController extends ChangeNotifier {
       _language = AppLanguage.fromName(prefs.getString(_kLanguage));
       _showRomaji = prefs.getBool(_kShowRomaji) ?? true;
       _viewModeName = prefs.getString(_kViewMode) ?? 'alignment';
-    } catch (e) {
+    } catch (e, stackTrace) {
       _loadError = e;
+      DiagnosticsLog.instance.record(
+        'settings',
+        e,
+        stackTrace: stackTrace,
+      );
     } finally {
       notifyListeners();
     }
@@ -175,8 +181,13 @@ class SettingsController extends ChangeNotifier {
           _saveError = null;
           notifyListeners();
         }
-      } catch (e) {
+      } catch (e, stackTrace) {
         _saveError = e;
+        DiagnosticsLog.instance.record(
+          'settings',
+          e,
+          stackTrace: stackTrace,
+        );
         notifyListeners();
       }
     });

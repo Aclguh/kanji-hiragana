@@ -128,6 +128,71 @@ void main() {
       expect(stopCalled, isTrue);
       expect(TtsService.instance.isSpeaking, isFalse);
     });
+
+    test('onSpeakStart 与 onSpeakError 支持 Map 参数解析并处理状态切换', () async {
+      messenger.setMockMethodCallHandler(ttsChannel, (call) async => true);
+
+      await TtsService.instance.speak('桜');
+      final activeId = TtsService.instance.currentUtteranceId;
+      expect(activeId, isNotNull);
+
+      // onSpeakStart 携带 Map 参数
+      final startMessage = const StandardMethodCodec().encodeMethodCall(
+        MethodCall('onSpeakStart', {'utteranceId': activeId}),
+      );
+      await messenger.handlePlatformMessage(
+        'kanji_hiragana/tts',
+        startMessage,
+        (_) {},
+      );
+      expect(TtsService.instance.isSpeaking, isTrue);
+
+      // onSpeakError 携带 Map 参数并终止播放
+      final errorMessage = const StandardMethodCodec().encodeMethodCall(
+        MethodCall('onSpeakError', {'utteranceId': activeId}),
+      );
+      await messenger.handlePlatformMessage(
+        'kanji_hiragana/tts',
+        errorMessage,
+        (_) {},
+      );
+      expect(TtsService.instance.isSpeaking, isFalse);
+      expect(TtsService.instance.speakingText, '');
+      expect(TtsService.instance.currentUtteranceId, isNull);
+    });
+
+    test('stop 在正在播放时重置状态并在异常时容错降级', () async {
+      messenger.setMockMethodCallHandler(ttsChannel, (call) async => true);
+      await TtsService.instance.speak('花');
+      expect(TtsService.instance.isSpeaking, isTrue);
+
+      messenger.setMockMethodCallHandler(ttsChannel, (call) async {
+        throw PlatformException(code: 'STOP_FAILED');
+      });
+      await TtsService.instance.stop();
+      expect(TtsService.instance.isSpeaking, isFalse);
+      expect(TtsService.instance.speakingText, '');
+    });
+
+    test('speak 在平台通道抛出异常时容错降级', () async {
+      messenger.setMockMethodCallHandler(ttsChannel, (call) async {
+        throw PlatformException(code: 'SPEAK_ERROR');
+      });
+      final ok = await TtsService.instance.speak('川');
+      expect(ok, isFalse);
+      expect(TtsService.instance.isSpeaking, isFalse);
+    });
+
+    test('resetForTesting 状态重置', () async {
+      messenger.setMockMethodCallHandler(ttsChannel, (call) async => true);
+      await TtsService.instance.speak('海');
+      expect(TtsService.instance.isSpeaking, isTrue);
+
+      TtsService.instance.resetForTesting();
+      expect(TtsService.instance.isSpeaking, isFalse);
+      expect(TtsService.instance.speakingText, '');
+      expect(TtsService.instance.currentUtteranceId, isNull);
+    });
   });
 
   group('PlatformService 划词通信测试', () {

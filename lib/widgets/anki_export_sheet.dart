@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/analyzer_service.dart';
+import '../core/diagnostics.dart';
 import '../core/kanji_converter.dart';
 import '../core/kanji_reading_dict.dart';
 import '../core/morpheme.dart';
@@ -80,8 +81,13 @@ class _AnkiExportSheetState extends State<AnkiExportSheet> {
             multiWordAnalysis[multiWordIndices[j]] = batchResults[j];
           }
         }
-      } catch (_) {
-        // 批量分析失败时仍继续导出, 但下方会逐条标记失败并在提示中告知数量。
+      } catch (e, stackTrace) {
+        // 批量分析失败时记录诊断日志并继续降级导出，下方会逐条标记失败并在提示中告知数量。
+        DiagnosticsLog.instance.record(
+          'anki_export_batch',
+          e,
+          stackTrace: stackTrace,
+        );
       }
     }
 

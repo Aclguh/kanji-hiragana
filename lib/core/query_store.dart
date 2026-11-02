@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'diagnostics.dart';
 import 'input_sanitizer.dart';
 
 /// 查询历史与收藏。
@@ -102,8 +103,13 @@ class QueryStore extends ChangeNotifier {
       _favoriteSet = Set<String>.of(_favorites);
       _loadError = null;
       _saveError = null;
-    } catch (e) {
+    } catch (e, stackTrace) {
       _loadError = e;
+      DiagnosticsLog.instance.record(
+        'query_store',
+        e,
+        stackTrace: stackTrace,
+      );
     } finally {
       notifyListeners();
     }
@@ -204,8 +210,13 @@ class QueryStore extends ChangeNotifier {
           _saveError = null;
           notifyListeners();
         }
-      } catch (e) {
+      } catch (e, stackTrace) {
         _saveError = e;
+        DiagnosticsLog.instance.record(
+          'query_store',
+          e,
+          stackTrace: stackTrace,
+        );
         notifyListeners();
       }
     });
