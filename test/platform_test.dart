@@ -4,6 +4,7 @@
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kanji_hiragana/core/diagnostics.dart';
 import 'package:kanji_hiragana/core/platform_service.dart';
 import 'package:kanji_hiragana/core/strings.dart';
 import 'package:kanji_hiragana/core/tts_service.dart';
@@ -15,6 +16,10 @@ void main() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
   const ttsChannel = MethodChannel('kanji_hiragana/tts');
   const platformChannel = MethodChannel('kanji_hiragana/platform');
+
+  setUp(() {
+    DiagnosticsLog.instance.clear();
+  });
 
   tearDown(() {
     messenger.setMockMethodCallHandler(ttsChannel, null);
@@ -42,6 +47,10 @@ void main() {
       });
 
       expect(await TtsService.instance.isAvailable(), isFalse);
+      expect(
+        DiagnosticsLog.instance.entries.any((e) => e.module == 'tts'),
+        isTrue,
+      );
     });
 
     test('speak 空文本直接返回 false', () async {
@@ -77,6 +86,22 @@ void main() {
       expect(success, isFalse);
       expect(TtsService.instance.isSpeaking, isFalse);
       expect(TtsService.instance.speakingText, '');
+    });
+
+    test('speak 原生抛出 PlatformException 时捕获并记录诊断日志', () async {
+      messenger.setMockMethodCallHandler(ttsChannel, (call) async {
+        throw PlatformException(code: 'ERROR', message: 'Engine failure');
+      });
+
+      final success = await TtsService.instance.speak('富士山');
+      expect(success, isFalse);
+      expect(TtsService.instance.isSpeaking, isFalse);
+      expect(
+        DiagnosticsLog.instance.entries.any(
+          (e) => e.module == 'tts' && e.errorType.contains('PlatformException'),
+        ),
+        isTrue,
+      );
     });
 
     test('原生回调 onSpeakDone 校验 utteranceId 避免竞态', () async {

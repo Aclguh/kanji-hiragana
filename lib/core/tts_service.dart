@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import 'diagnostics.dart';
 import 'speech_service.dart';
 
 /// 系统 TTS 朗读服务。
@@ -23,13 +24,8 @@ class TtsService with ChangeNotifier implements SpeechService {
   /// 供测试环境重置单例状态。
   @visibleForTesting
   void resetForTesting() {
-    _timeoutTimer?.cancel();
-    _timeoutTimer = null;
-    _isSpeaking = false;
-    _speakingText = '';
-    _currentUtteranceId = null;
+    _resetCurrentUtterance();
     _utteranceSeq = 0;
-    notifyListeners();
   }
 
   Timer? _timeoutTimer;
@@ -47,13 +43,25 @@ class TtsService with ChangeNotifier implements SpeechService {
   /// 当前发音任务标识。
   String? get currentUtteranceId => _currentUtteranceId;
 
+  void _resetCurrentUtterance() {
+    _timeoutTimer?.cancel();
+    _timeoutTimer = null;
+    _isSpeaking = false;
+    _speakingText = '';
+    _currentUtteranceId = null;
+    notifyListeners();
+  }
+
   /// 检查系统 TTS 引擎是否就绪。
   @override
   Future<bool> isAvailable() async {
     try {
       final result = await _channel.invokeMethod<bool>('isAvailable');
       return result == true;
-    } catch (_) {
+    } catch (e, stackTrace) {
+      if (e is! MissingPluginException) {
+        DiagnosticsLog.instance.record('tts', e, stackTrace: stackTrace);
+      }
       return false;
     }
   }
@@ -75,12 +83,7 @@ class TtsService with ChangeNotifier implements SpeechService {
       case 'onSpeakDone':
       case 'onSpeakError':
         if (utteranceId != null && utteranceId != _currentUtteranceId) return;
-        _timeoutTimer?.cancel();
-        _timeoutTimer = null;
-        _isSpeaking = false;
-        _speakingText = '';
-        _currentUtteranceId = null;
-        notifyListeners();
+        _resetCurrentUtterance();
         break;
     }
   }
@@ -101,10 +104,7 @@ class TtsService with ChangeNotifier implements SpeechService {
     // 设置 15 秒超时守护, 防止原生通道无回调时状态悬挂
     _timeoutTimer = Timer(const Duration(seconds: 15), () {
       if (_isSpeaking && _currentUtteranceId == utteranceId) {
-        _isSpeaking = false;
-        _speakingText = '';
-        _currentUtteranceId = null;
-        notifyListeners();
+        _resetCurrentUtterance();
       }
     });
 
@@ -115,25 +115,18 @@ class TtsService with ChangeNotifier implements SpeechService {
       });
       if (result != true) {
         if (_currentUtteranceId == utteranceId) {
-          _timeoutTimer?.cancel();
-          _timeoutTimer = null;
-          _isSpeaking = false;
-          _speakingText = '';
-          _currentUtteranceId = null;
-          notifyListeners();
+          _resetCurrentUtterance();
         }
         return false;
       }
       return true;
-    } catch (_) {
+    } catch (e, stackTrace) {
       // 在宿主测试或不支持的平台上静默降级
+      if (e is! MissingPluginException) {
+        DiagnosticsLog.instance.record('tts', e, stackTrace: stackTrace);
+      }
       if (_currentUtteranceId == utteranceId) {
-        _timeoutTimer?.cancel();
-        _timeoutTimer = null;
-        _isSpeaking = false;
-        _speakingText = '';
-        _currentUtteranceId = null;
-        notifyListeners();
+        _resetCurrentUtterance();
       }
       return false;
     }
@@ -147,8 +140,11 @@ class TtsService with ChangeNotifier implements SpeechService {
     _currentUtteranceId = null;
     try {
       await _channel.invokeMethod<bool>('stop');
-    } catch (_) {
+    } catch (e, stackTrace) {
       // 容错降级
+      if (e is! MissingPluginException) {
+        DiagnosticsLog.instance.record('tts', e, stackTrace: stackTrace);
+      }
     } finally {
       if (_isSpeaking) {
         _isSpeaking = false;
