@@ -4,6 +4,7 @@
 // 收藏与清空), 无需真机即可在 CI 与本地快速回归。
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kanji_hiragana/core/kanji_services.dart';
 import 'package:kanji_hiragana/core/query_store.dart';
@@ -324,6 +325,70 @@ void main() {
       await tester.tap(find.text('只看前段'));
       await tester.pumpAndSettle();
       expect(find.text('显示全部'), findsOneWidget);
+    });
+
+    testWidgets('剪贴板粘贴文本与超长截断提示', (tester) async {
+      String? mockClipboardText = '東京';
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == 'Clipboard.getData') {
+          return <String, dynamic>{'text': mockClipboardText};
+        }
+        return null;
+      });
+      addTearDown(() {
+        messenger.setMockMethodCallHandler(SystemChannels.platform, null);
+      });
+
+      await pumpHome(tester);
+
+      final pasteBtn = find.byTooltip('粘贴');
+      expect(pasteBtn, findsOneWidget);
+
+      await tester.tap(pasteBtn);
+      await tester.pumpAndSettle();
+
+      final field = tester.widget<TextField>(find.byType(TextField));
+      expect(field.controller?.text, '東京');
+
+      // 清空后再测试超长内容剪贴板粘贴
+      field.controller?.clear();
+      await tester.pumpAndSettle();
+
+      mockClipboardText = 'あ' * 4500;
+      await tester.tap(find.byTooltip('粘贴'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(field.controller?.text.length, equals(4000));
+      expect(find.textContaining('输入过长'), findsOneWidget);
+    });
+
+    testWidgets('键盘输入并按下搜索提交 action 触发查询', (tester) async {
+      await pumpHome(tester);
+
+      final input = find.byType(TextField);
+      await tester.enterText(input, '日本語');
+      await tester.pump();
+
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pump();
+
+      await pumpUntilFound(
+        tester,
+        find.descendant(
+          of: find.byType(AlignmentTable),
+          matching: find.text('日本語'),
+        ),
+      );
+      expect(
+        find.descendant(
+          of: find.byType(AlignmentTable),
+          matching: find.text('日本語'),
+        ),
+        findsOneWidget,
+      );
     });
   });
 }
