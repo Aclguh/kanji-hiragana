@@ -813,6 +813,11 @@ void main() {
     // 词性标签来自 IPADIC 的日文分类, 英文界面下也要翻译 (包含细分分类)。
     expect(find.text('noun · proper'), findsOneWidget);
     expect(find.text('verb · main'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('aux.'),
+      50.0,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('aux.'), findsOneWidget);
     expect(find.textContaining('名詞'), findsNothing);
     expect(find.textContaining('動詞'), findsNothing);
