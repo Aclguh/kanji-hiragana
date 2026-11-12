@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 
+import 'diagnostics.dart';
 import 'input_sanitizer.dart';
 import 'platform_text_source.dart';
 
@@ -46,8 +47,11 @@ class PlatformService implements PlatformTextSource {
           return cleaned;
         }
       }
-    } catch (_) {
-      // 非 Android 或测试环境静默返回 null
+    } catch (e, stackTrace) {
+      // 非 Android 或测试环境静默返回 null，非 MissingPluginException 记录到诊断日志
+      if (e is! MissingPluginException) {
+        DiagnosticsLog.instance.record('platform', e, stackTrace: stackTrace);
+      }
     }
     return null;
   }

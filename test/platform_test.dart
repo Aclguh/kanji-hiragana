@@ -262,6 +262,14 @@ void main() {
         throw PlatformException(code: 'ERROR', message: 'failed');
       });
       expect(await PlatformService.instance.getInitialProcessedText(), isNull);
+      expect(
+        DiagnosticsLog.instance.entries.any(
+          (e) =>
+              e.module == 'platform' &&
+              e.errorType.contains('PlatformException'),
+        ),
+        isTrue,
+      );
     });
 
     test('onProcessText 忽略空内容与未知方法名', () async {
