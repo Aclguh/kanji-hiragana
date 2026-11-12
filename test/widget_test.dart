@@ -914,6 +914,7 @@ void main() {
         expect(copiedText, contains('#separator:tab'));
         expect(copiedText, contains('日'));
         expect(copiedText, contains('練'));
+        expect(copiedText, contains('笔画'));
       });
 
       testWidgets('AnkiExportSheet 批量分析失败时标记条目并提示', (tester) async {

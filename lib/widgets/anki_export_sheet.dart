@@ -109,13 +109,16 @@ class _AnkiExportSheetState extends State<AnkiExportSheet> {
               ? reading.meaningsEn.join('; ')
               : reading.meanings.join('；'),
         );
-        final note = s.ankiNote(reading.strokes, reading.frequencyRank);
+        final note = AnalysisResult.escapeTsvField(
+          s.ankiNote(reading.strokes, reading.frequencyRank),
+        );
         buffer.writeln(
           '${AnalysisResult.escapeTsvField(converted)}\t${AnalysisResult.escapeTsvField(readings)}\t\t$meanings\t$note',
         );
       } else {
         // 多字词条: 从批量分析结果中提取假名、罗马音与词性
         final res = multiWordAnalysis[i];
+        final favoriteTag = AnalysisResult.escapeTsvField(s.ankiTagFavorite);
         if (res != null) {
           final hira = AnalysisResult.escapeTsvField(res.fullHiragana);
           final romaji = AnalysisResult.escapeTsvField(res.fullRomaji);
@@ -127,16 +130,16 @@ class _AnkiExportSheetState extends State<AnkiExportSheet> {
               ? AnalysisResult.escapeTsvField(
                   posList.map(s.posLabel).join('/'),
                 )
-              : s.ankiTagFavorite;
+              : favoriteTag;
           buffer.writeln(
-            '${AnalysisResult.escapeTsvField(trimmed)}\t$hira\t$romaji\t$pos\t${s.ankiTagFavorite}',
+            '${AnalysisResult.escapeTsvField(trimmed)}\t$hira\t$romaji\t$pos\t$favoriteTag',
           );
         } else {
           failedCount++;
           buffer.writeln(
             '${AnalysisResult.escapeTsvField(trimmed)}\t\t\t'
             '${AnalysisResult.escapeTsvField(s.ankiAnalysisFailed)}\t'
-            '${s.ankiTagFavorite}',
+            '$favoriteTag',
           );
         }
       }
